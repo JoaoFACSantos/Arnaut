@@ -1,6 +1,6 @@
-# LUME — Portefólio de fotografia
+# Fotografia Arnaut — Portefólio de fotografia
 
-Site editorial e responsivo para uma fotógrafa fictícia, desenvolvido em HTML, CSS e JavaScript sem dependências de produção.
+Site editorial e responsivo para Beatriz Arnaut, fotógrafa de Pombal, Leiria, desenvolvido em HTML, CSS e JavaScript sem dependências de produção.
 
 ## Ver localmente
 
@@ -15,6 +15,6 @@ Depois, abrir `http://localhost:4173`.
 - Textos e metadados: `index.html`
 - Cores, tipos e layout: variáveis no início de `styles.css`
 - Imagens: pasta `assets/`
-- Email e links sociais: procurar por `ola@lume.pt` em `index.html`
+- Email e links sociais: procurar por `fotografiaarnaut@gmail.com` em `index.html`
 
 As imagens em `assets/` foram criadas especificamente para este conceito visual.
