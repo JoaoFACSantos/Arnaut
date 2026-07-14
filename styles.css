@@ -58,7 +58,7 @@ button { color: inherit; font: inherit; }
 }
 
 .loader.is-done { transform: translateY(-100%); }
-.loader__word { margin: 0; font-family: var(--serif); font-size: clamp(58px, 10vw, 120px); font-weight: 300; letter-spacing: 0; }
+.loader__logo { width: min(520px, 72vw); filter: invert(1) brightness(1.25); }
 .loader__line { width: min(360px, 65vw); height: 1px; background: rgba(255,255,255,.2); }
 .loader__line span { display: block; width: 0; height: 100%; background: var(--paper); transition: width .12s linear; }
 .loader__count { margin: 0; font-family: var(--mono); font-size: 11px; text-align: right; }
