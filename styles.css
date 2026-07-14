@@ -106,12 +106,15 @@ button { color: inherit; font: inherit; }
   backdrop-filter: blur(14px);
 }
 
-.brand { display: inline-flex; width: clamp(132px, 15vw, 184px); align-items: center; color: currentColor; line-height: 1; }
+.brand { display: inline-flex; width: clamp(164px, 17vw, 224px); align-items: center; color: currentColor; line-height: 1; }
 .brand__logo { display: block; width: 100%; height: auto; overflow: visible; }
-.brand__line { fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
-.brand__word { fill: currentColor; font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
-.brand__word--photo { font-size: 41px; }
-.brand__word--name { font-size: 30px; }
+.brand__line { fill: none; stroke: currentColor; stroke-width: 7.4; stroke-linecap: round; stroke-linejoin: round; opacity: .58; }
+.brand__monogram, .brand__word { fill: currentColor; font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+.brand__monogram { font-size: 106px; }
+.brand__monogram--c { opacity: .96; }
+.brand__monogram--f { font-size: 98px; }
+.brand__word--photo { font-size: 72px; }
+.brand__word--name { font-size: 55px; }
 
 .desktop-nav { display: flex; gap: 40px; }
 .desktop-nav a, .header-cta { position: relative; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
@@ -250,7 +253,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
 
 .about { display: grid; grid-template-columns: 46% 1fr; padding-top: 160px; padding-bottom: 180px; gap: clamp(50px, 9vw, 150px); }
 .about__image { position: relative; align-self: start; }
-.about__image img { height: 700px; object-fit: cover; object-position: 58% center; filter: grayscale(1) contrast(.92); }
+.about__image img { aspect-ratio: 16 / 9; height: auto; object-fit: cover; object-position: center center; filter: grayscale(.15) contrast(.96) saturate(.9); }
 .about__image > p { position: absolute; right: -62px; bottom: 60px; margin: 0; color: var(--rust); font-family: var(--serif); font-size: 30px; font-style: italic; line-height: 1; transform: rotate(-8deg); }
 .about__image > p span { display: block; }
 .about__copy { padding-top: 34px; }
@@ -287,7 +290,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
 .contact__mail:hover i { background: #df7e61; transform: rotate(45deg); }
 
 .footer { display: grid; padding: 80px var(--pad) 25px; grid-template-columns: 1fr 1fr 1fr; align-items: start; background: var(--paper); }
-.brand--footer { width: min(260px, 42vw); }
+.brand--footer { width: min(340px, 56vw); }
 .footer > p { justify-self: center; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
 .footer__links { display: flex; justify-self: end; gap: 26px; }
 .footer__links a { font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
@@ -308,7 +311,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
   .services__intro { position: relative; height: auto; min-height: 720px; border-right: 0; border-bottom: 1px solid rgba(241,237,228,.18); }
   .service-list { padding-top: 50px; }
   .about { grid-template-columns: 40% 1fr; gap: 70px; }
-  .about__image img { height: 620px; }
+  .about__image img { height: auto; }
   .about__facts { grid-template-columns: 1fr; }
   .about__facts div { border-right: 0; border-bottom: 1px solid var(--line); }
   .about__facts div:last-child { border-bottom: 0; }
@@ -318,7 +321,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
   :root { --pad: 20px; }
   .site-header { height: 64px; }
   .desktop-nav, .header-cta { display: none; }
-  .brand { width: 142px; }
+  .brand { width: 164px; }
   .site-header { grid-template-columns: 1fr auto; }
   .menu-toggle { display: flex; width: 36px; height: 36px; padding: 9px 2px; align-items: flex-end; flex-direction: column; justify-content: center; gap: 5px; cursor: pointer; }
   .menu-toggle > span:not(.sr-only) { display: block; width: 26px; height: 1px; background: currentColor; transition: .3s; }
@@ -381,7 +384,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
 
   .about { display: flex; padding-top: 100px; padding-bottom: 110px; flex-direction: column; gap: 90px; }
   .about__image { width: 88%; }
-  .about__image img { height: 560px; }
+  .about__image img { height: auto; }
   .about__image > p { right: -35px; bottom: 40px; font-size: 23px; }
   .about__copy { padding-top: 0; }
   .about__copy h2 { margin-top: 60px; }
