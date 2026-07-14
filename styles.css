@@ -106,8 +106,12 @@ button { color: inherit; font: inherit; }
   backdrop-filter: blur(14px);
 }
 
-.brand { display: inline-flex; width: max-content; align-items: flex-start; gap: 4px; font-family: var(--serif); font-size: 28px; font-weight: 500; letter-spacing: 0; line-height: 1; }
-.brand i { width: 6px; height: 6px; margin-top: 2px; border-radius: 50%; background: var(--rust); }
+.brand { display: inline-flex; width: clamp(132px, 15vw, 184px); align-items: center; color: currentColor; line-height: 1; }
+.brand__logo { display: block; width: 100%; height: auto; overflow: visible; }
+.brand__line { fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
+.brand__word { fill: currentColor; font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+.brand__word--photo { font-size: 41px; }
+.brand__word--name { font-size: 30px; }
 
 .desktop-nav { display: flex; gap: 40px; }
 .desktop-nav a, .header-cta { position: relative; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
@@ -283,7 +287,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
 .contact__mail:hover i { background: #df7e61; transform: rotate(45deg); }
 
 .footer { display: grid; padding: 80px var(--pad) 25px; grid-template-columns: 1fr 1fr 1fr; align-items: start; background: var(--paper); }
-.brand--footer { font-size: 58px; }
+.brand--footer { width: min(260px, 42vw); }
 .footer > p { justify-self: center; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
 .footer__links { display: flex; justify-self: end; gap: 26px; }
 .footer__links a { font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
@@ -314,6 +318,7 @@ body.is-ready .hero__image-wrap img { transform: scale(1); }
   :root { --pad: 20px; }
   .site-header { height: 64px; }
   .desktop-nav, .header-cta { display: none; }
+  .brand { width: 142px; }
   .site-header { grid-template-columns: 1fr auto; }
   .menu-toggle { display: flex; width: 36px; height: 36px; padding: 9px 2px; align-items: flex-end; flex-direction: column; justify-content: center; gap: 5px; cursor: pointer; }
   .menu-toggle > span:not(.sr-only) { display: block; width: 26px; height: 1px; background: currentColor; transition: .3s; }
