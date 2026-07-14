@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="LUME — fotografia documental, retratos e histórias de marca por Inês Vale, em Lisboa e onde a luz nos levar."
+    />
+    <meta name="theme-color" content="#f1ede4" />
+    <title>LUME — Fotografia por Inês Vale</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="loader" aria-hidden="true">
+      <p class="loader__word">LUME</p>
+      <div class="loader__line"><span></span></div>
+      <p class="loader__count">00</p>
+    </div>
+
+    <div class="cursor" aria-hidden="true"><span>VER</span></div>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="#inicio" aria-label="LUME — início">
+        <span>LUME</span><i></i>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Navegação principal">
+        <a href="#trabalho">Trabalho</a>
+        <a href="#servicos">Serviços</a>
+        <a href="#sobre">Sobre</a>
+      </nav>
+
+      <a class="header-cta" href="#contacto">Vamos criar <span>↗</span></a>
+
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span><span></span><span></span>
+        <span class="sr-only">Abrir menu</span>
+      </button>
+    </header>
+
+    <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+      <nav aria-label="Navegação móvel">
+        <a href="#trabalho"><small>01</small> Trabalho</a>
+        <a href="#servicos"><small>02</small> Serviços</a>
+        <a href="#sobre"><small>03</small> Sobre</a>
+        <a href="#contacto"><small>04</small> Contacto</a>
+      </nav>
+      <div class="mobile-menu__meta">
+        <p>Lisboa, PT</p>
+        <a href="mailto:ola@lume.pt">ola@lume.pt</a>
+      </div>
+    </div>
+
+    <main>
+      <section class="hero" id="inicio" aria-labelledby="hero-title">
+        <div class="hero__copy">
+          <p class="eyebrow reveal">Fotografia documental <span>·</span> Lisboa</p>
+          <h1 id="hero-title">
+            <span class="hero-line"><span>O instante</span></span>
+            <span class="hero-line hero-line--indent"><span>antes de</span></span>
+            <span class="hero-line hero-line--italic"><span>partir.</span></span>
+          </h1>
+          <div class="hero__intro reveal">
+            <p>
+              Fotografo o que se sente antes de se explicar — pessoas, afetos e marcas
+              com verdade, presença e um pouco de sal na pele.
+            </p>
+            <a class="text-link" href="#trabalho">Explorar histórias <span>↓</span></a>
+          </div>
+          <p class="hero__edition">PORTFÓLIO / MMXXVI</p>
+        </div>
+
+        <figure class="hero__visual image-hover">
+          <div class="hero__image-wrap">
+            <img
+              src="assets/hero-coast.jpg"
+              alt="Mulher de vestido claro num campo junto ao oceano"
+              fetchpriority="high"
+            />
+          </div>
+          <figcaption>
+            <span>Entre a terra e o mar</span>
+            <span>Ericeira, 2026</span>
+          </figcaption>
+          <div class="hero__stamp" aria-hidden="true">
+            <svg viewBox="0 0 120 120">
+              <defs>
+                <path id="stampPath" d="M60,60 m-42,0 a42,42 0 1,1 84,0 a42,42 0 1,1 -84,0" />
+              </defs>
+              <text><textPath href="#stampPath">IMAGENS QUE FICAM · DESDE 2018 · </textPath></text>
+            </svg>
+            <span>✦</span>
+          </div>
+        </figure>
+      </section>
+
+      <section class="marquee" aria-label="Especialidades">
+        <div class="marquee__track">
+          <span>Retrato</span><i>✦</i><span>Casamentos</span><i>✦</i><span>Marcas</span><i>✦</i><span>Famílias</span><i>✦</i>
+          <span aria-hidden="true">Retrato</span><i aria-hidden="true">✦</i><span aria-hidden="true">Casamentos</span><i aria-hidden="true">✦</i><span aria-hidden="true">Marcas</span><i aria-hidden="true">✦</i><span aria-hidden="true">Famílias</span><i aria-hidden="true">✦</i>
+        </div>
+      </section>
+
+      <section class="manifesto section-pad" aria-labelledby="manifesto-title">
+        <div class="manifesto__label reveal">
+          <p class="section-index">01 / Manifesto</p>
+          <div class="manifesto__mark" aria-hidden="true">✳</div>
+        </div>
+        <div class="manifesto__copy">
+          <h2 id="manifesto-title" class="reveal-text">
+            Não procuro poses perfeitas. Procuro o vento no cabelo, as mãos inquietas,
+            o riso que chega sem avisar.
+          </h2>
+          <div class="manifesto__foot reveal">
+            <p>
+              A minha fotografia nasce da observação e da confiança. Interfiro pouco,
+              sinto muito e guardo aquilo que o tempo, sozinho, levaria.
+            </p>
+            <span class="signature">Inês</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="work section-pad" id="trabalho" aria-labelledby="work-title">
+        <header class="section-heading reveal">
+          <div>
+            <p class="section-index">02 / Histórias escolhidas</p>
+            <h2 id="work-title">Trabalho<br /><em>recente</em></h2>
+          </div>
+          <p class="section-heading__note">Quatro formas de estar perto.<br />Uma só maneira de olhar.</p>
+        </header>
+
+        <div class="filters reveal" role="group" aria-label="Filtrar portefólio">
+          <button class="filter is-active" type="button" data-filter="all">Todos <sup>04</sup></button>
+          <button class="filter" type="button" data-filter="casamentos">Casamentos <sup>01</sup></button>
+          <button class="filter" type="button" data-filter="marcas">Marcas <sup>01</sup></button>
+          <button class="filter" type="button" data-filter="pessoas">Pessoas <sup>02</sup></button>
+        </div>
+
+        <div class="projects" aria-live="polite">
+          <article class="project project--wide reveal" data-category="casamentos">
+            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Sal e Promessas">
+              <img src="assets/story-wedding.jpg" alt="Casal recém-casado a correr numa praia" loading="lazy" />
+              <span class="project__number">01</span>
+              <span class="project__view">Ver história ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Sal &amp; Promessas</h3><p>Marta e Tomás</p></div>
+              <p>Comporta / 2026</p>
+            </div>
+          </article>
+
+          <article class="project project--portrait reveal" data-category="marcas">
+            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Matéria Prima">
+              <img src="assets/story-brand.jpg" alt="Ceramista no seu atelier com uma peça em barro" loading="lazy" />
+              <span class="project__number">02</span>
+              <span class="project__view">Ver história ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Matéria Prima</h3><p>Rita, ceramista</p></div>
+              <p>Lisboa / 2026</p>
+            </div>
+          </article>
+
+          <article class="project project--landscape reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Casa é onde estamos">
+              <img src="assets/story-family.jpg" alt="Família a brincar num campo ao fim da tarde" loading="lazy" />
+              <span class="project__number">03</span>
+              <span class="project__view">Ver história ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Casa é onde estamos</h3><p>Família Andrade</p></div>
+              <p>Sintra / 2025</p>
+            </div>
+          </article>
+
+          <article class="project project--crop reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Maré Cheia">
+              <img src="assets/hero-coast.jpg" alt="Figura entre o campo dourado e o mar" loading="lazy" />
+              <span class="project__number">04</span>
+              <span class="project__view">Ver história ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Maré Cheia</h3><p>Editorial pessoal</p></div>
+              <p>Ericeira / 2026</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="services" id="servicos" aria-labelledby="services-title">
+        <div class="services__intro section-pad reveal">
+          <p class="section-index">03 / O que faço</p>
+          <h2 id="services-title">Histórias feitas<br />à vossa <em>medida.</em></h2>
+          <p>
+            Cada sessão começa numa conversa. O resto é espaço, tempo e luz para que
+            possam simplesmente estar.
+          </p>
+        </div>
+
+        <div class="service-list section-pad">
+          <article class="service is-open reveal">
+            <button type="button" aria-expanded="true">
+              <span class="service__num">01</span>
+              <span class="service__name">Casamentos</span>
+              <span class="service__toggle">−</span>
+            </button>
+            <div class="service__detail">
+              <p>
+                Narrativas completas e honestas, da manhã lenta à pista cheia. Presença
+                discreta, direção apenas quando é precisa e todas as pequenas coisas no meio.
+              </p>
+              <ul><li>Cobertura desde 8 horas</li><li>Galeria online privada</li><li>Álbuns fine art opcionais</li></ul>
+              <a href="#contacto">Pedir guia de casamentos ↗</a>
+            </div>
+          </article>
+
+          <article class="service reveal">
+            <button type="button" aria-expanded="false">
+              <span class="service__num">02</span>
+              <span class="service__name">Retratos &amp; famílias</span>
+              <span class="service__toggle">+</span>
+            </button>
+            <div class="service__detail">
+              <p>
+                Para guardar uma fase, celebrar quem são agora ou ter finalmente uma
+                fotografia onde todos cabem — sem poses rígidas nem sorrisos pedidos.
+              </p>
+              <ul><li>Sessão até 90 minutos</li><li>Escolha conjunta de localização</li><li>Galeria de alta resolução</li></ul>
+              <a href="#contacto">Marcar uma sessão ↗</a>
+            </div>
+          </article>
+
+          <article class="service reveal">
+            <button type="button" aria-expanded="false">
+              <span class="service__num">03</span>
+              <span class="service__name">Marcas &amp; editoriais</span>
+              <span class="service__toggle">+</span>
+            </button>
+            <div class="service__detail">
+              <p>
+                Imagens com matéria e intenção para marcas humanas, artistas e projetos
+                independentes. Do conceito à produção, com uma linguagem visual coerente.
+              </p>
+              <ul><li>Direção criativa</li><li>Moodboard e shot list</li><li>Licença digital incluída</li></ul>
+              <a href="#contacto">Falar sobre o projeto ↗</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="about section-pad" id="sobre" aria-labelledby="about-title">
+        <div class="about__image reveal image-hover">
+          <img src="assets/story-brand.jpg" alt="Retrato editorial em atelier" loading="lazy" />
+          <p><span>Fotógrafa, observadora,</span><span>colecionadora de luz.</span></p>
+        </div>
+        <div class="about__copy">
+          <p class="section-index reveal">04 / Atrás da câmara</p>
+          <h2 id="about-title" class="reveal">Olá, sou<br /><em>a Inês.</em></h2>
+          <div class="about__body reveal">
+            <p class="lead">
+              Cresci entre o mar e a serra, numa casa onde as fotografias viviam em caixas
+              e as histórias eram contadas à mesa.
+            </p>
+            <p>
+              Fotografo profissionalmente desde 2018. Interessa-me a beleza menos óbvia:
+              uma dobra, uma pausa, o modo como alguém procura a mão de outra pessoa. Trabalho
+              em Lisboa e por todo o país — e levo sempre uma câmara analógica na mala.
+            </p>
+            <a class="text-link" href="#contacto">Conhecer o meu processo <span>↗</span></a>
+          </div>
+          <div class="about__facts reveal">
+            <div><strong>08</strong><span>anos a contar<br />histórias</span></div>
+            <div><strong>140+</strong><span>sessões<br />entregues</span></div>
+            <div><strong>∞</strong><span>cafés antes<br />do nascer do sol</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="testimonial section-pad" aria-label="Testemunho">
+        <div class="testimonial__top reveal">
+          <p class="section-index">Palavras bonitas / 01</p>
+          <div class="testimonial__nav">
+            <button type="button" aria-label="Testemunho anterior">←</button>
+            <button type="button" aria-label="Testemunho seguinte">→</button>
+          </div>
+        </div>
+        <blockquote class="reveal-text">
+          “A Inês não fotografou apenas o nosso dia. Fotografou aquilo que nós não vimos —
+          e, de alguma forma, aquilo que <em>sentimos.</em>”
+        </blockquote>
+        <div class="testimonial__author reveal">
+          <span>— Marta &amp; Tomás</span>
+          <span>Casamento, Comporta</span>
+        </div>
+      </section>
+
+      <section class="contact section-pad" id="contacto" aria-labelledby="contact-title">
+        <div class="contact__backdrop" aria-hidden="true"></div>
+        <div class="contact__inner">
+          <p class="section-index reveal">05 / Vamos falar</p>
+          <h2 id="contact-title" class="reveal">
+            Há uma história<br />à espera de ser<br /><em>guardada?</em>
+          </h2>
+          <p class="contact__note reveal">
+            Conta-me o que tens em mente, onde e quando.<br />Respondo sempre em 48 horas.
+          </p>
+          <a class="contact__mail reveal" href="mailto:ola@lume.pt?subject=Olá%20Inês,%20vamos%20criar">
+            <span>ola@lume.pt</span><i>↗</i>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a class="brand brand--footer" href="#inicio"><span>LUME</span><i></i></a>
+      <p>Fotografia por Inês Vale<br />Lisboa, Portugal</p>
+      <div class="footer__links">
+        <a href="#inicio">Instagram ↗</a>
+        <a href="#inicio">Pinterest ↗</a>
+        <a href="mailto:ola@lume.pt">Email ↗</a>
+      </div>
+      <div class="footer__bottom">
+        <span>© 2026 LUME STUDIO</span>
+        <span>FEITO COM LUZ &amp; TEMPO</span>
+        <a href="#inicio">Voltar ao topo ↑</a>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
