@@ -1,0 +1,8 @@
+[functions.validate-gallery-code]
+verify_jwt = false
+
+[functions.get-gallery]
+verify_jwt = false
+
+[functions.admin-albums]
+verify_jwt = false

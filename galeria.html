@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Galerias privadas da Fotografia Arnaut." />
+    <meta name="theme-color" content="#f1ede4" />
+    <title>Galerias privadas — Fotografia Arnaut</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="gallery.js" defer></script>
+  </head>
+  <body class="utility-page">
+    <header class="site-header is-scrolled" data-header>
+      <a class="brand" href="index.html" aria-label="Fotografia Arnaut — início">
+        <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+      </a>
+      <nav class="desktop-nav" aria-label="Navegação principal">
+        <a href="index.html#trabalho">Trabalho</a>
+        <a href="index.html#servicos">Serviços</a>
+        <a href="galeria.html">Galerias privadas</a>
+      </nav>
+      <a class="header-cta" href="index.html#contacto">Contacto <span>↗</span></a>
+    </header>
+
+    <main class="private-shell">
+      <section class="private-login" data-gallery-login>
+        <p class="section-index">Área de clientes</p>
+        <h1>Aceder à sua galeria</h1>
+        <p>
+          Introduza o identificador da galeria e o código enviado pela Beatriz.
+          A mensagem de erro é sempre genérica para proteger a privacidade dos eventos.
+        </p>
+        <form class="private-form" data-gallery-form>
+          <label>
+            <span>Identificador da galeria</span>
+            <input data-album-slug name="album" autocomplete="off" required placeholder="casamento-ana-pedro" />
+          </label>
+          <label>
+            <span>Código de acesso</span>
+            <input data-access-code name="code" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">Entrar na galeria <span>↗</span></button>
+          <p class="form-message" data-gallery-message aria-live="polite"></p>
+          <p class="form-status" data-gallery-status aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="gallery-view" data-gallery-view hidden>
+        <div class="gallery-hero">
+          <div>
+            <p class="section-index">Galeria privada</p>
+            <h1 data-gallery-title></h1>
+            <p class="gallery-meta" data-gallery-meta></p>
+            <p data-gallery-description></p>
+          </div>
+          <img data-gallery-cover hidden alt="" />
+        </div>
+        <p class="privacy-note" data-gallery-privacy hidden>
+          Esta galeria é privada e destina-se exclusivamente aos convidados autorizados.
+          Não partilhe o código ou o endereço sem autorização.
+        </p>
+        <div class="gallery-grid" data-gallery-grid></div>
+      </section>
+    </main>
+
+    <div class="lightbox" data-lightbox hidden aria-modal="true" role="dialog" aria-label="Fotografia em destaque">
+      <button type="button" data-lightbox-close aria-label="Fechar">×</button>
+      <button type="button" data-lightbox-prev aria-label="Fotografia anterior">←</button>
+      <img data-lightbox-image alt="" />
+      <button type="button" data-lightbox-next aria-label="Fotografia seguinte">→</button>
+      <div class="lightbox__footer">
+        <p data-lightbox-caption></p>
+        <a data-lightbox-download download hidden>Descarregar ↗</a>
+      </div>
+    </div>
+  </body>
+</html>
