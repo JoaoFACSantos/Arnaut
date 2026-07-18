@@ -32,24 +32,22 @@
     <main class="private-shell">
       <section class="private-login" data-gallery-login>
         <p class="section-index">Área de clientes</p>
-        <h1>Aceder à sua galeria</h1>
+        <h1>Aceder à galeria</h1>
         <p>
-          Introduza o identificador da galeria e o código enviado pela Beatriz.
-          A mensagem de erro é sempre genérica para proteger a privacidade dos eventos.
+          Introduza o código disponibilizado durante o evento para aceder à galeria privada.
         </p>
         <form class="private-form" data-gallery-form>
           <label>
-            <span>Identificador da galeria</span>
-            <input data-album-slug name="album" autocomplete="off" required placeholder="casamento-ana-pedro" />
+            <span>Código da galeria</span>
+            <input data-access-code name="code" autocomplete="off" inputmode="latin-prose" required placeholder="XXXX-XXXX-XXXX" />
           </label>
-          <label>
-            <span>Código de acesso</span>
-            <input data-access-code name="code" type="password" autocomplete="current-password" required />
-          </label>
-          <button type="submit">Entrar na galeria <span>↗</span></button>
+          <button type="submit">Entrar <span>↗</span></button>
           <p class="form-message" data-gallery-message aria-live="polite"></p>
           <p class="form-status" data-gallery-status aria-live="polite"></p>
         </form>
+        <p class="privacy-note">
+          Esta área é privada. Em caso de dificuldade, contacte a Fotografia Arnaut pelo contacto indicado no site.
+        </p>
       </section>
 
       <section class="gallery-view" data-gallery-view hidden>

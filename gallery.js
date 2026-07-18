@@ -1,12 +1,12 @@
 const config = window.ARNAUT_CONFIG || {};
-const functionsBase = config.SUPABASE_URL ? `${config.SUPABASE_URL}/functions/v1` : '';
+const supabaseUrl = String(config.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+const functionsBase = supabaseUrl ? `${supabaseUrl}/functions/v1` : '';
 const params = new URLSearchParams(window.location.search);
-const initialSlug = params.get('album') || '';
+const initialPublicId = params.get('id') || '';
 
 const loginView = document.querySelector('[data-gallery-login]');
 const galleryView = document.querySelector('[data-gallery-view]');
 const form = document.querySelector('[data-gallery-form]');
-const slugInput = document.querySelector('[data-album-slug]');
 const codeInput = document.querySelector('[data-access-code]');
 const message = document.querySelector('[data-gallery-message]');
 const statusLabel = document.querySelector('[data-gallery-status]');
@@ -34,7 +34,16 @@ const setLoading = (loading) => {
   statusLabel.textContent = loading ? 'A verificar...' : '';
 };
 
-const sessionKey = (slug) => `arnaut_gallery_session_${slug}`;
+const deviceKey = 'arnaut_gallery_device';
+const getDeviceId = () => {
+  let value = sessionStorage.getItem(deviceKey);
+  if (!value) {
+    value = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    sessionStorage.setItem(deviceKey, value);
+  }
+  return value;
+};
+const sessionKey = (publicId) => `arnaut_gallery_session_${publicId}`;
 
 async function callFunction(name, body) {
   if (!functionsBase || !config.SUPABASE_PUBLISHABLE_KEY) {
@@ -65,7 +74,7 @@ function createPhotoButton(photo, index) {
   button.addEventListener('click', () => openLightbox(index));
 
   const image = document.createElement('img');
-  image.src = photo.url;
+  image.src = photo.thumbUrl || photo.url;
   image.alt = photo.caption || photo.filename || `Fotografia ${index + 1}`;
   image.loading = 'lazy';
   button.appendChild(image);
@@ -109,8 +118,8 @@ function renderGallery(data) {
   photos.forEach((photo, index) => grid.appendChild(createPhotoButton(photo, index)));
 }
 
-async function loadGallery(slug, token) {
-  const data = await callFunction('get-gallery', { slug, token });
+async function loadGallery(publicId, token) {
+  const data = await callFunction('get-gallery', { publicId, token });
   renderGallery(data);
 }
 
@@ -143,20 +152,27 @@ function moveLightbox(direction) {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const slug = slugInput.value.trim().toLowerCase();
   const code = codeInput.value;
 
   setMessage('', 'neutral');
   setLoading(true);
   try {
-    const session = await callFunction('validate-gallery-code', { slug, code });
-    sessionStorage.setItem(sessionKey(slug), session.token);
-    await loadGallery(slug, session.token);
+    const session = await callFunction('redeem-gallery-code', { code, deviceId: getDeviceId() });
+    sessionStorage.setItem(sessionKey(session.publicId), session.token);
+    window.history.replaceState(null, '', `galeria.html?id=${encodeURIComponent(session.publicId)}`);
+    await loadGallery(session.publicId, session.token);
   } catch (error) {
-    setMessage(error.message || 'Galeria ou código inválido.', 'error');
+    setMessage(error.message || 'Código inválido ou galeria indisponível.', 'error');
   } finally {
     setLoading(false);
   }
+});
+
+codeInput.addEventListener('input', () => {
+  const cursorAtEnd = codeInput.selectionStart === codeInput.value.length;
+  const clean = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  codeInput.value = clean.replace(/(.{4})(?=.)/g, '$1-');
+  if (cursorAtEnd) codeInput.setSelectionRange(codeInput.value.length, codeInput.value.length);
 });
 
 document.querySelector('[data-lightbox-close]').addEventListener('click', closeLightbox);
@@ -170,10 +186,9 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowRight') moveLightbox(1);
 });
 
-if (initialSlug) {
-  slugInput.value = initialSlug;
-  const token = sessionStorage.getItem(sessionKey(initialSlug));
+if (initialPublicId) {
+  const token = sessionStorage.getItem(sessionKey(initialPublicId));
   if (token) {
-    loadGallery(initialSlug, token).catch(() => sessionStorage.removeItem(sessionKey(initialSlug)));
+    loadGallery(initialPublicId, token).catch(() => sessionStorage.removeItem(sessionKey(initialPublicId)));
   }
 }

@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.admin-albums]
 verify_jwt = false
+
+[functions.redeem-gallery-code]
+verify_jwt = false

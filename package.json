@@ -4,6 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/security.test.mjs"
+    "lint": "node --check admin.js && node --check admin-utils.js && node --check gallery.js && node --check script.js && node --check scripts/process-watermarks.mjs",
+    "typecheck": "node node_modules/typescript/lib/tsc.js --noEmit --allowJs --checkJs false --module esnext --target es2022 admin.js admin-utils.js gallery.js script.js",
+    "build": "node -e \"console.log('Static site: no build step required')\"",
+    "test": "node --test tests/security.test.mjs tests/admin-utils.test.mjs",
+    "process:watermarks": "node scripts/process-watermarks.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^17.4.2",
+    "sharp": "^0.35.3"
   }
 }

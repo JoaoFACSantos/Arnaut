@@ -4,38 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
-    <meta name="theme-color" content="#f1ede4" />
+    <meta name="theme-color" content="#f6f7fb" />
     <title>Administração — Fotografia Arnaut</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="config.js"></script>
     <script type="module" src="admin.js"></script>
   </head>
-  <body class="utility-page">
-    <header class="site-header is-scrolled" data-header>
-      <a class="brand" href="index.html" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
-      </a>
-      <nav class="desktop-nav" aria-label="Navegação principal">
-        <a href="index.html">Site</a>
-        <a href="galeria.html">Galerias privadas</a>
-      </nav>
-      <button class="header-cta admin-logout" type="button" data-logout hidden>Terminar sessão</button>
-    </header>
-
-    <main class="admin-shell">
-      <section class="admin-login" data-admin-login>
-        <p class="section-index">Administração</p>
-        <h1>Painel de gestão</h1>
-        <p class="admin-login__intro">
-          Acesso reservado para gestão de galerias privadas, eventos e fotografias.
-        </p>
-        <form class="private-form" data-login-form>
+  <body class="admin-v2">
+    <section class="admin-login-screen" data-admin-login>
+      <div class="admin-login-card">
+        <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <p>Área administrativa</p>
+        <h1>Gestão de galerias privadas</h1>
+        <form data-login-form>
           <label>
             <span>Email</span>
             <input name="email" type="email" autocomplete="email" required />
@@ -44,87 +31,317 @@
             <span>Palavra-passe</span>
             <input name="password" type="password" autocomplete="current-password" required />
           </label>
-          <button type="submit">Entrar <span>↗</span></button>
-          <p class="form-message" data-login-message aria-live="polite"></p>
+          <button type="submit">Entrar</button>
+          <p class="admin-form-message" data-login-message aria-live="polite"></p>
         </form>
-      </section>
+      </div>
+    </section>
 
-      <section class="admin-app" data-admin-app hidden>
-        <div class="admin-sidebar">
-          <div class="admin-sidebar__top">
-            <p class="section-index">Álbuns</p>
-            <button type="button" data-new-album>Novo álbum</button>
+    <section class="admin-app-shell" data-admin-app hidden>
+      <aside class="admin-side" data-sidebar>
+        <div class="admin-side__brand">
+          <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+          <span>EST. 2022</span>
+        </div>
+        <nav class="admin-side__nav" aria-label="Administração">
+          <button type="button" data-view="overview" class="is-active" title="Visão geral"><span>▦</span><em>Visão geral</em></button>
+          <button type="button" data-view="galleries" title="Galerias"><span>▧</span><em>Galerias</em></button>
+          <button type="button" data-new-gallery title="Nova galeria"><span>＋</span><em>Nova galeria</em></button>
+          <button type="button" data-view="settings" title="Definições"><span>⚙</span><em>Definições</em></button>
+        </nav>
+        <div class="admin-storage-card">
+          <span>Armazenamento</span>
+          <strong data-storage-label>—</strong>
+          <div><i data-storage-bar></i></div>
+          <small data-storage-detail>Calculado pelas fotografias carregadas</small>
+        </div>
+        <div class="admin-profile-card">
+          <span class="admin-profile-avatar" aria-hidden="true">BA</span>
+          <div>
+            <strong>Beatriz Arnaut</strong>
+            <small>Administradora</small>
           </div>
-          <div class="admin-album-list" data-album-list></div>
+          <button type="button" data-profile-menu aria-label="Opções do perfil">⋮</button>
+        </div>
+      </aside>
+
+      <div class="admin-main">
+        <header class="admin-topbar">
+          <button class="admin-icon-action" type="button" data-toggle-sidebar aria-label="Abrir ou recolher menu">☰</button>
+          <h1 data-page-title>Visão geral</h1>
+          <button class="admin-logout-v2" type="button" data-logout>Terminar sessão</button>
+        </header>
+
+        <main class="admin-content">
+          <section class="admin-view is-active" data-view-panel="overview">
+            <div class="admin-stat-grid" data-stat-grid></div>
+            <div class="admin-dashboard-grid">
+              <article class="admin-panel admin-panel--wide">
+                <div class="admin-panel__head">
+                  <h2>Galerias recentes</h2>
+                  <button type="button" data-view="galleries">Ver todas →</button>
+                </div>
+                <div class="admin-recent-list" data-recent-list></div>
+              </article>
+              <article class="admin-panel">
+                <div class="admin-panel__head">
+                  <h2>A expirar em breve</h2>
+                  <button type="button" data-filter-expiring>Ver todas →</button>
+                </div>
+                <div class="admin-expiring-list" data-expiring-list></div>
+              </article>
+              <article class="admin-panel admin-panel--wide">
+                <div class="admin-panel__head">
+                  <h2>Fotografias carregadas</h2>
+                  <select data-chart-range aria-label="Intervalo do gráfico">
+                    <option>Esta semana</option>
+                    <option>Este mês</option>
+                    <option>Últimos 3 meses</option>
+                  </select>
+                </div>
+                <div class="admin-mini-chart" data-photo-chart></div>
+              </article>
+              <article class="admin-panel">
+                <div class="admin-panel__head">
+                  <h2>Ações rápidas</h2>
+                </div>
+                <div class="admin-quick-actions">
+                  <button type="button" data-access-manager><span>🔐</span>Códigos e acessos</button>
+                  <button type="button" data-new-gallery><span>＋</span>Nova galeria</button>
+                  <button type="button" data-quick-upload><span>☁</span>Carregar fotos</button>
+                  <button type="button" data-view="galleries"><span>▧</span>Gerir galerias</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="admin-view" data-view-panel="galleries">
+            <div class="admin-toolbar">
+              <div>
+                <h2>Galerias</h2>
+                <p>Pesquisa, filtros e gestão rápida de galerias privadas.</p>
+              </div>
+              <button class="admin-primary" type="button" data-new-gallery>Nova galeria</button>
+            </div>
+            <div class="admin-filters-v2">
+              <input type="search" data-gallery-search placeholder="Pesquisar por nome, local ou código" />
+              <select data-status-filter>
+                <option value="all">Todos os estados</option>
+                <option value="active">Ativas</option>
+                <option value="expiring">A expirar em breve</option>
+                <option value="draft">Rascunhos</option>
+                <option value="disabled">Desativadas</option>
+                <option value="expired">Expiradas</option>
+                <option value="archived">Arquivadas</option>
+              </select>
+              <select data-type-filter><option value="all">Todos os tipos</option></select>
+              <select data-sort-filter>
+                <option value="recent">Mais recentes</option>
+                <option value="event">Data do evento</option>
+                <option value="title">Nome</option>
+              </select>
+              <div class="admin-view-toggle">
+                <button type="button" data-gallery-layout="grid" class="is-active">Grelha</button>
+                <button type="button" data-gallery-layout="list">Lista</button>
+              </div>
+            </div>
+            <div class="admin-gallery-board is-grid" data-gallery-board></div>
+          </section>
+
+          <section class="admin-view" data-view-panel="settings">
+            <article class="admin-panel">
+              <div class="admin-panel__head">
+                <h2>Definições</h2>
+              </div>
+              <div class="admin-settings-copy">
+                <p>As galerias usam bucket privado, URLs assinadas temporárias e códigos decifrados apenas no servidor para administradores autenticados.</p>
+                <ul>
+                  <li>Não partilhar códigos fora dos convidados.</li>
+                  <li>Regenerar código invalida sessões antigas.</li>
+                  <li>Manter backups das fotografias antes de eliminar galerias.</li>
+                </ul>
+              </div>
+            </article>
+          </section>
+        </main>
+      </div>
+
+      <div class="admin-mobile-backdrop" data-sidebar-backdrop></div>
+    </section>
+
+    <aside class="admin-drawer" data-gallery-drawer aria-hidden="true">
+      <form data-gallery-form>
+        <input type="hidden" name="id" />
+        <header>
+          <div>
+            <span data-drawer-kicker>Nova galeria</span>
+            <h2 data-drawer-title>Criar galeria</h2>
+            <p data-drawer-meta>Fluxo em três passos com upload antes de concluir.</p>
+          </div>
+          <div class="admin-drawer-actions">
+            <button type="button" data-preview-gallery>Pré-visualizar</button>
+            <details>
+              <summary aria-label="Mais ações">•••</summary>
+              <div>
+                <button type="button" data-action-show-code>Mostrar código</button>
+                <button type="button" data-action-copy-instructions>Copiar instruções</button>
+                <button type="button" data-action-regenerate-code>Gerar novo código</button>
+                <button type="button" data-action-end-sessions>Terminar sessões</button>
+                <button type="button" data-action-activate>Ativar</button>
+                <button type="button" data-action-disable>Desativar</button>
+                <button type="button" data-action-archive>Arquivar</button>
+                <button type="button" data-action-delete>Eliminar</button>
+              </div>
+            </details>
+          </div>
+          <button type="button" data-close-drawer aria-label="Minimizar">×</button>
+        </header>
+
+        <div class="admin-stepper">
+          <button type="button" data-step-target="1" class="is-active">1 Informações</button>
+          <button type="button" data-step-target="2">2 Fotografias</button>
+          <button type="button" data-step-target="3">3 Confirmar</button>
         </div>
 
-        <form class="admin-editor" data-album-form>
-          <input type="hidden" name="id" />
-          <div class="admin-editor__head">
-            <div>
-              <p class="section-index">Detalhes</p>
-              <h1>Gerir galeria</h1>
+        <div class="admin-drawer-body">
+          <section class="admin-step is-active" data-step="1">
+            <div class="admin-form-grid">
+              <label><span>Nome do evento</span><input name="title" required /></label>
+              <label><span>Tipo</span><select name="eventType"><option>Casamento</option><option>Batizado</option><option>Sessão de família</option><option>Sessão de casal</option><option>Evento</option><option>Outro</option></select></label>
+              <label><span>Data</span><input name="eventDate" type="date" /></label>
+              <label><span>Localização</span><input name="location" /></label>
+              <label class="is-wide"><span>Descrição</span><textarea name="description" rows="3"></textarea></label>
+              <label class="is-wide"><span>Mensagem para convidados</span><textarea name="guestMessage" rows="2"></textarea></label>
+              <label><span>Expiração</span><input name="expiresAt" type="datetime-local" /></label>
+              <label><span>Slug interno</span><input name="slug" placeholder="gerado automaticamente" /></label>
             </div>
-            <div class="admin-editor__actions">
-              <button type="button" data-copy-link disabled>Copiar link</button>
-              <button type="button" data-delete-album disabled>Eliminar</button>
-              <button type="submit">Guardar</button>
+            <div class="admin-switch-row">
+              <label><input name="isActive" type="checkbox" checked /> Publicar imediatamente</label>
+              <label><input name="downloadsEnabled" type="checkbox" /> Download individual</label>
+              <label><input name="downloadAllEnabled" type="checkbox" /> Download total</label>
+              <label><input name="isArchived" type="checkbox" /> Arquivada</label>
             </div>
-          </div>
+            <div class="admin-watermark-settings">
+              <div>
+                <h3>Marca de água</h3>
+                <p>Os convidados veem apenas as versões com marca. Os originais ficam privados.</p>
+              </div>
+              <div class="admin-form-grid">
+                <label><span>Aplicar marca</span><select name="watermarkEnabled"><option value="true">Ativa</option><option value="false">Desativada</option></select></label>
+                <label><span>Posição</span><select name="watermarkPosition"><option value="bottom-center">Centro inferior</option><option value="bottom-right">Inferior direita</option><option value="bottom-left">Inferior esquerda</option><option value="center">Centro</option></select></label>
+                <label><span>Opacidade</span><input name="watermarkOpacity" type="range" min="0.1" max="0.7" step="0.05" value="0.3" /></label>
+                <label><span>Tamanho</span><input name="watermarkScale" type="range" min="0.08" max="0.45" step="0.01" value="0.2" /></label>
+                <label><span>Downloads</span><select name="watermarkOriginalDownloads"><option value="false">Versão com marca</option><option value="true">Original autorizado</option></select></label>
+                <div class="admin-watermark-preview" data-watermark-preview><span>Fotografia</span><img src="assets/logo-watermark.svg" alt="" /></div>
+              </div>
+              <button type="button" data-queue-existing-watermarks>Aplicar marca de água às fotografias existentes</button>
+            </div>
+          </section>
 
-          <div class="admin-grid">
-            <label>
-              <span>Nome do evento</span>
-              <input name="title" required />
-            </label>
-            <label>
-              <span>Slug</span>
-              <input name="slug" required placeholder="casamento-ana-pedro" />
-            </label>
-            <label>
-              <span>Data</span>
-              <input name="eventDate" type="date" />
-            </label>
-            <label>
-              <span>Localização</span>
-              <input name="location" />
-            </label>
-            <label class="admin-grid__wide">
-              <span>Descrição / mensagem</span>
-              <textarea name="description" rows="4"></textarea>
-            </label>
-            <label>
-              <span>Código novo</span>
-              <input name="accessCode" type="password" autocomplete="new-password" placeholder="Não é mostrado depois de guardar" />
-            </label>
-            <label>
-              <span>Expira em</span>
-              <input name="expiresAt" type="datetime-local" />
-            </label>
-            <label class="admin-grid__wide">
-              <span>Caminho da capa</span>
-              <input name="coverPath" readonly />
-            </label>
-          </div>
-
-          <div class="admin-switches">
-            <label><input name="isActive" type="checkbox" checked /> Galeria ativa</label>
-            <label><input name="downloadsEnabled" type="checkbox" /> Permitir downloads</label>
-            <label><input name="isArchived" type="checkbox" /> Arquivada</label>
-          </div>
-
-          <p class="form-message" data-album-message aria-live="polite"></p>
-
-          <section class="admin-upload">
-            <div>
-              <p class="section-index">Fotografias</p>
-              <input data-photo-upload type="file" accept="image/jpeg,image/png,image/webp" multiple disabled />
+          <section class="admin-step" data-step="2">
+            <div class="admin-upload-zone" data-dropzone>
+              <span>☁</span>
+              <strong>Arraste fotografias para aqui</strong>
+              <p>JPEG, PNG ou WebP até 50 MB por ficheiro.</p>
+              <input data-photo-upload type="file" accept="image/jpeg,image/png,image/webp" multiple />
               <progress data-upload-progress value="0" max="1"></progress>
             </div>
-            <div class="admin-photo-list" data-photo-list></div>
+            <div class="admin-photo-grid" data-photo-list></div>
           </section>
-        </form>
-      </section>
-    </main>
+
+          <section class="admin-step" data-step="3">
+            <div class="admin-confirm-card" data-confirm-summary></div>
+            <div class="admin-code-card-v2" data-code-card>
+              <p>Código da galeria</p>
+              <strong data-inline-code-value>••••-••••-••••</strong>
+              <span data-inline-code-message>O código será gerado automaticamente ao criar.</span>
+              <div>
+                <button type="button" data-inline-show-code disabled>Mostrar código</button>
+                <button type="button" data-inline-hide-code hidden>Ocultar</button>
+                <button type="button" data-inline-copy-code disabled>Copiar código</button>
+                <button type="button" data-inline-copy-instructions disabled>Copiar instruções</button>
+                <button type="button" data-inline-retry-code hidden>Tentar novamente</button>
+                <button type="button" data-inline-regenerate-code hidden>Gerar novo código</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer>
+          <p class="admin-form-message" data-album-message aria-live="polite"></p>
+          <div>
+            <button type="button" data-prev-step>Voltar</button>
+            <button type="button" data-next-step>Continuar</button>
+            <button type="button" data-discard-drawer>Descartar</button>
+            <button class="admin-primary" type="submit" data-save-gallery>Guardar galeria</button>
+          </div>
+        </footer>
+      </form>
+    </aside>
+    <button class="admin-drawer-tab" type="button" data-restore-drawer hidden>Nova galeria ›</button>
+    <div class="admin-drawer-backdrop" data-drawer-backdrop hidden></div>
+
+    <dialog class="admin-dialog" data-code-modal>
+      <span>✓</span>
+      <h2 data-code-title>Galeria criada com sucesso</h2>
+      <p>Guarde ou envie este código aos convidados.</p>
+      <strong data-code-value></strong>
+      <div>
+        <button type="button" data-copy-code>Copiar código</button>
+        <button type="button" data-copy-guest-instructions>Copiar instruções</button>
+        <button type="button" data-open-created-gallery>Abrir galeria</button>
+        <button type="button" data-close-code-modal>Gerir galeria</button>
+      </div>
+    </dialog>
+
+    <dialog class="admin-dialog" data-confirm-modal>
+      <span>!</span>
+      <h2 data-confirm-title>Confirmar ação</h2>
+      <p data-confirm-message></p>
+      <div>
+        <button type="button" data-confirm-cancel>Cancelar</button>
+        <button class="admin-danger" type="button" data-confirm-ok>Confirmar</button>
+      </div>
+    </dialog>
+
+    <dialog class="admin-dialog admin-picker-dialog" data-upload-picker-modal>
+      <header class="admin-modal-head">
+        <div>
+          <span>☁</span>
+          <h2>Escolher galeria</h2>
+          <p>Selecione a galeria onde pretende adicionar fotografias.</p>
+        </div>
+        <button type="button" data-close-upload-picker aria-label="Fechar">×</button>
+      </header>
+      <div class="admin-modal-filters">
+        <input type="search" data-upload-picker-search placeholder="Pesquisar por nome, tipo ou data" />
+        <select data-upload-picker-status aria-label="Filtrar galerias por estado">
+          <option value="all">Todos os estados</option>
+          <option value="active">Ativas</option>
+          <option value="draft">Rascunhos</option>
+          <option value="disabled">Desativadas</option>
+          <option value="expired">Expiradas</option>
+        </select>
+      </div>
+      <div class="admin-picker-grid" data-upload-picker-list></div>
+      <footer class="admin-modal-footer">
+        <button type="button" data-reload-upload-picker>Tentar novamente</button>
+        <button type="button" data-picker-new-gallery>Criar nova galeria</button>
+      </footer>
+    </dialog>
+
+    <dialog class="admin-dialog admin-access-dialog" data-access-modal>
+      <header class="admin-modal-head">
+        <div>
+          <span>🔐</span>
+          <h2>Códigos e acessos</h2>
+          <p>Gestão rápida dos códigos privados e das sessões das galerias.</p>
+        </div>
+        <button type="button" data-close-access-modal aria-label="Fechar">×</button>
+      </header>
+      <div class="admin-access-list" data-access-list></div>
+    </dialog>
+
+    <div class="admin-toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

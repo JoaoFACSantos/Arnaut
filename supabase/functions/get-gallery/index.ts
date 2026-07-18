@@ -5,7 +5,6 @@ import {
   corsHeaders,
   getEnv,
   hashSessionToken,
-  isValidSlug,
   json,
   readJson,
 } from '../_shared/security.js';
@@ -16,10 +15,10 @@ Deno.serve(async (request) => {
 
   const supabase = createServiceClient();
   const body = await readJson(request);
-  const slug = String(body.slug || '').trim().toLowerCase();
+  const publicId = String(body.publicId || '').trim();
   const token = String(body.token || '').trim();
 
-  if (!isValidSlug(slug) || token.length < 20) {
+  if (!publicId || token.length < 20) {
     return json({ error: 'Galeria ou sessão inválida.' }, 401);
   }
 
@@ -37,14 +36,13 @@ Deno.serve(async (request) => {
 
   const { data: album } = await supabase
     .from('albums')
-    .select('id, slug, title, event_date, location, description, cover_path, downloads_enabled, is_active, expires_at, session_version')
+    .select('id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, downloads_enabled, watermark_enabled, watermark_original_downloads, is_active, is_archived, status, expires_at, session_version')
     .eq('id', session.album_id)
-    .eq('slug', slug)
-    .eq('is_archived', false)
+    .eq('public_id', publicId)
     .maybeSingle();
 
   const expired = album?.expires_at && new Date(album.expires_at).getTime() <= Date.now();
-  if (!album || !album.is_active || expired || album.session_version !== session.session_version) {
+  if (!album || !album.is_active || album.is_archived || album.status !== 'active' || expired || album.session_version !== session.session_version) {
     return json({ error: 'Esta galeria expirou ou foi desativada.' }, 403);
   }
 
@@ -55,7 +53,7 @@ Deno.serve(async (request) => {
 
   const { data: photos, error } = await supabase
     .from('album_photos')
-    .select('id, storage_path, filename, caption, sort_order, width, height, created_at')
+    .select('id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, filename, caption, sort_order, width, height, created_at')
     .eq('album_id', album.id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
@@ -72,25 +70,41 @@ Deno.serve(async (request) => {
     return data.signedUrl;
   };
 
-  const signedPhotos = await Promise.all((photos || []).map(async (photo) => ({
+  const visiblePhotos = (photos || [])
+    .map((photo) => {
+      const viewPath = album.watermark_enabled ? photo.watermarked_path : photo.original_path || photo.storage_path;
+      const thumbnailPath = album.watermark_enabled ? photo.thumbnail_path || photo.watermarked_path : photo.original_path || photo.storage_path;
+      const ready = album.watermark_enabled ? photo.processing_status === 'ready' && viewPath : viewPath;
+      const downloadPath = album.downloads_enabled
+        ? (album.watermark_original_downloads ? photo.original_path || photo.storage_path : viewPath)
+        : null;
+      return { ...photo, viewPath, thumbnailPath, downloadPath, ready };
+    })
+    .filter((photo) => Boolean(photo.ready));
+
+  const signedPhotos = await Promise.all(visiblePhotos.map(async (photo) => ({
     id: photo.id,
     filename: photo.filename,
     caption: photo.caption,
     width: photo.width,
     height: photo.height,
-    url: await sign(photo.storage_path),
-    downloadUrl: album.downloads_enabled ? await sign(photo.storage_path, true) : null,
+    thumbUrl: await sign(photo.thumbnailPath || photo.viewPath),
+    url: await sign(photo.viewPath),
+    downloadUrl: photo.downloadPath ? await sign(photo.downloadPath, true) : null,
   })));
 
-  const coverUrl = album.cover_path ? await sign(album.cover_path) : signedPhotos[0]?.url || null;
+  const coverPhoto = visiblePhotos.find((photo) => [photo.original_path, photo.storage_path, photo.watermarked_path, photo.thumbnail_path].includes(album.cover_path)) || visiblePhotos[0];
+  const coverUrl = coverPhoto ? await sign(coverPhoto.thumbnailPath || coverPhoto.viewPath) : null;
 
   return json({
     album: {
       slug: album.slug,
+      publicId: album.public_id,
       title: album.title,
+      eventType: album.event_type,
       eventDate: album.event_date,
       location: album.location,
-      description: album.description,
+      description: album.guest_message || album.description,
       downloadsEnabled: album.downloads_enabled,
       coverUrl,
     },
