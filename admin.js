@@ -249,9 +249,23 @@ function formatDateTime(value, fallback = 'Sem registo') {
   return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+function toDateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+  return localDate.toISOString().slice(0, 16);
+}
+
+function hasExpired(expiresAt) {
+  if (!expiresAt) return false;
+  const timestamp = new Date(expiresAt).getTime();
+  return Number.isFinite(timestamp) && timestamp <= Date.now();
+}
+
 function statusOf(album) {
   if (album.is_archived || album.status === 'archived') return 'archived';
-  if (dayDifference(album.expires_at) !== null && dayDifference(album.expires_at) < 0) return 'expired';
+  if (hasExpired(album.expires_at)) return 'expired';
   if (album.status === 'draft') return 'draft';
   if (!album.is_active || album.status === 'disabled') return 'disabled';
   return 'active';
@@ -917,7 +931,7 @@ function openDrawer(album = null, step = 1) {
     fields.location.value = album.location || '';
     fields.description.value = album.description || '';
     fields.guestMessage.value = album.guest_message || '';
-    fields.expiresAt.value = album.expires_at ? album.expires_at.slice(0, 16) : '';
+    fields.expiresAt.value = toDateTimeLocal(album.expires_at);
     fields.slug.value = album.slug || '';
     fields.isActive.checked = Boolean(album.is_active);
     fields.isArchived.checked = Boolean(album.is_archived);
@@ -1367,7 +1381,12 @@ async function endSessions() {
 async function setAlbumState(state) {
   if (!currentAlbum) return;
   const patch = state === 'active'
-    ? { isActive: true, isArchived: false, status: 'active' }
+    ? {
+        isActive: true,
+        isArchived: false,
+        status: 'active',
+        ...(hasExpired(currentAlbum.expires_at) ? { expiresAt: null } : {}),
+      }
     : state === 'disabled'
       ? { isActive: false, isArchived: false, status: 'disabled' }
       : { isArchived: true, status: 'archived' };
