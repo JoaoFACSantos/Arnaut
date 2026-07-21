@@ -149,7 +149,7 @@ export function randomToken(byteLength = 32) {
 }
 
 export function buildStoragePath(albumId, originalName, variant = 'originals') {
-  if (!['originals', 'web', 'thumbs', 'web-watermarked', 'thumbs-watermarked'].includes(variant)) {
+  if (!['originals', 'web', 'thumbs', 'watermarked', 'web-watermarked', 'thumbs-watermarked'].includes(variant)) {
     throw new Error('Invalid storage variant');
   }
   const extension = String(originalName || 'image')
@@ -161,7 +161,7 @@ export function buildStoragePath(albumId, originalName, variant = 'originals') {
 }
 
 export function buildProcessedStoragePath(albumId, photoId, variant) {
-  if (!['web-watermarked', 'thumbs-watermarked'].includes(variant)) {
+  if (!['web', 'watermarked', 'thumbs', 'web-watermarked', 'thumbs-watermarked'].includes(variant)) {
     throw new Error('Invalid processed storage variant');
   }
   return `albums/${albumId}/${variant}/${photoId}.webp`;

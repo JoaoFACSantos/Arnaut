@@ -20,7 +20,7 @@ import {
 } from '../_shared/security.js';
 
 const ADMIN_ALBUM_SELECT = 'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
-const ADMIN_ALBUM_WITH_PHOTOS_SELECT = `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
+const ADMIN_ALBUM_WITH_PHOTOS_SELECT = `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -96,12 +96,12 @@ Deno.serve(async (request) => {
         description: sanitizeText(album.description, 1200) || null,
         guest_message: sanitizeText(album.guestMessage, 1200) || null,
         cover_path: album.coverPath || null,
-        downloads_enabled: Boolean(album.downloadsEnabled),
+        downloads_enabled: album.downloadsEnabled !== false,
         download_all_enabled: Boolean(album.downloadAllEnabled),
         watermark_enabled: album.watermarkEnabled !== false,
-        watermark_position: sanitizeWatermarkPosition(album.watermarkPosition),
-        watermark_opacity: clampNumber(album.watermarkOpacity, 0, 1, 0.3),
-        watermark_scale: clampNumber(album.watermarkScale, 0.08, 0.45, 0.2),
+        watermark_position: 'bottom-center',
+        watermark_opacity: 0.28,
+        watermark_scale: 0.2,
         watermark_original_downloads: Boolean(album.watermarkOriginalDownloads),
         is_active: album.isActive !== false,
         is_archived: Boolean(album.isArchived),
@@ -239,15 +239,14 @@ Deno.serve(async (request) => {
           width: photo.width || null,
           height: photo.height || null,
           size_bytes: Number.isFinite(Number(photo.sizeBytes)) ? Number(photo.sizeBytes) : null,
-          processing_status: album.watermark_enabled ? 'pending' : 'ready',
-          watermark_version: album.watermark_enabled ? 0 : album.watermark_version,
+          watermark_mode: sanitizeWatermarkMode(photo.watermarkMode),
+          processing_status: 'pending',
+          watermark_version: 0,
         })
-        .select('id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at')
+        .select('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at')
         .single();
       if (error) throw error;
-      if (album.watermark_enabled) {
-        await enqueueWatermarkJobs(supabase, photo.albumId, [data.id]);
-      }
+      await enqueueWatermarkJobs(supabase, photo.albumId, [data.id]);
       return json({ photo: data });
     }
 
@@ -262,29 +261,56 @@ Deno.serve(async (request) => {
       const albumId = String(body.albumId || '');
       const { data: album, error: albumError } = await supabase
         .from('albums')
-        .select('id, watermark_version')
+        .select('id, watermark_enabled, watermark_version')
         .eq('id', albumId)
         .maybeSingle();
       if (albumError || !album) return json({ error: 'Galeria nÃ£o encontrada.' }, 404);
       const { data: photos, error: photoError } = await supabase
         .from('album_photos')
-        .select('id')
-        .eq('album_id', albumId)
-        .or(`watermarked_path.is.null,thumbnail_path.is.null,processing_status.eq.failed,watermark_version.lt.${album.watermark_version}`);
+        .select('id, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, watermark_version')
+        .eq('album_id', albumId);
       if (photoError) throw photoError;
-      const queued = await enqueueWatermarkJobs(supabase, albumId, (photos || []).map((photo) => photo.id));
+      const photoIds = (photos || [])
+        .filter((photo) => {
+          const mode = photo.watermark_mode || 'inherit';
+          const needsWatermark = mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
+          return !photo.web_path
+            || !photo.thumbnail_path
+            || (needsWatermark && !photo.watermarked_path)
+            || photo.processing_status === 'failed'
+            || Number(photo.watermark_version || 0) < Number(album.watermark_version || 1);
+        })
+        .map((photo) => photo.id);
+      const queued = await enqueueWatermarkJobs(supabase, albumId, photoIds);
       return json({ queued });
+    }
+
+    if (action === 'set-photo-watermark-mode') {
+      const albumId = String(body.albumId || '');
+      const photoId = String(body.photoId || '');
+      const mode = sanitizeWatermarkMode(body.mode);
+      const { data: photo, error: photoError } = await supabase
+        .from('album_photos')
+        .update({ watermark_mode: mode })
+        .eq('id', photoId)
+        .eq('album_id', albumId)
+        .select('id')
+        .maybeSingle();
+      if (photoError) throw photoError;
+      if (!photo) return json({ error: 'Fotografia não encontrada.' }, 404);
+      const queued = await enqueueWatermarkJobs(supabase, albumId, [photo.id]);
+      return json({ ok: true, queued });
     }
 
     if (action === 'delete-photo') {
       const photoId = String(body.photoId || '');
       const { data: photo, error: findError } = await supabase
         .from('album_photos')
-        .select('id, storage_path, original_path, watermarked_path, thumbnail_path')
+        .select('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path')
         .eq('id', photoId)
         .maybeSingle();
       if (findError) throw findError;
-      const paths = [photo?.storage_path, photo?.original_path, photo?.watermarked_path, photo?.thumbnail_path].filter(Boolean);
+      const paths = [photo?.storage_path, photo?.original_path, photo?.web_path, photo?.watermarked_path, photo?.thumbnail_path].filter(Boolean);
       if (paths.length) await supabase.storage.from(BUCKET).remove([...new Set(paths)]);
       await supabase.from('album_photos').delete().eq('id', photoId);
       return json({ ok: true });
@@ -300,8 +326,8 @@ Deno.serve(async (request) => {
 
     if (action === 'delete-album') {
       const albumId = String(body.albumId || '');
-      const { data: photos } = await supabase.from('album_photos').select('storage_path, original_path, watermarked_path, thumbnail_path').eq('album_id', albumId);
-      const paths = (photos || []).flatMap((photo) => [photo.storage_path, photo.original_path, photo.watermarked_path, photo.thumbnail_path]).filter(Boolean);
+      const { data: photos } = await supabase.from('album_photos').select('storage_path, original_path, web_path, watermarked_path, thumbnail_path').eq('album_id', albumId);
+      const paths = (photos || []).flatMap((photo) => [photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path]).filter(Boolean);
       if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
       await supabase.from('albums').delete().eq('id', albumId);
       return json({ ok: true });
@@ -328,16 +354,10 @@ async function createUniqueCode(supabase: ReturnType<typeof createServiceClient>
   throw new Error('Não foi possível gerar um código único.');
 }
 
-function clampNumber(value: unknown, min: number, max: number, fallback: number) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(max, Math.max(min, parsed));
-}
-
-function sanitizeWatermarkPosition(value: unknown) {
-  const allowed = new Set(['bottom-center', 'bottom-right', 'bottom-left', 'center']);
-  const normalized = sanitizeText(value, 40);
-  return allowed.has(normalized) ? normalized : 'bottom-center';
+function sanitizeWatermarkMode(value: unknown) {
+  const allowed = new Set(['inherit', 'enabled', 'disabled']);
+  const normalized = sanitizeText(value, 20);
+  return allowed.has(normalized) ? normalized : 'inherit';
 }
 
 function watermarkConfigChanged(current: Record<string, unknown>, next: Record<string, unknown>) {
@@ -355,14 +375,6 @@ async function enqueueWatermarkJobs(
 ) {
   const uniquePhotoIds = [...new Set(photoIds.filter(Boolean))];
   if (!albumId || !uniquePhotoIds.length) return 0;
-
-  const { data: album, error: albumError } = await supabase
-    .from('albums')
-    .select('watermark_enabled')
-    .eq('id', albumId)
-    .maybeSingle();
-  if (albumError) throw albumError;
-  if (!album?.watermark_enabled) return 0;
 
   const { data: photos, error: photoError } = await supabase
     .from('album_photos')

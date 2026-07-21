@@ -53,7 +53,7 @@ Deno.serve(async (request) => {
 
   const { data: photos, error } = await supabase
     .from('album_photos')
-    .select('id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, filename, caption, sort_order, width, height, created_at')
+    .select('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, filename, caption, sort_order, width, height, created_at')
     .eq('album_id', album.id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
@@ -72,11 +72,16 @@ Deno.serve(async (request) => {
 
   const visiblePhotos = (photos || [])
     .map((photo) => {
-      const viewPath = album.watermark_enabled ? photo.watermarked_path : photo.original_path || photo.storage_path;
-      const thumbnailPath = album.watermark_enabled ? photo.thumbnail_path || photo.watermarked_path : photo.original_path || photo.storage_path;
-      const ready = album.watermark_enabled ? photo.processing_status === 'ready' && viewPath : viewPath;
+      const mode = photo.watermark_mode || 'inherit';
+      const usesWatermark = mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
+      const fallbackOriginal = photo.original_path || photo.storage_path;
+      const viewPath = usesWatermark
+        ? photo.watermarked_path
+        : photo.web_path || fallbackOriginal;
+      const thumbnailPath = photo.thumbnail_path || viewPath;
+      const ready = photo.processing_status === 'ready' && viewPath;
       const downloadPath = album.downloads_enabled
-        ? (album.watermark_original_downloads ? photo.original_path || photo.storage_path : viewPath)
+        ? (album.watermark_original_downloads ? fallbackOriginal : viewPath)
         : null;
       return { ...photo, viewPath, thumbnailPath, downloadPath, ready };
     })
@@ -93,7 +98,7 @@ Deno.serve(async (request) => {
     downloadUrl: photo.downloadPath ? await sign(photo.downloadPath, true) : null,
   })));
 
-  const coverPhoto = visiblePhotos.find((photo) => [photo.original_path, photo.storage_path, photo.watermarked_path, photo.thumbnail_path].includes(album.cover_path)) || visiblePhotos[0];
+  const coverPhoto = visiblePhotos.find((photo) => [photo.original_path, photo.storage_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(album.cover_path)) || visiblePhotos[0];
   const coverUrl = coverPhoto ? await sign(coverPhoto.thumbnailPath || coverPhoto.viewPath) : null;
 
   return json({

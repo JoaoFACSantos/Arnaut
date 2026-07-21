@@ -180,19 +180,7 @@
           </div>
           <div class="admin-drawer-actions">
             <button type="button" data-preview-gallery>Pré-visualizar</button>
-            <details>
-              <summary aria-label="Mais ações">•••</summary>
-              <div>
-                <button type="button" data-action-show-code>Mostrar código</button>
-                <button type="button" data-action-copy-instructions>Copiar instruções</button>
-                <button type="button" data-action-regenerate-code>Gerar novo código</button>
-                <button type="button" data-action-end-sessions>Terminar sessões</button>
-                <button type="button" data-action-activate>Ativar</button>
-                <button type="button" data-action-disable>Desativar</button>
-                <button type="button" data-action-archive>Arquivar</button>
-                <button type="button" data-action-delete>Eliminar</button>
-              </div>
-            </details>
+            <button class="admin-actions-toggle" type="button" data-gallery-actions-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações">•••</button>
           </div>
           <button type="button" data-close-drawer aria-label="Minimizar">×</button>
         </header>
@@ -217,24 +205,24 @@
             </div>
             <div class="admin-switch-row">
               <label><input name="isActive" type="checkbox" checked /> Publicar imediatamente</label>
-              <label><input name="downloadsEnabled" type="checkbox" /> Download individual</label>
-              <label><input name="downloadAllEnabled" type="checkbox" /> Download total</label>
               <label><input name="isArchived" type="checkbox" /> Arquivada</label>
             </div>
             <div class="admin-watermark-settings">
-              <div>
-                <h3>Marca de água</h3>
-                <p>Os convidados veem apenas as versões com marca. Os originais ficam privados.</p>
-              </div>
-              <div class="admin-form-grid">
-                <label><span>Aplicar marca</span><select name="watermarkEnabled"><option value="true">Ativa</option><option value="false">Desativada</option></select></label>
-                <label><span>Posição</span><select name="watermarkPosition"><option value="bottom-center">Centro inferior</option><option value="bottom-right">Inferior direita</option><option value="bottom-left">Inferior esquerda</option><option value="center">Centro</option></select></label>
-                <label><span>Opacidade</span><input name="watermarkOpacity" type="range" min="0.1" max="0.7" step="0.05" value="0.3" /></label>
-                <label><span>Tamanho</span><input name="watermarkScale" type="range" min="0.08" max="0.45" step="0.01" value="0.2" /></label>
-                <label><span>Downloads</span><select name="watermarkOriginalDownloads"><option value="false">Versão com marca</option><option value="true">Original autorizado</option></select></label>
-                <div class="admin-watermark-preview" data-watermark-preview><span>Fotografia</span><img src="assets/logo-watermark.svg" alt="" /></div>
-              </div>
-              <button type="button" data-queue-existing-watermarks>Aplicar marca de água às fotografias existentes</button>
+              <h3>Marca de água</h3>
+              <label class="admin-check-card">
+                <input name="watermarkEnabled" type="checkbox" checked />
+                <span>
+                  <strong>Aplicar marca de água às fotografias desta galeria</strong>
+                  <small>Os convidados verão as versões com marca de água. Os originais permanecem privados.</small>
+                </span>
+              </label>
+              <label class="admin-check-card">
+                <input name="watermarkOriginalDownloads" type="checkbox" />
+                <span>
+                  <strong>Permitir download dos ficheiros originais</strong>
+                  <small>Quando desligado, os downloads usam a versão visível na galeria.</small>
+                </span>
+              </label>
             </div>
           </section>
 
@@ -293,6 +281,15 @@
         <button type="button" data-close-code-modal>Gerir galeria</button>
       </div>
     </dialog>
+
+    <div class="admin-action-popover" data-gallery-actions-menu role="menu" hidden>
+      <button type="button" data-action-show-code role="menuitem">Mostrar código</button>
+      <button type="button" data-action-copy-instructions role="menuitem">Copiar instruções</button>
+      <button type="button" data-action-regenerate-code role="menuitem">Gerar novo código</button>
+      <button type="button" data-action-end-sessions role="menuitem">Terminar sessões</button>
+      <button type="button" data-action-toggle-state role="menuitem">Ativar ou desativar</button>
+      <button type="button" data-action-delete class="admin-action-popover__danger" role="menuitem">Eliminar</button>
+    </div>
 
     <dialog class="admin-dialog" data-confirm-modal>
       <span>!</span>

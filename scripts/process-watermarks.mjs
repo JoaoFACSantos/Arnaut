@@ -12,6 +12,11 @@ const LIMIT = Number(process.env.WATERMARK_WORKER_LIMIT || 12);
 const LOGO_PATH = process.env.WATERMARK_LOGO_PATH
   ? path.resolve(process.env.WATERMARK_LOGO_PATH)
   : path.resolve(__dirname, '../assets/logo-watermark.svg');
+const WATERMARK_SETTINGS = {
+  watermark_position: 'bottom-center',
+  watermark_opacity: 0.28,
+  watermark_scale: 0.2,
+};
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -91,41 +96,52 @@ async function addWatermark(base, logoSvg, settings) {
 async function processJob(job, logoSvg) {
   const { data: album, error: albumError } = await supabase
     .from('albums')
-    .select('id, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_version')
+    .select('id, watermark_enabled, watermark_version')
     .eq('id', job.album_id)
     .single();
   if (albumError) throw albumError;
 
   const { data: photo, error: photoError } = await supabase
     .from('album_photos')
-    .select('id, album_id, original_path, storage_path, filename')
+    .select('id, album_id, original_path, storage_path, web_path, watermarked_path, thumbnail_path, watermark_mode, filename')
     .eq('id', job.photo_id)
     .single();
   if (photoError) throw photoError;
 
-  if (!album.watermark_enabled) {
-    await supabase.from('album_photos').update({
-      processing_status: 'ready',
-      processing_error: null,
-      watermark_version: album.watermark_version,
-      processed_at: new Date().toISOString(),
-    }).eq('id', photo.id);
-    return;
-  }
-
   const originalPath = photo.original_path || photo.storage_path;
   const original = await downloadObject(originalPath);
-  const webPath = processedPath(album.id, photo.id, 'web-watermarked');
-  const thumbPath = processedPath(album.id, photo.id, 'thumbs-watermarked');
+  const webPath = processedPath(album.id, photo.id, 'web');
+  const thumbPath = processedPath(album.id, photo.id, 'thumbs');
+  const mode = photo.watermark_mode || 'inherit';
+  const usesWatermark = mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
 
-  const webPipeline = await addWatermark(original, logoSvg, album);
-  const webBuffer = await webPipeline
+  const webBuffer = await sharp(original)
+    .rotate()
     .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 84, effort: 4 })
     .toBuffer();
 
-  const thumbPipeline = await addWatermark(original, logoSvg, album);
-  const thumbBuffer = await thumbPipeline
+  let displayBuffer = webBuffer;
+  const update = {
+    web_path: webPath,
+    thumbnail_path: thumbPath,
+    processing_status: 'ready',
+    processing_error: null,
+    format: 'webp',
+    processed_at: new Date().toISOString(),
+    watermark_version: album.watermark_version,
+  };
+
+  if (usesWatermark) {
+    const watermarkedPath = processedPath(album.id, photo.id, 'watermarked');
+    displayBuffer = await (await addWatermark(webBuffer, logoSvg, WATERMARK_SETTINGS))
+      .webp({ quality: 84, effort: 4 })
+      .toBuffer();
+    await uploadObject(watermarkedPath, displayBuffer);
+    update.watermarked_path = watermarkedPath;
+  }
+
+  const thumbBuffer = await sharp(displayBuffer)
     .resize({ width: 640, height: 640, fit: 'cover', position: 'attention' })
     .webp({ quality: 78, effort: 4 })
     .toBuffer();
@@ -133,18 +149,10 @@ async function processJob(job, logoSvg) {
   await uploadObject(webPath, webBuffer);
   await uploadObject(thumbPath, thumbBuffer);
 
-  const webMeta = await sharp(webBuffer).metadata();
-  await supabase.from('album_photos').update({
-    watermarked_path: webPath,
-    thumbnail_path: thumbPath,
-    processing_status: 'ready',
-    processing_error: null,
-    width: webMeta.width || null,
-    height: webMeta.height || null,
-    format: 'webp',
-    processed_at: new Date().toISOString(),
-    watermark_version: album.watermark_version,
-  }).eq('id', photo.id);
+  const webMeta = await sharp(displayBuffer).metadata();
+  update.width = webMeta.width || null;
+  update.height = webMeta.height || null;
+  await supabase.from('album_photos').update(update).eq('id', photo.id);
 }
 
 async function claimJobs() {

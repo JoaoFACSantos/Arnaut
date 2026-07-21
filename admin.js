@@ -45,13 +45,13 @@ const els = {
   closeDrawer: $('[data-close-drawer]'),
   discardDrawer: $('[data-discard-drawer]'),
   previewGallery: $('[data-preview-gallery]'),
+  galleryActionsToggle: $('[data-gallery-actions-toggle]'),
+  galleryActionsMenu: $('[data-gallery-actions-menu]'),
   actionShowCode: $('[data-action-show-code]'),
   actionCopyInstructions: $('[data-action-copy-instructions]'),
   actionRegenerateCode: $('[data-action-regenerate-code]'),
   actionEndSessions: $('[data-action-end-sessions]'),
-  actionActivate: $('[data-action-activate]'),
-  actionDisable: $('[data-action-disable]'),
-  actionArchive: $('[data-action-archive]'),
+  actionToggleState: $('[data-action-toggle-state]'),
   actionDelete: $('[data-action-delete]'),
   stepButtons: $$('[data-step-target]'),
   steps: $$('[data-step]'),
@@ -63,8 +63,6 @@ const els = {
   uploadInput: $('[data-photo-upload]'),
   uploadProgress: $('[data-upload-progress]'),
   photoList: $('[data-photo-list]'),
-  queueExistingWatermarks: $('[data-queue-existing-watermarks]'),
-  watermarkPreview: $('[data-watermark-preview]'),
   confirmSummary: $('[data-confirm-summary]'),
   codeValue: $('[data-code-value]'),
   codeCard: $('[data-code-card]'),
@@ -115,13 +113,8 @@ const fields = {
   expiresAt: els.drawerForm.elements.expiresAt,
   slug: els.drawerForm.elements.slug,
   isActive: els.drawerForm.elements.isActive,
-  downloadsEnabled: els.drawerForm.elements.downloadsEnabled,
-  downloadAllEnabled: els.drawerForm.elements.downloadAllEnabled,
   isArchived: els.drawerForm.elements.isArchived,
   watermarkEnabled: els.drawerForm.elements.watermarkEnabled,
-  watermarkPosition: els.drawerForm.elements.watermarkPosition,
-  watermarkOpacity: els.drawerForm.elements.watermarkOpacity,
-  watermarkScale: els.drawerForm.elements.watermarkScale,
   watermarkOriginalDownloads: els.drawerForm.elements.watermarkOriginalDownloads,
 };
 
@@ -279,24 +272,16 @@ function photoCount(album) {
   return album.album_photos?.length || 0;
 }
 
-function processingLabel(status) {
-  return {
-    pending: 'A processar',
-    processing: 'A processar',
-    ready: 'Concluído',
-    failed: 'Falhou',
-  }[status] || 'A processar';
+function photoUsesWatermark(photo, album = currentAlbum) {
+  const mode = photo?.watermark_mode || 'inherit';
+  return mode === 'enabled' || (mode === 'inherit' && album?.watermark_enabled !== false);
 }
 
-function updateWatermarkPreview() {
-  if (!els.watermarkPreview) return;
-  const opacity = Number(fields.watermarkOpacity.value || 0.3);
-  const scale = Number(fields.watermarkScale.value || 0.2);
-  const position = fields.watermarkPosition.value || 'bottom-center';
-  els.watermarkPreview.style.setProperty('--watermark-opacity-preview', String(opacity));
-  els.watermarkPreview.style.setProperty('--watermark-scale-preview', `${Math.round(scale * 100)}%`);
-  els.watermarkPreview.dataset.position = position;
-  els.watermarkPreview.classList.toggle('is-disabled', fields.watermarkEnabled.value === 'false');
+function watermarkStatus(photo, album = currentAlbum) {
+  if (!photoUsesWatermark(photo, album)) return { key: 'plain', label: 'Sem marca' };
+  if (photo?.processing_status === 'failed') return { key: 'failed', label: 'Erro' };
+  if (photo?.processing_status === 'ready' && photo?.watermarked_path) return { key: 'ready', label: 'Com marca' };
+  return { key: 'pending', label: 'A processar' };
 }
 
 function isExpiringSoon(album) {
@@ -856,20 +841,60 @@ function setStep(step) {
   if (currentStep === 3) renderConfirmSummary();
 }
 
+function closeGalleryActionsMenu() {
+  if (!els.galleryActionsMenu) return;
+  els.galleryActionsMenu.hidden = true;
+  els.galleryActionsToggle?.setAttribute('aria-expanded', 'false');
+}
+
+function updateGalleryActionsState() {
+  const disabled = !currentAlbum;
+  if (els.galleryActionsToggle) els.galleryActionsToggle.disabled = disabled;
+  [els.actionShowCode, els.actionCopyInstructions, els.actionRegenerateCode, els.actionEndSessions, els.actionToggleState, els.actionDelete]
+    .forEach((button) => { if (button) button.disabled = disabled; });
+  if (els.actionToggleState) {
+    els.actionToggleState.textContent = statusOf(currentAlbum || {}) === 'active' ? 'Desativar' : 'Ativar';
+  }
+  if (disabled) closeGalleryActionsMenu();
+}
+
+function positionGalleryActionsMenu() {
+  if (!els.galleryActionsMenu || !els.galleryActionsToggle || els.galleryActionsMenu.hidden) return;
+  const buttonRect = els.galleryActionsToggle.getBoundingClientRect();
+  const menuRect = els.galleryActionsMenu.getBoundingClientRect();
+  const gap = 8;
+  const left = Math.min(
+    window.innerWidth - menuRect.width - 12,
+    Math.max(12, buttonRect.right - menuRect.width),
+  );
+  let top = buttonRect.bottom + gap;
+  if (top + menuRect.height > window.innerHeight - 12) {
+    top = Math.max(12, buttonRect.top - menuRect.height - gap);
+  }
+  els.galleryActionsMenu.style.left = `${left}px`;
+  els.galleryActionsMenu.style.top = `${top}px`;
+}
+
+function toggleGalleryActionsMenu() {
+  if (!currentAlbum || !els.galleryActionsMenu) return;
+  const willOpen = els.galleryActionsMenu.hidden;
+  els.galleryActionsMenu.hidden = !willOpen;
+  els.galleryActionsToggle?.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) {
+    positionGalleryActionsMenu();
+    els.galleryActionsMenu.querySelector('button:not([disabled])')?.focus({ preventScroll: true });
+  }
+}
+
 function resetForm() {
   currentAlbum = null;
+  lastShownCode = '';
   els.drawerForm.reset();
   fields.id.value = '';
   fields.isActive.checked = true;
-  fields.downloadsEnabled.checked = false;
-  fields.downloadAllEnabled.checked = false;
   fields.isArchived.checked = false;
-  fields.watermarkEnabled.value = 'true';
-  fields.watermarkPosition.value = 'bottom-center';
-  fields.watermarkOpacity.value = '0.3';
-  fields.watermarkScale.value = '0.2';
-  fields.watermarkOriginalDownloads.value = 'false';
-  updateWatermarkPreview();
+  fields.watermarkEnabled.checked = true;
+  fields.watermarkOriginalDownloads.checked = false;
   clearPendingFiles();
   renderPhotos([]);
   setCodeState('empty');
@@ -877,6 +902,7 @@ function resetForm() {
   els.drawerKicker.textContent = 'Nova galeria';
   els.drawerTitle.textContent = 'Criar galeria';
   els.drawerMeta.textContent = 'Fluxo em três passos com upload antes de concluir.';
+  updateGalleryActionsState();
   setStep(1);
 }
 
@@ -894,15 +920,9 @@ function openDrawer(album = null, step = 1) {
     fields.expiresAt.value = album.expires_at ? album.expires_at.slice(0, 16) : '';
     fields.slug.value = album.slug || '';
     fields.isActive.checked = Boolean(album.is_active);
-    fields.downloadsEnabled.checked = Boolean(album.downloads_enabled);
-    fields.downloadAllEnabled.checked = Boolean(album.download_all_enabled);
     fields.isArchived.checked = Boolean(album.is_archived);
-    fields.watermarkEnabled.value = album.watermark_enabled === false ? 'false' : 'true';
-    fields.watermarkPosition.value = album.watermark_position || 'bottom-center';
-    fields.watermarkOpacity.value = String(album.watermark_opacity ?? 0.3);
-    fields.watermarkScale.value = String(album.watermark_scale ?? 0.2);
-    fields.watermarkOriginalDownloads.value = album.watermark_original_downloads ? 'true' : 'false';
-    updateWatermarkPreview();
+    fields.watermarkEnabled.checked = album.watermark_enabled !== false;
+    fields.watermarkOriginalDownloads.checked = Boolean(album.watermark_original_downloads);
     els.drawerKicker.textContent = 'Gerir galeria';
     els.drawerTitle.textContent = album.title || 'Galeria';
     els.drawerMeta.textContent = `${album.event_type || 'Evento'} · ${album.location || 'Sem local'} · ${album.access_code_masked || 'sem código'}`;
@@ -915,11 +935,13 @@ function openDrawer(album = null, step = 1) {
   els.drawerBackdrop.hidden = false;
   els.restoreDrawer.hidden = true;
   drawerMinimized = false;
+  updateGalleryActionsState();
   setStep(step);
   setTimeout(() => fields.title.focus(), 60);
 }
 
 function closeDrawer() {
+  closeGalleryActionsMenu();
   els.drawer.classList.remove('is-open');
   els.drawer.classList.remove('is-minimized');
   els.drawer.setAttribute('aria-hidden', 'true');
@@ -930,6 +952,7 @@ function closeDrawer() {
 
 function minimizeDrawer() {
   if (!els.drawer.classList.contains('is-open')) return;
+  closeGalleryActionsMenu();
   els.drawer.classList.add('is-minimized');
   els.drawer.setAttribute('aria-hidden', 'true');
   els.drawerBackdrop.hidden = true;
@@ -971,13 +994,10 @@ function buildPayload(overrides = {}) {
     description: fields.description.value,
     guestMessage: fields.guestMessage.value,
     coverPath: overrides.coverPath || currentAlbum?.cover_path || null,
-    downloadsEnabled: fields.downloadsEnabled.checked,
-    downloadAllEnabled: fields.downloadAllEnabled.checked,
-    watermarkEnabled: fields.watermarkEnabled.value !== 'false',
-    watermarkPosition: fields.watermarkPosition.value,
-    watermarkOpacity: Number(fields.watermarkOpacity.value || 0.3),
-    watermarkScale: Number(fields.watermarkScale.value || 0.2),
-    watermarkOriginalDownloads: fields.watermarkOriginalDownloads.value === 'true',
+    downloadsEnabled: true,
+    downloadAllEnabled: false,
+    watermarkEnabled: fields.watermarkEnabled.checked,
+    watermarkOriginalDownloads: fields.watermarkOriginalDownloads.checked,
     isActive: fields.isActive.checked,
     isArchived: fields.isArchived.checked,
     status: fields.isArchived.checked ? 'archived' : (fields.isActive.checked ? 'active' : 'draft'),
@@ -991,9 +1011,18 @@ async function saveGallery(event) {
   try {
     await withBusy(els.saveGallery, 'A guardar...', async () => {
       const payload = buildPayload();
+      const shouldQueueExistingWatermarks = currentAlbum
+        && currentAlbum.watermark_enabled === false
+        && payload.watermarkEnabled === true
+        && (currentAlbum.album_photos || []).length > 0
+        && await askConfirm('Aplicar marca às fotografias existentes?', 'A galeria passará a usar marca de água. Quer preparar também as fotografias que já existem?');
       const result = await callAdmin('save-album', { album: payload });
       await loadAlbums();
       let updated = albums.find((album) => album.id === result.album.id) || result.album;
+      if (shouldQueueExistingWatermarks) {
+        const queued = await callAdmin('queue-existing-watermarks', { albumId: updated.id });
+        toast(`${queued.queued || 0} fotografia(s) colocada(s) em processamento.`, 'neutral');
+      }
       const uploadResult = await uploadPendingFiles(updated);
       if (uploadResult.coverPath && uploadResult.coverPath !== updated.cover_path) {
         await callAdmin('save-album', { album: buildPayload({ id: updated.id, coverPath: uploadResult.coverPath }) });
@@ -1077,16 +1106,28 @@ function renderPhotos(existing = []) {
 
   existing.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).forEach((photo, index, ordered) => {
     const card = document.createElement('article');
-    card.className = `admin-photo-card${currentAlbum?.cover_path === photo.storage_path ? ' is-cover' : ''}`;
-    const processingStatus = photo.processing_status || 'pending';
+    card.className = `admin-photo-card${[photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(currentAlbum?.cover_path) ? ' is-cover' : ''}`;
+    const status = watermarkStatus(photo);
+    const mode = photo.watermark_mode || 'inherit';
+    const watermarkControl = document.createElement('label');
+    watermarkControl.className = 'admin-photo-watermark-toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = photoUsesWatermark(photo);
+    checkbox.addEventListener('change', () => setPhotoWatermarkMode(photo, checkbox.checked ? 'enabled' : 'disabled'));
+    watermarkControl.append(checkbox, document.createTextNode(' Usar marca de água'));
     card.innerHTML = `
       <div class="admin-photo-placeholder">Foto</div>
       <strong>${escapeText(photo.filename)}</strong>
       <span>${escapeText(photo.caption || 'Sem legenda')}</span>
-      <small class="admin-processing-status admin-processing-status--${escapeText(processingStatus)}">${processingLabel(processingStatus)}</small>
+      <small class="admin-processing-status admin-processing-status--${escapeText(status.key)}">${escapeText(status.label)}</small>
       ${photo.processing_error ? `<small class="admin-processing-error">${escapeText(photo.processing_error)}</small>` : ''}
     `;
-    if (processingStatus === 'failed') {
+    card.append(watermarkControl);
+    if (mode !== 'inherit') {
+      card.append(actionButton('Herdar galeria', () => setPhotoWatermarkMode(photo, 'inherit')));
+    }
+    if (status.key === 'failed') {
       card.append(actionButton('Tentar novamente', () => retryPhotoProcessing(photo)));
     }
     card.append(
@@ -1145,6 +1186,23 @@ async function retryPhotoProcessing(photo) {
     toast('Processamento reenviado.');
   } catch (error) {
     toast(friendlyError(error, 'Não foi possível reenviar o processamento.'), 'error');
+  }
+}
+
+async function setPhotoWatermarkMode(photo, mode) {
+  if (!currentAlbum || !photo?.id) return;
+  try {
+    await callAdmin('set-photo-watermark-mode', {
+      albumId: currentAlbum.id,
+      photoId: photo.id,
+      mode,
+    });
+    await loadAlbums();
+    const updated = albums.find((album) => album.id === currentAlbum.id);
+    if (updated) openDrawer(updated, 2);
+    toast(mode === 'inherit' ? 'Fotografia voltou a herdar a definição da galeria.' : 'Definição da fotografia atualizada.');
+  } catch (error) {
+    toast(friendlyError(error, 'Não foi possível atualizar a marca desta fotografia.'), 'error');
   }
 }
 
@@ -1218,8 +1276,8 @@ function renderConfirmSummary() {
     ['Local', fields.location.value || '—'],
     ['Fotografias', `${pendingFiles.length + photoCount(currentAlbum || {})}`],
     ['Estado', fields.isActive.checked ? 'Ativa' : 'Rascunho'],
-    ['Marca de água', fields.watermarkEnabled.value === 'false' ? 'Desativada' : 'Ativa'],
-    ['Download', fields.watermarkOriginalDownloads.value === 'true' ? 'Original autorizado' : 'Versão com marca'],
+    ['Marca de água', fields.watermarkEnabled.checked ? 'Ativa' : 'Desativada'],
+    ['Download', fields.watermarkOriginalDownloads.checked ? 'Original autorizado' : 'Versão visível'],
     ['Expiração', fields.expiresAt.value ? formatDate(fields.expiresAt.value) : 'Sem expiração'],
   ];
   items.forEach(([label, value]) => {
@@ -1263,17 +1321,23 @@ async function revealCode() {
     toast('Código carregado.');
   } catch (error) {
     if (handleExpiredAdminSession(error)) return;
-    if (error.status === 409 || error.code === 'code_unrecoverable') setCodeState('unrecoverable');
-    else setCodeState('error');
-    toast(friendlyError(error, 'Não foi possível obter o código.'), 'error');
+    if (error.status === 409 || error.code === 'code_unrecoverable') {
+      setCodeState('unrecoverable');
+      const confirmed = await askConfirm('Código antigo indisponível', 'Esta galeria foi criada antes de o código ficar cifrado para recuperação. Quer gerar um novo código seguro agora? As sessões atuais serão terminadas.');
+      if (confirmed) await regenerateCode({ skipConfirm: true });
+      else toast('Pode gerar um novo código quando quiser.', 'neutral');
+    } else {
+      setCodeState('error');
+      toast(friendlyError(error, 'Não foi possível obter o código.'), 'error');
+    }
   } finally {
     codeLoading = false;
   }
 }
 
-async function regenerateCode() {
+async function regenerateCode(options = {}) {
   if (!currentAlbum) return;
-  if (!await askConfirm('Gerar novo código', 'O código antigo deixa de funcionar e todas as sessões serão terminadas.')) return;
+  if (!options.skipConfirm && !await askConfirm('Gerar novo código', 'O código antigo deixa de funcionar e todas as sessões serão terminadas.')) return;
   try {
     const data = await callAdmin('regenerate-code', { albumId: currentAlbum.id });
     await loadAlbums();
@@ -1451,20 +1515,27 @@ els.discardDrawer.addEventListener('click', discardDrawer);
 els.previewGallery.addEventListener('click', () => {
   if (currentAlbum) window.open(albumUrl(currentAlbum), '_blank', 'noopener,noreferrer');
 });
+els.galleryActionsToggle?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  toggleGalleryActionsMenu();
+});
+els.galleryActionsMenu?.addEventListener('click', (event) => {
+  if (event.target.closest('button')) closeGalleryActionsMenu();
+});
 els.actionShowCode.addEventListener('click', () => {
   setStep(3);
   revealCode();
 });
 els.actionCopyInstructions.addEventListener('click', async () => {
   if (!currentAlbum) return;
+  if (!lastShownCode) await revealCode();
+  if (!lastShownCode) return;
   await navigator.clipboard.writeText(guestInstructions(currentAlbum, lastShownCode));
   toast('Instruções copiadas.');
 });
 els.actionRegenerateCode.addEventListener('click', regenerateCode);
 els.actionEndSessions.addEventListener('click', endSessions);
-els.actionActivate.addEventListener('click', () => setAlbumState('active'));
-els.actionDisable.addEventListener('click', () => setAlbumState('disabled'));
-els.actionArchive.addEventListener('click', () => setAlbumState('archived'));
+els.actionToggleState.addEventListener('click', () => setAlbumState(statusOf(currentAlbum || {}) === 'active' ? 'disabled' : 'active'));
 els.actionDelete.addEventListener('click', deleteAlbum);
 els.stepButtons.forEach((button) => button.addEventListener('click', () => setStep(Number(button.dataset.stepTarget))));
 els.prevStep.addEventListener('click', () => setStep(currentStep - 1));
@@ -1484,9 +1555,6 @@ els.uploadInput.addEventListener('change', () => {
   addPendingFiles([...els.uploadInput.files]);
   els.uploadInput.value = '';
 });
-els.queueExistingWatermarks?.addEventListener('click', queueExistingWatermarks);
-[fields.watermarkEnabled, fields.watermarkPosition, fields.watermarkOpacity, fields.watermarkScale, fields.watermarkOriginalDownloads]
-  .forEach((field) => field?.addEventListener('input', updateWatermarkPreview));
 els.dropzone.addEventListener('dragover', (event) => {
   event.preventDefault();
   els.dropzone.classList.add('is-dragging');
@@ -1538,18 +1606,33 @@ els.confirmModal.addEventListener('cancel', () => resolveConfirm(false));
 els.confirmModal.addEventListener('close', () => resolveConfirm(false));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (els.galleryActionsMenu && !els.galleryActionsMenu.hidden) {
+      closeGalleryActionsMenu();
+      return;
+    }
     closeMobileSidebar();
     if (els.drawer.classList.contains('is-open')) minimizeDrawer();
   }
 });
 
 document.addEventListener('click', async (event) => {
+  if (
+    els.galleryActionsMenu
+    && !els.galleryActionsMenu.hidden
+    && !els.galleryActionsMenu.contains(event.target)
+    && !els.galleryActionsToggle?.contains(event.target)
+  ) {
+    closeGalleryActionsMenu();
+  }
   const action = event.target.closest('[data-album-action]');
   if (!action) return;
   const album = albums.find((item) => item.id === action.dataset.albumId);
   if (!album) return;
   openDrawer(album, Number(action.dataset.step || 1));
 });
+
+window.addEventListener('resize', positionGalleryActionsMenu);
+window.addEventListener('scroll', positionGalleryActionsMenu, true);
 
 if (!supabase) {
   els.loginMessage.textContent = 'Configure config.js com SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY.';
