@@ -51,14 +51,26 @@ Deno.serve(async (request) => {
     .update({ last_accessed_at: new Date().toISOString() })
     .eq('id', session.id);
 
-  const { data: photos, error } = await supabase
+  const loadPhotos = async (select: string) => supabase
     .from('album_photos')
-    .select('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, filename, caption, sort_order, width, height, created_at')
+    .select(select)
     .eq('album_id', album.id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
+  let { data: photos, error } = await loadPhotos('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, filename, caption, sort_order, width, height, created_at');
   if (error) {
+    const fallback = await loadPhotos('id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, filename, caption, sort_order, width, height, created_at');
+    photos = (fallback.data || []).map((photo) => ({
+      ...photo,
+      web_path: null,
+      watermark_mode: 'inherit',
+    }));
+    error = fallback.error;
+  }
+
+  if (error) {
+    console.error('get-gallery photos error', error.message || error);
     return json({ error: 'Não foi possível carregar a galeria.' }, 500);
   }
 
