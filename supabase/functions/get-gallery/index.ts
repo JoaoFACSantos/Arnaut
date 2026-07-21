@@ -79,13 +79,16 @@ Deno.serve(async (request) => {
         ? photo.watermarked_path
         : photo.web_path || fallbackOriginal;
       const thumbnailPath = photo.thumbnail_path || viewPath;
-      const ready = photo.processing_status === 'ready' && viewPath;
+      const ready = usesWatermark
+        ? photo.processing_status === 'ready' && photo.watermarked_path
+        : Boolean(viewPath);
       const downloadPath = album.downloads_enabled
         ? (album.watermark_original_downloads ? fallbackOriginal : viewPath)
         : null;
       return { ...photo, viewPath, thumbnailPath, downloadPath, ready };
     })
     .filter((photo) => Boolean(photo.ready));
+  const pendingPhotoCount = (photos || []).length - visiblePhotos.length;
 
   const signedPhotos = await Promise.all(visiblePhotos.map(async (photo) => ({
     id: photo.id,
@@ -114,6 +117,7 @@ Deno.serve(async (request) => {
       coverUrl,
     },
     photos: signedPhotos.filter((photo) => Boolean(photo.url)),
+    pendingPhotoCount,
     signedUrlSeconds: SIGNED_URL_SECONDS,
   });
 });

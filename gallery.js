@@ -110,7 +110,9 @@ function renderGallery(data) {
   if (!photos.length) {
     const empty = document.createElement('p');
     empty.className = 'gallery-empty';
-    empty.textContent = 'Esta galeria ainda não tem fotografias publicadas.';
+    empty.textContent = data.pendingPhotoCount > 0
+      ? 'As fotografias estão a ser preparadas. Volte a atualizar dentro de alguns minutos.'
+      : 'Esta galeria ainda não tem fotografias publicadas.';
     grid.appendChild(empty);
     return;
   }

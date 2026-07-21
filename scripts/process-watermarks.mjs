@@ -18,9 +18,19 @@ const WATERMARK_SETTINGS = {
   watermark_scale: 0.2,
 };
 
-const supabaseUrl = String(process.env.SUPABASE_URL || '')
-  .replace(/\/rest\/v1\/?$/, '')
-  .replace(/\/$/, '');
+function normalizeSupabaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw
+      .replace(/\/(?:rest|functions|auth|storage)\/v1\/?$/, '')
+      .replace(/\/$/, '');
+  }
+}
+
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   || process.env.SUPABASE_SECRET_KEY
   || process.env.SUPABASE_SECRET_KEYS;
