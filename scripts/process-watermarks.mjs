@@ -82,6 +82,36 @@ async function uploadObject(storagePath, buffer) {
   if (error) throw error;
 }
 
+async function prepareWatermarkAsset(asset, opacity) {
+  const metadata = await sharp(asset).metadata();
+  if (metadata.hasAlpha) return asset;
+  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.3));
+
+  const { data, info } = await sharp(asset)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const output = Buffer.alloc(info.width * info.height * 4);
+
+  for (let source = 0, target = 0; source < data.length; source += 3, target += 4) {
+    const red = data[source];
+    const green = data[source + 1];
+    const blue = data[source + 2];
+    const luminance = (red * 0.2126) + (green * 0.7152) + (blue * 0.0722);
+    const extractedAlpha = Math.max(0, Math.min(255, ((242 - luminance) / 12) * 255));
+    const alpha = Math.round(extractedAlpha * safeOpacity);
+
+    output[target] = red;
+    output[target + 1] = green;
+    output[target + 2] = blue;
+    output[target + 3] = alpha;
+  }
+
+  return sharp(output, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  }).png().toBuffer();
+}
+
 async function renderWatermarkAsset(asset, resize) {
   return sharp(asset)
     .resize(resize)
@@ -222,7 +252,10 @@ async function markJob(job, status, errorMessage = null) {
 }
 
 async function main() {
-  const logoAsset = await readFile(LOGO_PATH);
+  const logoAsset = await prepareWatermarkAsset(
+    await readFile(LOGO_PATH),
+    WATERMARK_SETTINGS.watermark_opacity,
+  );
   const jobs = await claimJobs();
   if (!jobs.length) {
     console.log('No pending watermark jobs.');
