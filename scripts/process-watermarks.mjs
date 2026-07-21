@@ -18,7 +18,9 @@ const WATERMARK_SETTINGS = {
   watermark_scale: 0.2,
 };
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseUrl = String(process.env.SUPABASE_URL || '')
+  .replace(/\/rest\/v1\/?$/, '')
+  .replace(/\/$/, '');
 const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   || process.env.SUPABASE_SECRET_KEY
   || process.env.SUPABASE_SECRET_KEYS;
