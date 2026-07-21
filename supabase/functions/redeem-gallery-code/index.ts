@@ -29,6 +29,7 @@ Deno.serve(async (request) => {
 
   const pepper = getEnv('ACCESS_CODE_PEPPER');
   const lookup = await lookupAccessCode(code, pepper);
+  const codeHash = await hashAccessCode(code, pepper);
   const ipHash = await hashSessionToken(getClientIp(request), getEnv('SESSION_TOKEN_PEPPER'));
   const deviceHash = await hashSessionToken(deviceId, getEnv('SESSION_TOKEN_PEPPER'));
   const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -45,13 +46,22 @@ Deno.serve(async (request) => {
     return json({ error: 'Demasiadas tentativas. Tente novamente mais tarde.' }, 429);
   }
 
-  const { data: album } = await supabase
+  let { data: album } = await supabase
     .from('albums')
     .select('id, public_id, access_code_hash, is_active, is_archived, status, expires_at, session_version')
     .eq('access_code_lookup', lookup)
     .maybeSingle();
 
-  const validHash = album && constantTimeEqual(album.access_code_hash, await hashAccessCode(code, pepper));
+  if (!album) {
+    const { data: legacyAlbum } = await supabase
+      .from('albums')
+      .select('id, public_id, access_code_hash, is_active, is_archived, status, expires_at, session_version')
+      .eq('access_code_hash', codeHash)
+      .maybeSingle();
+    album = legacyAlbum;
+  }
+
+  const validHash = album && constantTimeEqual(album.access_code_hash, codeHash);
   const expired = album?.expires_at && new Date(album.expires_at).getTime() <= Date.now();
   const available = album && album.is_active && !album.is_archived && album.status === 'active' && !expired;
 
