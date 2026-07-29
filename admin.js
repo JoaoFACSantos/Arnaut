@@ -1366,8 +1366,10 @@ async function saveGallery(event) {
       const result = await callAdmin('save-album', { album: payload });
       await loadAlbums();
       let updated = albums.find((album) => album.id === result.album.id) || result.album;
+      let queuedExistingWatermarks = 0;
       if (shouldQueueExistingWatermarks) {
         const queued = await callAdmin('queue-existing-watermarks', { albumId: updated.id });
+        queuedExistingWatermarks = Number(queued.queued || 0);
         toast(`${queued.queued || 0} fotografia(s) colocada(s) em processamento.`, 'neutral');
       }
       const uploadResult = await uploadPendingFiles(updated);
@@ -1375,6 +1377,13 @@ async function saveGallery(event) {
         await callAdmin('save-album', { album: buildPayload({ id: updated.id, coverPath: uploadResult.coverPath }) });
         await loadAlbums();
         updated = albums.find((album) => album.id === result.album.id) || updated;
+      }
+      if (
+        queuedExistingWatermarks > 0
+        || uploadResult.uploadedCount > 0
+        || (payload.isActive && payload.watermarkEnabled)
+      ) {
+        await triggerWatermarkProcessing();
       }
       currentAlbum = updated;
       createdAlbumForModal = updated;
@@ -1501,9 +1510,10 @@ function renderPhotos(existing = []) {
 }
 
 async function uploadPendingFiles(album) {
-  if (!pendingFiles.length) return { coverPath: currentAlbum?.cover_path || null };
+  if (!pendingFiles.length) return { coverPath: currentAlbum?.cover_path || null, uploadedCount: 0 };
   els.uploadProgress.value = 0;
   els.uploadProgress.max = pendingFiles.length;
+  const uploadedCount = pendingFiles.length;
   let coverPath = currentAlbum?.cover_path || null;
   for (let index = 0; index < pendingFiles.length; index += 1) {
     const item = pendingFiles[index];
@@ -1533,13 +1543,32 @@ async function uploadPendingFiles(album) {
     els.uploadProgress.value = index + 1;
   }
   clearPendingFiles();
-  return { coverPath };
+  return { coverPath, uploadedCount };
+}
+
+async function triggerWatermarkProcessing({ notify = true } = {}) {
+  try {
+    const result = await callAdmin('trigger-watermark-processing');
+    if (result.triggered) {
+      if (notify) toast(`Processamento iniciado para ${result.pending || 0} fotografia(s).`, 'neutral');
+      return true;
+    }
+    if (result.reason !== 'no_pending_jobs' && notify) {
+      toast('As fotografias ficaram em fila e serão retomadas pelo processamento de segurança.', 'neutral');
+    }
+    return false;
+  } catch (error) {
+    if (handleExpiredAdminSession(error)) return false;
+    if (notify) toast('As fotografias ficaram em fila e serão retomadas automaticamente.', 'neutral');
+    return false;
+  }
 }
 
 async function retryPhotoProcessing(photo) {
   if (!currentAlbum || !photo?.id) return;
   try {
-    await callAdmin('queue-watermark-processing', { albumId: currentAlbum.id, photoIds: [photo.id] });
+    const result = await callAdmin('queue-watermark-processing', { albumId: currentAlbum.id, photoIds: [photo.id] });
+    if (result.queued) await triggerWatermarkProcessing();
     await loadAlbums();
     const updated = albums.find((album) => album.id === currentAlbum.id);
     if (updated) openDrawer(updated, 2);
@@ -1552,11 +1581,12 @@ async function retryPhotoProcessing(photo) {
 async function setPhotoWatermarkMode(photo, mode) {
   if (!currentAlbum || !photo?.id) return;
   try {
-    await callAdmin('set-photo-watermark-mode', {
+    const result = await callAdmin('set-photo-watermark-mode', {
       albumId: currentAlbum.id,
       photoId: photo.id,
       mode,
     });
+    if (result.queued) await triggerWatermarkProcessing();
     await loadAlbums();
     const updated = albums.find((album) => album.id === currentAlbum.id);
     if (updated) openDrawer(updated, 2);
@@ -1575,6 +1605,7 @@ async function queueExistingWatermarks() {
   try {
     await withBusy(els.queueExistingWatermarks, 'A preparar...', async () => {
       const result = await callAdmin('queue-existing-watermarks', { albumId: currentAlbum.id });
+      if (result.queued) await triggerWatermarkProcessing();
       await loadAlbums();
       const updated = albums.find((album) => album.id === currentAlbum.id);
       if (updated) openDrawer(updated, 2);

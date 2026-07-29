@@ -21,6 +21,11 @@ import {
 
 const ADMIN_ALBUM_SELECT = 'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
 const ADMIN_ALBUM_WITH_PHOTOS_SELECT = `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
+const DEFAULT_GITHUB_REPOSITORY = 'JoaoFACSantos/Arnaut';
+const DEFAULT_GITHUB_WORKFLOW = 'process-watermarks.yml';
+const DEFAULT_GITHUB_BRANCH = 'master';
+const WATERMARK_JOBS_PER_RUN = 24;
+const MAX_WORKFLOW_DISPATCHES = 8;
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -306,6 +311,34 @@ Deno.serve(async (request) => {
       return json({ ok: true, queued });
     }
 
+    if (action === 'trigger-watermark-processing') {
+      const { count, error: pendingError } = await supabase
+        .from('image_processing_jobs')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['pending', 'failed'])
+        .lt('attempts', 3);
+      if (pendingError) throw pendingError;
+      if (!count) return json({ triggered: false, reason: 'no_pending_jobs', pending: 0 });
+      const requestedRuns = Math.min(MAX_WORKFLOW_DISPATCHES, Math.max(1, Math.ceil(count / WATERMARK_JOBS_PER_RUN)));
+      let dispatchedRuns = 0;
+      let lastFailure: Record<string, unknown> | null = null;
+      for (let index = 0; index < requestedRuns; index += 1) {
+        const dispatch = await triggerWatermarkWorkflow();
+        if (!dispatch.triggered) {
+          lastFailure = dispatch;
+          break;
+        }
+        dispatchedRuns += 1;
+      }
+      return json({
+        triggered: dispatchedRuns > 0,
+        dispatchedRuns,
+        requestedRuns,
+        pending: count,
+        ...(lastFailure && !dispatchedRuns ? lastFailure : {}),
+      });
+    }
+
     if (action === 'delete-photo') {
       const photoId = String(body.photoId || '');
       const { data: photo, error: findError } = await supabase
@@ -370,6 +403,57 @@ function watermarkConfigChanged(current: Record<string, unknown>, next: Record<s
     || Number(current.watermark_opacity ?? 0.3) !== Number(next.watermark_opacity ?? 0.3)
     || Number(current.watermark_scale ?? 0.2) !== Number(next.watermark_scale ?? 0.2)
     || Boolean(current.watermark_original_downloads) !== Boolean(next.watermark_original_downloads);
+}
+
+async function triggerWatermarkWorkflow() {
+  const token = String(Deno.env.get('GITHUB_ACTIONS_TOKEN') || '').trim();
+  if (!token) {
+    console.error('Watermark workflow dispatch skipped: GITHUB_ACTIONS_TOKEN is missing.');
+    return { triggered: false, reason: 'missing_github_token' };
+  }
+
+  const repository = String(Deno.env.get('GITHUB_REPOSITORY') || DEFAULT_GITHUB_REPOSITORY).trim();
+  const [owner, repo, ...extra] = repository.split('/');
+  if (!owner || !repo || extra.length) {
+    console.error('Watermark workflow dispatch skipped: invalid GitHub repository.');
+    return { triggered: false, reason: 'invalid_github_repository' };
+  }
+
+  const workflow = String(Deno.env.get('GITHUB_WORKFLOW') || DEFAULT_GITHUB_WORKFLOW).trim();
+  const ref = String(Deno.env.get('GITHUB_BRANCH') || DEFAULT_GITHUB_BRANCH).trim();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`,
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'fotografia-arnaut-supabase',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({ ref }),
+      },
+    );
+
+    if (!response.ok) {
+      const responseBody = (await response.text()).slice(0, 500);
+      console.error(`Watermark workflow dispatch failed (${response.status}): ${responseBody}`);
+      return { triggered: false, reason: 'github_dispatch_failed', status: response.status };
+    }
+
+    return { triggered: true };
+  } catch (error) {
+    console.error('Watermark workflow dispatch failed:', error instanceof Error ? error.message : String(error));
+    return { triggered: false, reason: 'github_dispatch_unavailable' };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function enqueueWatermarkJobs(
