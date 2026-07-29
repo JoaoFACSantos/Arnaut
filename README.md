@@ -153,7 +153,7 @@ Variáveis necessárias para o worker:
 ```env
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-WATERMARK_LOGO_PATH=assets/logo-watermark.svg
+WATERMARK_LOGO_PATH=assets/logo-arnaut.png
 WATERMARK_WORKER_LIMIT=12
 ```
 

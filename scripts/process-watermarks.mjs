@@ -11,11 +11,11 @@ const WORKER_ID = `watermark-worker-${process.pid}`;
 const LIMIT = Number(process.env.WATERMARK_WORKER_LIMIT || 12);
 const LOGO_PATH = process.env.WATERMARK_LOGO_PATH
   ? path.resolve(process.env.WATERMARK_LOGO_PATH)
-  : path.resolve(__dirname, '../assets/logo-watermark.svg');
+  : path.resolve(__dirname, '../assets/logo-arnaut.png');
 const WATERMARK_SETTINGS = {
   watermark_position: 'bottom-center',
-  watermark_opacity: 0.42,
-  watermark_scale: 0.2,
+  watermark_opacity: 0.68,
+  watermark_scale: 0.22,
 };
 
 function normalizeSupabaseUrl(value) {
@@ -59,15 +59,6 @@ function processedPath(albumId, photoId, variant) {
   return `albums/${albumId}/${variant}/${photoId}.webp`;
 }
 
-function watermarkGravity(position) {
-  return {
-    'bottom-center': 'south',
-    'bottom-right': 'southeast',
-    'bottom-left': 'southwest',
-    center: 'centre',
-  }[position] || 'south';
-}
-
 async function downloadObject(storagePath) {
   const { data, error } = await supabase.storage.from(BUCKET).download(storagePath);
   if (error) throw error;
@@ -84,27 +75,34 @@ async function uploadObject(storagePath, buffer) {
 
 async function prepareWatermarkAsset(asset, opacity) {
   const metadata = await sharp(asset).metadata();
-  if (metadata.hasAlpha) return asset;
-  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.3));
+  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.68));
 
   const { data, info } = await sharp(asset)
-    .removeAlpha()
+    .ensureAlpha()
+    .trim({
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+      threshold: 2,
+    })
     .raw()
     .toBuffer({ resolveWithObject: true });
   const output = Buffer.alloc(info.width * info.height * 4);
 
-  for (let source = 0, target = 0; source < data.length; source += 3, target += 4) {
+  for (let source = 0, target = 0; source < data.length; source += 4, target += 4) {
     const red = data[source];
     const green = data[source + 1];
     const blue = data[source + 2];
-    const luminance = (red * 0.2126) + (green * 0.7152) + (blue * 0.0722);
-    const extractedAlpha = Math.max(0, Math.min(255, ((242 - luminance) / 12) * 255));
-    const alpha = Math.round(extractedAlpha * safeOpacity);
+    const sourceAlpha = data[source + 3];
+    let logoAlpha = sourceAlpha;
+
+    if (!metadata.hasAlpha) {
+      const luminance = (red * 0.2126) + (green * 0.7152) + (blue * 0.0722);
+      logoAlpha = Math.round(Math.max(0, Math.min(1, (250 - luminance) / 42)) * 255);
+    }
 
     output[target] = red;
     output[target + 1] = green;
     output[target + 2] = blue;
-    output[target + 3] = alpha;
+    output[target + 3] = Math.round(logoAlpha * safeOpacity);
   }
 
   return sharp(output, {
@@ -116,7 +114,7 @@ async function renderWatermarkAsset(asset, resize) {
   return sharp(asset)
     .resize({ ...resize, kernel: sharp.kernel.lanczos3 })
     .ensureAlpha()
-    .sharpen({ sigma: 0.5 })
+    .sharpen({ sigma: 0.35 })
     .png()
     .toBuffer();
 }
@@ -125,28 +123,48 @@ async function addWatermark(base, logoAsset, settings) {
   const metadata = await sharp(base).rotate().metadata();
   const width = metadata.width || 1600;
   const height = metadata.height || 1200;
-  const logoMetadata = await sharp(logoAsset).metadata();
   const scale = Math.min(0.45, Math.max(0.08, Number(settings.watermark_scale) || 0.2));
-  const isPreparedOverlay = (logoMetadata.width || 0) >= 1000 && (logoMetadata.height || 0) >= 1000;
+  const watermark = await renderWatermarkAsset(logoAsset, {
+    width: Math.max(120, Math.round(width * scale)),
+    withoutEnlargement: true,
+  });
+  const watermarkMetadata = await sharp(watermark).metadata();
+  const watermarkWidth = watermarkMetadata.width || Math.max(120, Math.round(width * scale));
+  const watermarkHeight = watermarkMetadata.height || Math.round(watermarkWidth * 0.47);
+  const columns = Math.max(3, Math.min(5, Math.ceil(width / (watermarkWidth * 2))));
+  const rows = Math.max(3, Math.min(6, Math.ceil(height / (watermarkHeight * 3.1))));
+  const columnWidth = width / columns;
+  const rowHeight = height / rows;
+  const composites = [];
 
-  const watermark = isPreparedOverlay
-    ? await renderWatermarkAsset(logoAsset, { width, height, fit: 'cover' })
-    : await renderWatermarkAsset(logoAsset, {
-        width: Math.max(96, Math.round(width * scale)),
-        withoutEnlargement: true,
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      let centerX = ((column + 0.5) * columnWidth)
+        + (row % 2 === 1 ? columnWidth * 0.5 : 0);
+      if (centerX >= width) centerX -= width;
+
+      composites.push({
+        input: watermark,
+        left: Math.max(0, Math.min(
+          width - watermarkWidth,
+          Math.round(centerX - (watermarkWidth / 2)),
+        )),
+        top: Math.max(0, Math.min(
+          height - watermarkHeight,
+          Math.round(((row + 0.5) * rowHeight) - (watermarkHeight / 2)),
+        )),
+        blend: 'over',
       });
+    }
+  }
 
-  return sharp(base).rotate().composite([{
-    input: watermark,
-    gravity: isPreparedOverlay ? 'centre' : watermarkGravity(settings.watermark_position),
-    blend: 'over',
-  }]);
+  return sharp(base).rotate().composite(composites);
 }
 
-async function processJob(job, logoAsset) {
+async function processJob(job, logoSource, preparedLogoCache) {
   const { data: album, error: albumError } = await supabase
     .from('albums')
-    .select('id, watermark_enabled, watermark_version')
+    .select('id, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_version')
     .eq('id', job.album_id)
     .single();
   if (albumError) throw albumError;
@@ -164,11 +182,19 @@ async function processJob(job, logoAsset) {
   const thumbPath = processedPath(album.id, photo.id, 'thumbs');
   const mode = photo.watermark_mode || 'inherit';
   const usesWatermark = mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
+  const watermarkSettings = {
+    watermark_position: album.watermark_position || WATERMARK_SETTINGS.watermark_position,
+    watermark_opacity: Number(album.watermark_opacity ?? WATERMARK_SETTINGS.watermark_opacity),
+    watermark_scale: Number(album.watermark_scale ?? WATERMARK_SETTINGS.watermark_scale),
+  };
 
-  const webBuffer = await sharp(original)
+  const resizedBase = await sharp(original)
     .rotate()
     .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 92, effort: 5, smartSubsample: true })
+    .png({ compressionLevel: 6, adaptiveFiltering: true })
+    .toBuffer();
+  const webBuffer = await sharp(resizedBase)
+    .webp({ quality: 94, effort: 5, smartSubsample: true })
     .toBuffer();
 
   let displayBuffer = webBuffer;
@@ -184,8 +210,17 @@ async function processJob(job, logoAsset) {
 
   if (usesWatermark) {
     const watermarkedPath = processedPath(album.id, photo.id, 'watermarked');
-    displayBuffer = await (await addWatermark(webBuffer, logoAsset, WATERMARK_SETTINGS))
-      .webp({ quality: 92, effort: 5, smartSubsample: true })
+    const opacityKey = watermarkSettings.watermark_opacity.toFixed(3);
+    if (!preparedLogoCache.has(opacityKey)) {
+      preparedLogoCache.set(
+        opacityKey,
+        await prepareWatermarkAsset(logoSource, watermarkSettings.watermark_opacity),
+      );
+    }
+    displayBuffer = await (
+      await addWatermark(resizedBase, preparedLogoCache.get(opacityKey), watermarkSettings)
+    )
+      .webp({ quality: 94, effort: 5, smartSubsample: true })
       .toBuffer();
     await uploadObject(watermarkedPath, displayBuffer);
     update.watermarked_path = watermarkedPath;
@@ -253,10 +288,8 @@ async function markJob(job, status, errorMessage = null) {
 }
 
 async function main() {
-  const logoAsset = await prepareWatermarkAsset(
-    await readFile(LOGO_PATH),
-    WATERMARK_SETTINGS.watermark_opacity,
-  );
+  const logoSource = await readFile(LOGO_PATH);
+  const preparedLogoCache = new Map();
   const jobs = await claimJobs();
   if (!jobs.length) {
     console.log('No pending watermark jobs.');
@@ -269,7 +302,7 @@ async function main() {
         processing_status: 'processing',
         processing_error: null,
       }).eq('id', job.photo_id);
-      await processJob(job, logoAsset);
+      await processJob(job, logoSource, preparedLogoCache);
       await markJob(job, 'ready');
       console.log(`Processed watermark job ${job.id}`);
     } catch (error) {
