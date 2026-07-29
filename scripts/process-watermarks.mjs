@@ -14,7 +14,7 @@ const LOGO_PATH = process.env.WATERMARK_LOGO_PATH
   : path.resolve(__dirname, '../assets/logo-watermark.svg');
 const WATERMARK_SETTINGS = {
   watermark_position: 'bottom-center',
-  watermark_opacity: 0.28,
+  watermark_opacity: 0.42,
   watermark_scale: 0.2,
 };
 
@@ -114,8 +114,9 @@ async function prepareWatermarkAsset(asset, opacity) {
 
 async function renderWatermarkAsset(asset, resize) {
   return sharp(asset)
-    .resize(resize)
+    .resize({ ...resize, kernel: sharp.kernel.lanczos3 })
     .ensureAlpha()
+    .sharpen({ sigma: 0.5 })
     .png()
     .toBuffer();
 }
@@ -167,7 +168,7 @@ async function processJob(job, logoAsset) {
   const webBuffer = await sharp(original)
     .rotate()
     .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 84, effort: 4 })
+    .webp({ quality: 92, effort: 5, smartSubsample: true })
     .toBuffer();
 
   let displayBuffer = webBuffer;
@@ -184,7 +185,7 @@ async function processJob(job, logoAsset) {
   if (usesWatermark) {
     const watermarkedPath = processedPath(album.id, photo.id, 'watermarked');
     displayBuffer = await (await addWatermark(webBuffer, logoAsset, WATERMARK_SETTINGS))
-      .webp({ quality: 84, effort: 4 })
+      .webp({ quality: 92, effort: 5, smartSubsample: true })
       .toBuffer();
     await uploadObject(watermarkedPath, displayBuffer);
     update.watermarked_path = watermarkedPath;
@@ -192,7 +193,7 @@ async function processJob(job, logoAsset) {
 
   const thumbBuffer = await sharp(displayBuffer)
     .resize({ width: 640, height: 640, fit: 'cover', position: 'attention' })
-    .webp({ quality: 78, effort: 4 })
+    .webp({ quality: 84, effort: 5, smartSubsample: true })
     .toBuffer();
 
   await uploadObject(webPath, webBuffer);

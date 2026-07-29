@@ -104,7 +104,7 @@ Deno.serve(async (request) => {
         download_all_enabled: Boolean(album.downloadAllEnabled),
         watermark_enabled: album.watermarkEnabled !== false,
         watermark_position: 'bottom-center',
-        watermark_opacity: 0.28,
+        watermark_opacity: 0.42,
         watermark_scale: 0.2,
         watermark_original_downloads: Boolean(album.watermarkOriginalDownloads),
         is_active: album.isActive !== false,
