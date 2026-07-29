@@ -1,10 +1,12 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 
+const require = createRequire(import.meta.url);
+const sharp = require('sharp');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BUCKET = 'private-galleries';
 const WORKER_ID = `watermark-worker-${process.pid}`;
@@ -119,6 +121,43 @@ async function renderWatermarkAsset(asset, resize) {
     .toBuffer();
 }
 
+async function renderDiagonalGrid(width, height, opacity) {
+  const spacing = Math.max(180, width / 3);
+  const strokeWidth = Math.max(1.25, width / 900);
+  const lineOpacity = Math.max(0.34, Math.min(0.52, opacity * 0.72));
+  const paths = [];
+
+  for (
+    let offset = -height;
+    offset <= width + height;
+    offset += spacing
+  ) {
+    paths.push(`M ${offset} 0 L ${offset + height} ${height}`);
+    paths.push(`M ${offset} 0 L ${offset - height} ${height}`);
+  }
+
+  const grid = `
+    <svg xmlns="http://www.w3.org/2000/svg"
+      width="${width}"
+      height="${height}"
+      viewBox="0 0 ${width} ${height}">
+      <path
+        d="${paths.join(' ')}"
+        fill="none"
+        stroke="#f8f2ec"
+        stroke-width="${strokeWidth}"
+        stroke-opacity="${lineOpacity}"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  `;
+
+  return sharp(Buffer.from(grid))
+    .png()
+    .toBuffer();
+}
+
 async function addWatermark(base, logoAsset, settings) {
   const metadata = await sharp(base).rotate().metadata();
   const width = metadata.width || 1600;
@@ -135,7 +174,17 @@ async function addWatermark(base, logoAsset, settings) {
   const rows = Math.max(3, Math.min(6, Math.ceil(height / (watermarkHeight * 3.1))));
   const columnWidth = width / columns;
   const rowHeight = height / rows;
-  const composites = [];
+  const diagonalGrid = await renderDiagonalGrid(
+    width,
+    height,
+    Number(settings.watermark_opacity) || WATERMARK_SETTINGS.watermark_opacity,
+  );
+  const composites = [{
+    input: diagonalGrid,
+    left: 0,
+    top: 0,
+    blend: 'over',
+  }];
 
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
