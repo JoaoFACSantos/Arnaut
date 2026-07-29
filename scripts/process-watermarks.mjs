@@ -125,6 +125,8 @@ async function renderDiagonalGrid(width, height, opacity) {
   const spacing = Math.max(180, width / 3);
   const strokeWidth = Math.max(1.25, width / 900);
   const lineOpacity = Math.max(0.34, Math.min(0.52, opacity * 0.72));
+  const dashLength = Math.max(9, width / 90);
+  const dashGap = Math.max(7, width / 130);
   const paths = [];
 
   for (
@@ -147,6 +149,7 @@ async function renderDiagonalGrid(width, height, opacity) {
         stroke="#f8f2ec"
         stroke-width="${strokeWidth}"
         stroke-opacity="${lineOpacity}"
+        stroke-dasharray="${dashLength} ${dashGap}"
         stroke-linecap="round"
         stroke-linejoin="round"
       />
@@ -399,7 +402,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+export { addWatermark, prepareWatermarkAsset };
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
