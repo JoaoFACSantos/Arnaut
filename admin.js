@@ -134,11 +134,26 @@ let createdAlbumForModal = null;
 let codeLoading = false;
 let confirmResolve = null;
 let uploadPickerFilters = { search: '', status: 'all' };
+let albumLoadVersion = 0;
 const accessCodeCache = new Map();
 
 function clearElement(element) {
   if (!element) return;
   while (element.firstChild) element.removeChild(element.firstChild);
+}
+
+function appendChildren(container, children) {
+  const fragment = document.createDocumentFragment();
+  children.forEach((child) => fragment.appendChild(child));
+  container.appendChild(fragment);
+}
+
+function debounce(callback, delay = 140) {
+  let timeoutId = null;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => callback(...args), delay);
+  };
 }
 
 function setMessage(text, type = 'neutral') {
@@ -333,6 +348,8 @@ function setView(view) {
   els.pageTitle.textContent = view === 'overview' ? 'Visão geral' : view === 'galleries' ? 'Galerias' : 'Definições';
   els.viewPanels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.viewPanel === view));
   els.nav.forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
+  if (view === 'overview') renderDashboard();
+  if (view === 'galleries') renderGalleries();
   closeMobileSidebar();
 }
 
@@ -360,7 +377,7 @@ function renderDashboard() {
     ['◎', 'Armazenamento', storage.label, storage.detail, null, 'peach'],
   ];
   clearElement(els.statGrid);
-  cards.forEach(([icon, title, value, hint, status, tone]) => {
+  const cardNodes = cards.map(([icon, title, value, hint, status, tone]) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `admin-stat-card admin-stat-card--${tone}`;
@@ -369,10 +386,10 @@ function renderDashboard() {
       filters.status = status;
       els.statusFilter.value = status;
       setView('galleries');
-      renderGalleries();
     });
-    els.statGrid.appendChild(button);
+    return button;
   });
+  appendChildren(els.statGrid, cardNodes);
 
   renderRecentList();
   renderExpiringList();
@@ -383,7 +400,7 @@ function renderRecentList() {
   clearElement(els.recentList);
   const recent = albums.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
   if (!recent.length) return renderEmpty(els.recentList, 'Ainda não existem galerias.');
-  recent.forEach((album) => els.recentList.appendChild(galleryRow(album)));
+  appendChildren(els.recentList, recent.map((album) => galleryRow(album)));
 }
 
 function renderExpiringList() {
@@ -393,10 +410,7 @@ function renderExpiringList() {
     .sort((a, b) => new Date(a.expires_at) - new Date(b.expires_at))
     .slice(0, 4);
   if (!expiring.length) return renderEmpty(els.expiringList, 'Nenhuma galeria a expirar em breve.');
-  expiring.forEach((album) => {
-    const row = galleryRow(album, true);
-    els.expiringList.appendChild(row);
-  });
+  appendChildren(els.expiringList, expiring.map((album) => galleryRow(album, true)));
 }
 
 function renderChart() {
@@ -552,6 +566,8 @@ function coverNode(album) {
     const img = document.createElement('img');
     img.src = album.cover_url;
     img.alt = album.title || 'Capa da galeria';
+    img.loading = 'lazy';
+    img.decoding = 'async';
     cover.appendChild(img);
   } else {
     cover.innerHTML = '<b aria-hidden="true">▧</b><small>Sem capa</small>';
@@ -634,7 +650,7 @@ function renderUploadPicker() {
     renderEmpty(els.uploadPickerList, 'Nenhuma galeria encontrada.');
     return;
   }
-  available.forEach((album) => els.uploadPickerList.appendChild(galleryPickerCard(album)));
+  appendChildren(els.uploadPickerList, available.map((album) => galleryPickerCard(album)));
 }
 
 function openUploadPicker() {
@@ -655,6 +671,7 @@ function renderAccessList() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   items.forEach((album) => {
     const status = statusOf(album);
     const cachedCode = accessCodeCache.get(album.id);
@@ -752,8 +769,9 @@ function renderAccessList() {
 
     actions.append(show, copy, instructions, regenerate, sessions);
     row.append(actions);
-    els.accessList.appendChild(row);
+    fragment.appendChild(row);
   });
+  els.accessList.appendChild(fragment);
 }
 
 function openAccessManager() {
@@ -785,7 +803,7 @@ function renderGalleries() {
   els.galleryBoard.classList.toggle('is-list', galleryLayout === 'list');
   const items = filteredAlbums();
   if (!items.length) return renderEmpty(els.galleryBoard, 'Nenhuma galeria corresponde aos filtros.');
-  items.forEach((album) => els.galleryBoard.appendChild(galleryCard(album)));
+  appendChildren(els.galleryBoard, items.map((album) => galleryCard(album)));
 }
 
 function galleryCard(album) {
@@ -841,8 +859,8 @@ function renderTypeFilter() {
 
 function renderAll() {
   renderTypeFilter();
-  renderDashboard();
-  renderGalleries();
+  if (activeView === 'overview') renderDashboard();
+  if (activeView === 'galleries') renderGalleries();
 }
 
 function setStep(step) {
@@ -1415,13 +1433,16 @@ async function deleteAlbum() {
 }
 
 async function loadAlbums() {
-  skeletonDashboard();
+  const requestVersion = ++albumLoadVersion;
+  if (!albums.length && activeView === 'overview') skeletonDashboard();
   try {
     const data = await callAdmin('list');
+    if (requestVersion !== albumLoadVersion) return;
     albums = data.albums || [];
     storageInfo = data.storage || null;
     renderAll();
   } catch (error) {
+    if (requestVersion !== albumLoadVersion) return;
     toast(friendlyError(error, 'Não foi possível carregar as galerias.'), 'error');
   }
 }
@@ -1486,7 +1507,6 @@ $('[data-filter-expiring]').addEventListener('click', () => {
   filters.status = 'expiring';
   els.statusFilter.value = 'expiring';
   setView('galleries');
-  renderGalleries();
 });
 $('[data-quick-upload]').addEventListener('click', () => {
   openUploadPicker();
@@ -1496,10 +1516,10 @@ els.closeUploadPicker?.addEventListener('click', () => els.uploadPickerModal.clo
 els.uploadPickerModal?.addEventListener('click', (event) => {
   if (event.target === els.uploadPickerModal) els.uploadPickerModal.close();
 });
-els.uploadPickerSearch?.addEventListener('input', () => {
+els.uploadPickerSearch?.addEventListener('input', debounce(() => {
   uploadPickerFilters.search = els.uploadPickerSearch.value;
   renderUploadPicker();
-});
+}));
 els.uploadPickerStatus?.addEventListener('change', () => {
   uploadPickerFilters.status = els.uploadPickerStatus.value;
   renderUploadPicker();
@@ -1560,7 +1580,10 @@ els.stepButtons.forEach((button) => button.addEventListener('click', () => setSt
 els.prevStep.addEventListener('click', () => setStep(currentStep - 1));
 els.nextStep.addEventListener('click', () => setStep(currentStep + 1));
 els.drawerForm.addEventListener('submit', saveGallery);
-els.search.addEventListener('input', () => { filters.search = els.search.value; renderGalleries(); });
+els.search.addEventListener('input', debounce(() => {
+  filters.search = els.search.value;
+  renderGalleries();
+}));
 els.statusFilter.addEventListener('change', () => { filters.status = els.statusFilter.value; renderGalleries(); });
 els.typeFilter.addEventListener('change', () => { filters.type = els.typeFilter.value; renderGalleries(); });
 els.sortFilter.addEventListener('change', () => { filters.sort = els.sortFilter.value; renderGalleries(); });

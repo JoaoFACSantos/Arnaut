@@ -2546,3 +2546,22 @@ body.admin-v2 .admin-access-actions {
     max-height: 88dvh;
   }
 }
+
+/* Admin rendering performance */
+body.admin-v2 .admin-content {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+body.admin-v2 .admin-gallery-card,
+body.admin-v2 .admin-access-row {
+  contain: layout paint style;
+}
+
+@supports (content-visibility: auto) {
+  body.admin-v2 .admin-gallery-card,
+  body.admin-v2 .admin-access-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 104px;
+  }
+}

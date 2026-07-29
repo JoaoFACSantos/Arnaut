@@ -59,19 +59,23 @@ Deno.serve(async (request) => {
           sessionsByAlbum.set(session.album_id, { count: previous.count + 1, lastAccessedAt: nextLastAccessedAt });
         });
       }
-      const albums = await Promise.all((data || []).map(async (album) => {
-        let cover_url = null;
-        if (album.cover_path) {
-          const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(album.cover_path, 10 * 60);
-          cover_url = signed?.signedUrl || null;
-        }
-        return {
-          ...album,
-          cover_url,
-          active_session_count: sessionsByAlbum.get(album.id)?.count || 0,
-          last_session_at: sessionsByAlbum.get(album.id)?.lastAccessedAt || null,
-          access_code_masked: album.access_code_last_four ? `••••-••••-${album.access_code_last_four}` : null,
-        };
+      const coverPaths = [...new Set((data || []).map((album) => album.cover_path).filter(Boolean))];
+      const coverUrls = new Map<string, string>();
+      if (coverPaths.length) {
+        const { data: signedCovers, error: signedCoverError } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrls(coverPaths, 10 * 60);
+        if (signedCoverError) console.error('admin cover signing error', signedCoverError.message);
+        (signedCovers || []).forEach((item) => {
+          if (item.path && item.signedUrl) coverUrls.set(item.path, item.signedUrl);
+        });
+      }
+      const albums = (data || []).map((album) => ({
+        ...album,
+        cover_url: album.cover_path ? coverUrls.get(album.cover_path) || null : null,
+        active_session_count: sessionsByAlbum.get(album.id)?.count || 0,
+        last_session_at: sessionsByAlbum.get(album.id)?.lastAccessedAt || null,
+        access_code_masked: album.access_code_last_four ? `••••-••••-${album.access_code_last_four}` : null,
       }));
       const storage = await getStorageUsage(supabase);
       return json({
