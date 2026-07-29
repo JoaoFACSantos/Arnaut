@@ -163,17 +163,16 @@ async function addWatermark(base, logoAsset, settings) {
   const width = metadata.width || 1600;
   const height = metadata.height || 1200;
   const scale = Math.min(0.45, Math.max(0.08, Number(settings.watermark_scale) || 0.2));
-  const watermark = await renderWatermarkAsset(logoAsset, {
+  const largeWatermark = await renderWatermarkAsset(logoAsset, {
     width: Math.max(120, Math.round(width * scale)),
     withoutEnlargement: true,
   });
-  const watermarkMetadata = await sharp(watermark).metadata();
-  const watermarkWidth = watermarkMetadata.width || Math.max(120, Math.round(width * scale));
-  const watermarkHeight = watermarkMetadata.height || Math.round(watermarkWidth * 0.47);
-  const columns = Math.max(3, Math.min(5, Math.ceil(width / (watermarkWidth * 2))));
-  const rows = Math.max(3, Math.min(6, Math.ceil(height / (watermarkHeight * 3.1))));
-  const columnWidth = width / columns;
-  const rowHeight = height / rows;
+  const smallWatermark = await renderWatermarkAsset(logoAsset, {
+    width: Math.max(72, Math.round(width * scale * 0.48)),
+    withoutEnlargement: true,
+  });
+  const largeMetadata = await sharp(largeWatermark).metadata();
+  const smallMetadata = await sharp(smallWatermark).metadata();
   const diagonalGrid = await renderDiagonalGrid(
     width,
     height,
@@ -186,28 +185,66 @@ async function addWatermark(base, logoAsset, settings) {
     blend: 'over',
   }];
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      let centerX = ((column + 0.5) * columnWidth)
-        + (row % 2 === 1 ? columnWidth * 0.5 : 0);
-      if (centerX >= width) centerX -= width;
+  const largePositions = [
+    [0.2, 0.17],
+    [0.8, 0.17],
+    [0.5, 0.5],
+    [0.2, 0.83],
+    [0.8, 0.83],
+  ];
+  const smallPositions = [
+    [0.5, 0.07],
+    [0.15, 0.3],
+    [0.5, 0.3],
+    [0.85, 0.3],
+    [0.15, 0.5],
+    [0.85, 0.5],
+    [0.15, 0.7],
+    [0.5, 0.7],
+    [0.85, 0.7],
+    [0.5, 0.93],
+  ];
 
-      composites.push({
-        input: watermark,
-        left: Math.max(0, Math.min(
-          width - watermarkWidth,
-          Math.round(centerX - (watermarkWidth / 2)),
-        )),
-        top: Math.max(0, Math.min(
-          height - watermarkHeight,
-          Math.round(((row + 0.5) * rowHeight) - (watermarkHeight / 2)),
-        )),
-        blend: 'over',
-      });
-    }
+  for (const [x, y] of largePositions) {
+    composites.push(positionWatermark(
+      largeWatermark,
+      largeMetadata,
+      width,
+      height,
+      x,
+      y,
+    ));
+  }
+
+  for (const [x, y] of smallPositions) {
+    composites.push(positionWatermark(
+      smallWatermark,
+      smallMetadata,
+      width,
+      height,
+      x,
+      y,
+    ));
   }
 
   return sharp(base).rotate().composite(composites);
+}
+
+function positionWatermark(asset, metadata, width, height, xRatio, yRatio) {
+  const assetWidth = metadata.width || 1;
+  const assetHeight = metadata.height || 1;
+  return {
+    input: asset,
+    left: Math.max(0, Math.min(
+      width - assetWidth,
+      Math.round((width * xRatio) - (assetWidth / 2)),
+    )),
+    top: Math.max(0, Math.min(
+      height - assetHeight,
+      Math.round((height * yRatio) - (assetHeight / 2)),
+    )),
+    blend: 'over',
+  };
 }
 
 async function processJob(job, logoSource, preparedLogoCache) {
