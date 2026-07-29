@@ -125,8 +125,8 @@ async function renderDiagonalGrid(width, height, opacity) {
   const spacing = Math.max(180, width / 3);
   const strokeWidth = Math.max(1.25, width / 900);
   const lineOpacity = Math.max(0.34, Math.min(0.52, opacity * 0.72));
-  const dashLength = Math.max(9, width / 90);
-  const dashGap = Math.max(7, width / 130);
+  const dashLength = Math.max(4, width / 240);
+  const dashGap = Math.max(7, width / 145);
   const paths = [];
 
   for (
