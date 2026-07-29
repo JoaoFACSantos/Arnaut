@@ -4,18 +4,48 @@ import { dayDifference, formatExpirationStatus, startOfLocalDay } from './admin-
 const config = window.ARNAUT_CONFIG || {};
 const supabaseUrl = String(config.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const functionsBase = supabaseUrl ? `${supabaseUrl}/functions/v1` : '';
+const rememberPreferenceKey = 'fotografia-arnaut:remember-admin-session';
+let rememberSession = localStorage.getItem(rememberPreferenceKey) === '1';
+const authStorage = {
+  getItem(key) {
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+  },
+  setItem(key, value) {
+    const selectedStorage = rememberSession ? localStorage : sessionStorage;
+    const otherStorage = rememberSession ? sessionStorage : localStorage;
+    selectedStorage.setItem(key, value);
+    otherStorage.removeItem(key);
+  },
+  removeItem(key) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  },
+};
 const supabase = supabaseUrl && config.SUPABASE_PUBLISHABLE_KEY
-  ? createClient(supabaseUrl, config.SUPABASE_PUBLISHABLE_KEY)
+  ? createClient(supabaseUrl, config.SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: authStorage,
+      },
+    })
   : null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const els = {
+  authGate: $('[data-auth-gate]'),
+  authGateTitle: $('[data-auth-gate-title]'),
+  authGateMessage: $('[data-auth-gate-message]'),
+  authRetry: $('[data-auth-retry]'),
   login: $('[data-admin-login]'),
   app: $('[data-admin-app]'),
   loginForm: $('[data-login-form]'),
   loginMessage: $('[data-login-message]'),
+  forgotPassword: $('[data-forgot-password]'),
+  passwordToggles: $$('[data-password-toggle]'),
   logout: $('[data-logout]'),
   sidebar: $('[data-sidebar]'),
   sidebarBackdrop: $('[data-sidebar-backdrop]'),
@@ -81,6 +111,30 @@ const els = {
   storageDetail: $('[data-storage-detail]'),
   storageBar: $('[data-storage-bar]'),
   profileMenu: $('[data-profile-menu]'),
+  profileName: $('[data-profile-name]'),
+  profileAvatarImage: $('[data-profile-avatar-image]'),
+  profileAvatarFallback: $('[data-profile-avatar-fallback]'),
+  profileForm: $('[data-profile-form]'),
+  profileMessage: $('[data-profile-message]'),
+  saveProfile: $('[data-save-profile]'),
+  selectAvatar: $('[data-select-avatar]'),
+  removeAvatar: $('[data-remove-avatar]'),
+  avatarUpload: $('[data-avatar-upload]'),
+  settingsAvatarImage: $('[data-settings-avatar-image]'),
+  settingsAvatarFallback: $('[data-settings-avatar-fallback]'),
+  settingsProfileName: $('[data-settings-profile-name]'),
+  passwordForm: $('[data-password-form]'),
+  passwordMessage: $('[data-password-message]'),
+  changePassword: $('[data-change-password]'),
+  currentPasswordRow: $('[data-current-password-row]'),
+  sessionStatus: $('[data-session-status]'),
+  sessionEmail: $('[data-session-email]'),
+  sessionLastSignIn: $('[data-session-last-sign-in]'),
+  sessionCreatedAt: $('[data-session-created-at]'),
+  sessionDevice: $('[data-session-device]'),
+  sessionMessage: $('[data-session-message]'),
+  signoutOthers: $('[data-signout-others]'),
+  settingsLogout: $('[data-settings-logout]'),
   inlineCodeValue: $('[data-inline-code-value]'),
   inlineCodeMessage: $('[data-inline-code-message]'),
   inlineShowCode: $('[data-inline-show-code]'),
@@ -100,6 +154,9 @@ const els = {
   accessModal: $('[data-access-modal]'),
   accessList: $('[data-access-list]'),
   closeAccessModal: $('[data-close-access-modal]'),
+  minimizeDrawer: $('[data-minimize-drawer]'),
+  quickSaveDrawer: $('[data-quick-save-drawer]'),
+  drawerSaveState: $('[data-drawer-save-state]'),
 };
 
 const fields = {
@@ -135,6 +192,15 @@ let codeLoading = false;
 let confirmResolve = null;
 let uploadPickerFilters = { search: '', status: 'all' };
 let albumLoadVersion = 0;
+let authenticatedUserId = '';
+let appLoadPromise = null;
+let recoveryMode = false;
+let drawerDirty = false;
+let drawerSaving = false;
+let pendingLoginNotice = '';
+let profileAvatarPath = '';
+let profileAvatarUrl = '';
+let saveAsDraftRequested = false;
 const accessCodeCache = new Map();
 
 function clearElement(element) {
@@ -264,6 +330,197 @@ function formatDateTime(value, fallback = 'Sem registo') {
   return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+function setInlineMessage(element, text = '', type = 'neutral') {
+  if (!element) return;
+  element.textContent = text;
+  element.dataset.type = type;
+}
+
+function setAuthUiState(state, details = {}) {
+  const checking = state === 'checking';
+  const failed = state === 'error';
+  const authenticated = state === 'authenticated';
+  const unauthenticated = state === 'unauthenticated';
+  els.authGate.hidden = !(checking || failed);
+  els.authGate.dataset.state = state;
+  els.login.hidden = !unauthenticated;
+  els.app.hidden = !authenticated;
+  els.authRetry.hidden = !failed;
+  els.authGateTitle.textContent = details.title || (failed ? 'Não foi possível verificar a sessão' : 'A verificar sessão');
+  els.authGateMessage.textContent = details.message || (failed
+    ? 'Verifique a ligação à internet e tente novamente.'
+    : 'A confirmar o acesso seguro à área administrativa.');
+  if (unauthenticated) {
+    requestAnimationFrame(() => els.loginForm.elements.email.focus({ preventScroll: true }));
+  }
+}
+
+function isNetworkError(error) {
+  return !navigator.onLine || /fetch|network|failed to fetch|load failed|abort/i.test(String(error?.message || ''));
+}
+
+function displayNameFor(user = session?.user) {
+  const metadataName = String(user?.user_metadata?.display_name || '').trim();
+  if (metadataName) return metadataName;
+  const emailName = String(user?.email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+  return emailName ? emailName.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase()) : 'Administradora';
+}
+
+function initialsFor(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts.at(-1)[0]}` : parts[0]?.slice(0, 2) || 'FA').toUpperCase();
+}
+
+function setProfileAvatar(url = '') {
+  const name = displayNameFor();
+  const initials = initialsFor(name);
+  const pairs = [
+    [els.profileAvatarImage, els.profileAvatarFallback],
+    [els.settingsAvatarImage, els.settingsAvatarFallback],
+  ];
+  pairs.forEach(([image, fallback]) => {
+    if (!image || !fallback) return;
+    fallback.textContent = initials;
+    if (url) {
+      image.src = url;
+      image.hidden = false;
+      fallback.hidden = true;
+      image.onerror = () => {
+        image.hidden = true;
+        fallback.hidden = false;
+      };
+    } else {
+      image.removeAttribute('src');
+      image.hidden = true;
+      fallback.hidden = false;
+    }
+  });
+}
+
+async function refreshProfileUI({ refreshAvatar = false } = {}) {
+  const user = session?.user;
+  if (!user) return;
+  const name = displayNameFor(user);
+  const avatarPath = String(user.user_metadata?.avatar_path || '');
+  els.profileName.textContent = name;
+  els.settingsProfileName.textContent = name;
+  els.profileForm.elements.displayName.value = name;
+  els.profileForm.elements.email.value = user.email || '';
+  els.sessionEmail.textContent = user.email || '—';
+  els.sessionLastSignIn.textContent = formatDateTime(user.last_sign_in_at);
+  els.sessionCreatedAt.textContent = formatDateTime(user.created_at);
+  els.sessionDevice.textContent = /Mobi|Android/i.test(navigator.userAgent) ? 'Dispositivo móvel atual' : 'Este navegador';
+  els.sessionStatus.textContent = 'Sessão protegida';
+  els.currentPasswordRow.hidden = recoveryMode;
+  els.passwordForm.elements.currentPassword.required = !recoveryMode;
+
+  if (!avatarPath) {
+    profileAvatarPath = '';
+    profileAvatarUrl = '';
+    setProfileAvatar('');
+    return;
+  }
+  if (!refreshAvatar && avatarPath === profileAvatarPath && profileAvatarUrl) {
+    setProfileAvatar(profileAvatarUrl);
+    return;
+  }
+  const { data, error } = await supabase.storage.from('private-galleries').createSignedUrl(avatarPath, 3600);
+  if (error) {
+    setProfileAvatar('');
+    return;
+  }
+  profileAvatarPath = avatarPath;
+  profileAvatarUrl = data.signedUrl;
+  setProfileAvatar(profileAvatarUrl);
+}
+
+function clearAdminState() {
+  albumLoadVersion += 1;
+  albums = [];
+  storageInfo = null;
+  currentAlbum = null;
+  authenticatedUserId = '';
+  appLoadPromise = null;
+  accessCodeCache.clear();
+  lastShownCode = '';
+  createdAlbumForModal = null;
+  closeGalleryActionsMenu();
+  closeDrawer();
+  resetForm();
+  $$('dialog[open]').forEach((dialog) => dialog.close());
+  resolveConfirm(false);
+  els.profileForm?.reset();
+  els.passwordForm?.reset();
+  setInlineMessage(els.profileMessage);
+  setInlineMessage(els.passwordMessage);
+  setInlineMessage(els.sessionMessage);
+  clearElement(els.statGrid);
+  clearElement(els.recentList);
+  clearElement(els.expiringList);
+  clearElement(els.galleryBoard);
+  clearElement(els.chart);
+  setProfileAvatar('');
+  profileAvatarPath = '';
+  profileAvatarUrl = '';
+}
+
+function imageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Não foi possível ler a imagem.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function optimizeAvatar(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Escolha uma imagem JPG, PNG ou WebP.');
+  if (file.size > 12 * 1024 * 1024) throw new Error('A fotografia não pode exceder 12 MB.');
+  const source = 'createImageBitmap' in window ? await createImageBitmap(file) : await imageFromFile(file);
+  const size = Math.min(source.width, source.height);
+  const sourceX = Math.max(0, (source.width - size) / 2);
+  const sourceY = Math.max(0, (source.height - size) / 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  canvas.getContext('2d', { alpha: false }).drawImage(source, sourceX, sourceY, size, size, 0, 0, 512, 512);
+  source.close?.();
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Não foi possível otimizar a fotografia.')), 'image/webp', .9);
+  });
+}
+
+function passwordIsStrong(value) {
+  return value.length >= 10
+    && /[a-záàâãéêíóôõúç]/.test(value)
+    && /[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]/.test(value)
+    && /\d/.test(value);
+}
+
+function togglePasswordVisibility(button) {
+  const field = button.closest('.admin-password-field')?.querySelector('input');
+  if (!field) return;
+  const start = field.selectionStart;
+  const end = field.selectionEnd;
+  const show = field.type === 'password';
+  field.type = show ? 'text' : 'password';
+  button.setAttribute('aria-pressed', String(show));
+  const baseLabel = button.getAttribute('aria-label') || '';
+  button.setAttribute('aria-label', show
+    ? baseLabel.replace(/^Mostrar/, 'Ocultar')
+    : baseLabel.replace(/^Ocultar/, 'Mostrar'));
+  button.textContent = show ? '◎' : '◉';
+  field.focus({ preventScroll: true });
+  if (start !== null && end !== null) field.setSelectionRange(start, end);
+}
+
 function toDateTimeLocal(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -350,6 +607,7 @@ function setView(view) {
   els.nav.forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
   if (view === 'overview') renderDashboard();
   if (view === 'galleries') renderGalleries();
+  if (view === 'settings') refreshProfileUI();
   closeMobileSidebar();
 }
 
@@ -918,6 +1176,32 @@ function toggleGalleryActionsMenu() {
   }
 }
 
+function updateDrawerSaveState() {
+  if (!els.drawerSaveState) return;
+  els.drawerSaveState.classList.toggle('is-dirty', drawerDirty);
+  els.drawerSaveState.classList.toggle('is-saving', drawerSaving);
+  els.drawerSaveState.textContent = drawerSaving
+    ? 'A guardar…'
+    : drawerDirty
+      ? 'Alterações por guardar'
+      : currentAlbum
+        ? 'Guardada'
+        : 'Nova';
+  els.quickSaveDrawer.textContent = currentAlbum ? 'Guardar alterações' : 'Guardar rascunho';
+  els.previewGallery.disabled = !currentAlbum;
+}
+
+function markDrawerDirty() {
+  if (!els.drawer.classList.contains('is-open')) return;
+  drawerDirty = true;
+  updateDrawerSaveState();
+}
+
+function markDrawerSaved() {
+  drawerDirty = false;
+  updateDrawerSaveState();
+}
+
 function resetForm() {
   currentAlbum = null;
   lastShownCode = '';
@@ -936,6 +1220,7 @@ function resetForm() {
   els.drawerMeta.textContent = 'Fluxo em três passos com upload antes de concluir.';
   updateGalleryActionsState();
   setStep(1);
+  markDrawerSaved();
 }
 
 function openDrawer(album = null, step = 1) {
@@ -969,6 +1254,7 @@ function openDrawer(album = null, step = 1) {
   drawerMinimized = false;
   updateGalleryActionsState();
   setStep(step);
+  markDrawerSaved();
   setTimeout(() => fields.title.focus(), 60);
 }
 
@@ -1006,8 +1292,34 @@ function drawerHasDraft() {
   return Boolean(fields.title.value || fields.location.value || fields.description.value || fields.guestMessage.value || fields.eventDate.value || fields.expiresAt.value || pendingFiles.length);
 }
 
+async function requestCloseDrawer() {
+  if (drawerDirty || (!currentAlbum && drawerHasDraft())) {
+    const confirmed = await askConfirm(
+      'Fechar sem guardar?',
+      'Existem alterações por guardar. Pode minimizar o editor para as manter ou confirmar para as descartar.',
+    );
+    if (!confirmed) return;
+  }
+  closeDrawer();
+  resetForm();
+}
+
+function quickSaveDrawer() {
+  if (!fields.title.value.trim()) {
+    setStep(1);
+    fields.title.focus();
+    setMessage('Indique o nome do evento antes de guardar.', 'error');
+    return;
+  }
+  if (!currentAlbum) {
+    fields.isActive.checked = false;
+    saveAsDraftRequested = true;
+  }
+  els.drawerForm.requestSubmit(els.saveGallery);
+}
+
 async function discardDrawer() {
-  if (!currentAlbum && drawerHasDraft()) {
+  if (drawerDirty || (!currentAlbum && drawerHasDraft())) {
     const confirmed = await askConfirm('Descartar esta galeria?', 'Os dados e ficheiros preparados serão eliminados.');
     if (!confirmed) return;
   }
@@ -1040,6 +1352,9 @@ function buildPayload(overrides = {}) {
 
 async function saveGallery(event) {
   event.preventDefault();
+  if (drawerSaving) return;
+  drawerSaving = true;
+  updateDrawerSaveState();
   try {
     await withBusy(els.saveGallery, 'A guardar...', async () => {
       const payload = buildPayload();
@@ -1063,15 +1378,18 @@ async function saveGallery(event) {
       }
       currentAlbum = updated;
       createdAlbumForModal = updated;
+      markDrawerSaved();
       setMessage('Galeria guardada.', 'success');
       toast('Galeria guardada.');
       renderAll();
       if (result.accessCode) {
         lastShownCode = result.accessCode;
+        accessCodeCache.set(updated.id, result.accessCode);
         els.codeValue.textContent = result.accessCode;
-        els.codeModal.showModal();
         setCodeState('visible', result.accessCode);
         closeDrawer();
+        if (!saveAsDraftRequested) els.codeModal.showModal();
+        else resetForm();
       } else {
         openDrawer(updated, currentStep);
       }
@@ -1080,6 +1398,10 @@ async function saveGallery(event) {
     const message = friendlyError(error, 'Não foi possível guardar as alterações.');
     setMessage(message, 'error');
     toast(message, 'error');
+  } finally {
+    drawerSaving = false;
+    saveAsDraftRequested = false;
+    updateDrawerSaveState();
   }
 }
 
@@ -1102,6 +1424,7 @@ function addPendingFiles(files) {
   pendingFiles.push(...valid);
   if (!selectedPendingCoverId && pendingFiles[0]) selectedPendingCoverId = pendingFiles[0].id;
   renderPhotos(currentAlbum?.album_photos || []);
+  if (valid.length) markDrawerDirty();
 }
 
 function clearPendingFiles() {
@@ -1122,15 +1445,20 @@ function renderPhotos(existing = []) {
     const caption = document.createElement('input');
     caption.placeholder = 'Legenda';
     caption.value = item.caption;
-    caption.addEventListener('input', () => { item.caption = caption.value; });
+    caption.addEventListener('input', () => {
+      item.caption = caption.value;
+      markDrawerDirty();
+    });
     const cover = actionButton(selectedPendingCoverId === item.id ? 'Capa' : 'Definir capa', () => {
       selectedPendingCoverId = item.id;
       renderPhotos(existing);
+      markDrawerDirty();
     });
     const remove = actionButton('Remover', () => {
       URL.revokeObjectURL(item.previewUrl);
       pendingFiles = pendingFiles.filter((pending) => pending.id !== item.id);
       renderPhotos(existing);
+      markDrawerDirty();
     });
     card.append(caption, cover, remove);
     els.photoList.appendChild(card);
@@ -1447,18 +1775,68 @@ async function loadAlbums() {
   }
 }
 
-async function showApp(activeSession) {
+async function showApp(activeSession, { reload = false } = {}) {
+  if (!activeSession?.user) {
+    showLogin();
+    return;
+  }
+  const previousUserId = authenticatedUserId;
   session = activeSession;
-  els.login.hidden = true;
-  els.app.hidden = false;
+  authenticatedUserId = activeSession.user.id;
+  setAuthUiState('authenticated');
   els.content.classList.toggle('is-overview-active', activeView === 'overview');
-  await loadAlbums();
+  await refreshProfileUI({ refreshAvatar: previousUserId !== authenticatedUserId });
+  if (reload || previousUserId !== authenticatedUserId || !albums.length) {
+    appLoadPromise ||= loadAlbums().finally(() => { appLoadPromise = null; });
+    await appLoadPromise;
+  } else {
+    renderAll();
+  }
 }
 
-function showLogin() {
+function showLogin(notice = '') {
   session = null;
-  els.login.hidden = false;
-  els.app.hidden = true;
+  recoveryMode = false;
+  setAuthUiState('unauthenticated');
+  els.loginForm.elements.password.value = '';
+  setInlineMessage(els.loginMessage, notice || pendingLoginNotice, notice || pendingLoginNotice ? 'success' : 'neutral');
+  pendingLoginNotice = '';
+}
+
+async function verifyAuthentication() {
+  if (!supabase) {
+    setAuthUiState('error', {
+      title: 'Configuração em falta',
+      message: 'Configure o Supabase em config.js antes de iniciar sessão.',
+    });
+    return;
+  }
+  setAuthUiState('checking');
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!sessionData.session) {
+      clearAdminState();
+      showLogin();
+      return;
+    }
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      if (isNetworkError(userError)) throw userError;
+      await supabase.auth.signOut({ scope: 'local' });
+      clearAdminState();
+      showLogin('A sessão expirou. Inicie sessão novamente.');
+      return;
+    }
+    await showApp({ ...sessionData.session, user: userData.user });
+  } catch (error) {
+    if (isNetworkError(error)) {
+      setAuthUiState('error');
+      return;
+    }
+    clearAdminState();
+    showLogin('Não foi possível validar a sessão. Inicie sessão novamente.');
+  }
 }
 
 function openMobileSidebar() {
@@ -1471,8 +1849,10 @@ function closeMobileSidebar() {
 
 function handleExpiredAdminSession(error) {
   if (error?.status !== 401) return false;
-  toast('A sua sessão expirou. Inicie sessão novamente.', 'error');
-  showLogin();
+  pendingLoginNotice = 'A sua sessão expirou. Inicie sessão novamente.';
+  supabase?.auth.signOut({ scope: 'local' });
+  clearAdminState();
+  showLogin(pendingLoginNotice);
   return true;
 }
 
@@ -1482,22 +1862,196 @@ els.loginForm.addEventListener('submit', async (event) => {
     els.loginMessage.textContent = 'Configure o ficheiro config.js antes de iniciar sessão.';
     return;
   }
-  els.loginMessage.textContent = 'A entrar...';
+  setInlineMessage(els.loginMessage, 'A verificar credenciais…');
   const email = els.loginForm.elements.email.value.trim();
   const password = els.loginForm.elements.password.value;
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    els.loginMessage.textContent = 'Email ou palavra-passe inválidos.';
-    return;
-  }
-  els.loginMessage.textContent = '';
-  await showApp(data.session);
+  rememberSession = els.loginForm.elements.remember.checked;
+  if (rememberSession) localStorage.setItem(rememberPreferenceKey, '1');
+  else localStorage.removeItem(rememberPreferenceKey);
+  await withBusy(els.loginForm.querySelector('[type="submit"]'), 'A iniciar…', async () => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setInlineMessage(
+        els.loginMessage,
+        isNetworkError(error) ? 'Sem ligação ao serviço. Verifique a internet e tente novamente.' : 'Email ou palavra-passe inválidos.',
+        'error',
+      );
+      return;
+    }
+    setInlineMessage(els.loginMessage);
+    await showApp(data.session);
+  });
 });
 
-els.logout.addEventListener('click', async () => {
-  await withBusy(els.logout, 'A sair...', async () => {
-    await supabase?.auth.signOut();
-    showLogin();
+async function logoutCurrentSession(button = els.logout) {
+  await withBusy(button, 'A sair…', async () => {
+    const { error } = await supabase?.auth.signOut({ scope: 'local' }) || {};
+    if (error && isNetworkError(error)) {
+      toast('Não foi possível terminar a sessão. Tente novamente.', 'error');
+      return;
+    }
+    clearAdminState();
+    history.replaceState(null, '', location.pathname);
+    showLogin('Sessão terminada com segurança.');
+  });
+}
+
+els.logout.addEventListener('click', () => logoutCurrentSession(els.logout));
+els.settingsLogout?.addEventListener('click', () => logoutCurrentSession(els.settingsLogout));
+els.authRetry?.addEventListener('click', verifyAuthentication);
+els.passwordToggles.forEach((button) => button.addEventListener('click', () => togglePasswordVisibility(button)));
+els.loginForm.elements.remember.checked = rememberSession;
+
+els.forgotPassword?.addEventListener('click', async () => {
+  const email = els.loginForm.elements.email.value.trim();
+  if (!email) {
+    setInlineMessage(els.loginMessage, 'Introduza primeiro o email da conta.', 'error');
+    els.loginForm.elements.email.focus();
+    return;
+  }
+  await withBusy(els.forgotPassword, 'A enviar…', async () => {
+    const redirectTo = new URL('admin.html?recovery=1', location.href).href;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      setInlineMessage(
+        els.loginMessage,
+        isNetworkError(error) ? 'Sem ligação ao serviço. Tente novamente.' : 'Não foi possível enviar o email de recuperação.',
+        'error',
+      );
+      return;
+    }
+    setInlineMessage(els.loginMessage, 'Enviámos um link de recuperação. Verifique também a pasta de spam.', 'success');
+  });
+});
+
+els.profileForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const displayName = els.profileForm.elements.displayName.value.trim();
+  if (displayName.length < 2) {
+    setInlineMessage(els.profileMessage, 'Indique um nome válido.', 'error');
+    return;
+  }
+  await withBusy(els.saveProfile, 'A guardar…', async () => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { ...session.user.user_metadata, display_name: displayName },
+    });
+    if (error) {
+      setInlineMessage(els.profileMessage, 'Não foi possível guardar o perfil.', 'error');
+      return;
+    }
+    session = { ...session, user: data.user };
+    await refreshProfileUI();
+    setInlineMessage(els.profileMessage, 'Perfil atualizado.', 'success');
+    toast('Perfil atualizado.');
+  });
+});
+
+els.selectAvatar?.addEventListener('click', () => els.avatarUpload.click());
+els.avatarUpload?.addEventListener('change', async () => {
+  const [file] = els.avatarUpload.files;
+  els.avatarUpload.value = '';
+  if (!file || !session?.user) return;
+  await withBusy(els.selectAvatar, 'A preparar…', async () => {
+    try {
+      const blob = await optimizeAvatar(file);
+      const path = `admin-profiles/${session.user.id}/avatar.webp`;
+      const { error: uploadError } = await supabase.storage.from('private-galleries').upload(path, blob, {
+        contentType: 'image/webp',
+        cacheControl: '3600',
+        upsert: true,
+      });
+      if (uploadError) throw uploadError;
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        data: { ...session.user.user_metadata, avatar_path: path },
+      });
+      if (updateError) throw updateError;
+      session = { ...session, user: data.user };
+      await refreshProfileUI({ refreshAvatar: true });
+      setInlineMessage(els.profileMessage, 'Fotografia de perfil atualizada.', 'success');
+      toast('Fotografia atualizada.');
+    } catch (error) {
+      setInlineMessage(els.profileMessage, error.message || 'Não foi possível alterar a fotografia.', 'error');
+    }
+  });
+});
+
+els.removeAvatar?.addEventListener('click', async () => {
+  if (!session?.user?.user_metadata?.avatar_path) return;
+  const confirmed = await askConfirm('Remover fotografia?', 'O perfil voltará a mostrar as iniciais do nome.');
+  if (!confirmed) return;
+  await withBusy(els.removeAvatar, 'A remover…', async () => {
+    const path = session.user.user_metadata.avatar_path;
+    const { error: storageError } = await supabase.storage.from('private-galleries').remove([path]);
+    if (storageError) {
+      setInlineMessage(els.profileMessage, 'Não foi possível remover a fotografia.', 'error');
+      return;
+    }
+    const nextMetadata = { ...session.user.user_metadata };
+    delete nextMetadata.avatar_path;
+    const { data, error } = await supabase.auth.updateUser({ data: nextMetadata });
+    if (error) {
+      setInlineMessage(els.profileMessage, 'A fotografia foi removida, mas o perfil não foi atualizado.', 'error');
+      return;
+    }
+    session = { ...session, user: data.user };
+    await refreshProfileUI({ refreshAvatar: true });
+    setInlineMessage(els.profileMessage, 'Fotografia removida.', 'success');
+  });
+});
+
+els.passwordForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const currentPassword = els.passwordForm.elements.currentPassword.value;
+  const newPassword = els.passwordForm.elements.newPassword.value;
+  const confirmation = els.passwordForm.elements.confirmPassword.value;
+  if (!passwordIsStrong(newPassword)) {
+    setInlineMessage(els.passwordMessage, 'A nova palavra-passe não cumpre os requisitos de segurança.', 'error');
+    return;
+  }
+  if (newPassword !== confirmation) {
+    setInlineMessage(els.passwordMessage, 'As novas palavras-passe não coincidem.', 'error');
+    return;
+  }
+  if (!recoveryMode && currentPassword === newPassword) {
+    setInlineMessage(els.passwordMessage, 'Escolha uma palavra-passe diferente da atual.', 'error');
+    return;
+  }
+  await withBusy(els.changePassword, 'A atualizar…', async () => {
+    if (!recoveryMode) {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: currentPassword,
+      });
+      if (verifyError) {
+        setInlineMessage(els.passwordMessage, 'A palavra-passe atual está incorreta.', 'error');
+        return;
+      }
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setInlineMessage(els.passwordMessage, 'Não foi possível atualizar a palavra-passe.', 'error');
+      return;
+    }
+    els.passwordForm.reset();
+    pendingLoginNotice = 'Palavra-passe atualizada. Inicie sessão novamente.';
+    await supabase.auth.signOut({ scope: 'global' });
+    clearAdminState();
+    history.replaceState(null, '', location.pathname);
+    showLogin(pendingLoginNotice);
+  });
+});
+
+els.signoutOthers?.addEventListener('click', async () => {
+  const confirmed = await askConfirm('Terminar outras sessões?', 'Os outros dispositivos terão de iniciar sessão novamente. Esta sessão continuará ativa.');
+  if (!confirmed) return;
+  await withBusy(els.signoutOthers, 'A terminar…', async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'others' });
+    if (error) {
+      setInlineMessage(els.sessionMessage, 'Não foi possível terminar as outras sessões.', 'error');
+      return;
+    }
+    setInlineMessage(els.sessionMessage, 'As outras sessões foram terminadas.', 'success');
+    toast('Outras sessões terminadas.');
   });
 });
 
@@ -1547,10 +2101,14 @@ els.toggleSidebar.addEventListener('click', () => {
   else els.app.classList.toggle('is-sidebar-collapsed');
 });
 els.sidebarBackdrop.addEventListener('click', closeMobileSidebar);
-els.closeDrawer.addEventListener('click', minimizeDrawer);
+els.closeDrawer.addEventListener('click', requestCloseDrawer);
+els.minimizeDrawer?.addEventListener('click', minimizeDrawer);
+els.quickSaveDrawer?.addEventListener('click', quickSaveDrawer);
 els.drawerBackdrop.addEventListener('click', minimizeDrawer);
 els.restoreDrawer.addEventListener('click', restoreDrawer);
 els.discardDrawer.addEventListener('click', discardDrawer);
+els.drawerForm.addEventListener('input', markDrawerDirty);
+els.drawerForm.addEventListener('change', markDrawerDirty);
 els.previewGallery.addEventListener('click', () => {
   if (currentAlbum) window.open(albumUrl(currentAlbum), '_blank', 'noopener,noreferrer');
 });
@@ -1675,13 +2233,45 @@ document.addEventListener('click', async (event) => {
 
 window.addEventListener('resize', positionGalleryActionsMenu);
 window.addEventListener('scroll', positionGalleryActionsMenu, true);
+window.addEventListener('beforeunload', (event) => {
+  if (!drawerDirty) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) verifyAuthentication();
+});
 
 if (!supabase) {
-  els.loginMessage.textContent = 'Configure config.js com SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY.';
+  setAuthUiState('error', {
+    title: 'Configuração em falta',
+    message: 'Configure config.js com SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY.',
+  });
 } else {
-  const { data } = await supabase.auth.getSession();
-  if (data.session) await showApp(data.session);
-  else showLogin();
+  supabase.auth.onAuthStateChange((event, nextSession) => {
+    if (event === 'INITIAL_SESSION') return;
+    setTimeout(async () => {
+      if (event === 'SIGNED_OUT') {
+        clearAdminState();
+        if (els.login.hidden) showLogin(pendingLoginNotice);
+        return;
+      }
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryMode = true;
+        await showApp(nextSession);
+        setView('settings');
+        setInlineMessage(els.passwordMessage, 'Defina agora uma nova palavra-passe para recuperar a conta.', 'success');
+        els.passwordForm.elements.newPassword.focus({ preventScroll: true });
+        return;
+      }
+      if (nextSession && ['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
+        session = nextSession;
+        if (event === 'USER_UPDATED') await refreshProfileUI({ refreshAvatar: true });
+        else await showApp(nextSession);
+      }
+    }, 0);
+  });
+  await verifyAuthentication();
 }
 
 window.adminActions = {

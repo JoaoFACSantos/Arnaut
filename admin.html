@@ -17,21 +17,45 @@
     <script type="module" src="admin.js"></script>
   </head>
   <body class="admin-v2">
-    <section class="admin-login-screen" data-admin-login>
-      <div class="admin-login-card">
+    <section class="admin-auth-gate" data-auth-gate aria-live="polite">
+      <div class="admin-auth-gate__card">
         <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
-        <p>Área administrativa</p>
-        <h1>Gestão de galerias privadas</h1>
+        <span class="admin-auth-spinner" aria-hidden="true"></span>
+        <strong data-auth-gate-title>A verificar sessão</strong>
+        <p data-auth-gate-message>A confirmar o acesso seguro à área administrativa.</p>
+        <button type="button" data-auth-retry hidden>Tentar novamente</button>
+      </div>
+    </section>
+
+    <section class="admin-login-screen" data-admin-login hidden>
+      <div class="admin-login-card">
+        <div class="admin-login-card__brand">
+          <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+          <span>ACESSO RESERVADO</span>
+        </div>
+        <p>Fotografia Arnaut</p>
+        <h1>Área de administração</h1>
+        <p class="admin-login-card__intro">Inicie sessão para gerir galerias, fotografias e acessos privados.</p>
         <form data-login-form>
           <label>
             <span>Email</span>
-            <input name="email" type="email" autocomplete="email" required />
+            <input name="email" type="email" autocomplete="username" inputmode="email" required />
           </label>
           <label>
             <span>Palavra-passe</span>
-            <input name="password" type="password" autocomplete="current-password" required />
+            <span class="admin-password-field">
+              <input name="password" type="password" autocomplete="current-password" required />
+              <button type="button" data-password-toggle aria-label="Mostrar palavra-passe" aria-pressed="false">◉</button>
+            </span>
           </label>
-          <button type="submit">Entrar</button>
+          <div class="admin-login-options">
+            <label class="admin-remember-option">
+              <input name="remember" type="checkbox" />
+              <span>Manter sessão iniciada</span>
+            </label>
+            <button type="button" class="admin-text-button" data-forgot-password>Esqueci-me da palavra-passe</button>
+          </div>
+          <button class="admin-login-submit" type="submit">Iniciar sessão</button>
           <p class="admin-form-message" data-login-message aria-live="polite"></p>
         </form>
       </div>
@@ -56,9 +80,12 @@
           <small data-storage-detail>Calculado pelas fotografias carregadas</small>
         </div>
         <div class="admin-profile-card">
-          <span class="admin-profile-avatar" aria-hidden="true">BA</span>
+          <span class="admin-profile-avatar" aria-hidden="true">
+            <img data-profile-avatar-image alt="" hidden />
+            <span data-profile-avatar-fallback>BA</span>
+          </span>
           <div>
-            <strong>Beatriz Arnaut</strong>
+            <strong data-profile-name>Beatriz Arnaut</strong>
             <small>Administradora</small>
           </div>
           <button type="button" data-profile-menu aria-label="Opções do perfil">⋮</button>
@@ -149,19 +176,117 @@
           </section>
 
           <section class="admin-view" data-view-panel="settings">
-            <article class="admin-panel">
-              <div class="admin-panel__head">
-                <h2>Definições</h2>
+            <div class="admin-settings-page">
+              <header class="admin-settings-heading">
+                <div>
+                  <span>CONTA E SEGURANÇA</span>
+                  <h2>Definições</h2>
+                  <p>Atualize o perfil e controle a segurança da conta administrativa.</p>
+                </div>
+                <span class="admin-session-pill" data-session-status>Autenticada</span>
+              </header>
+
+              <div class="admin-settings-grid">
+                <article class="admin-panel admin-settings-card admin-settings-card--profile">
+                  <div class="admin-settings-card__head">
+                    <div>
+                      <span>PERFIL</span>
+                      <h3>Identidade da administradora</h3>
+                    </div>
+                  </div>
+                  <form data-profile-form>
+                    <div class="admin-avatar-editor">
+                      <span class="admin-avatar-preview" aria-hidden="true">
+                        <img data-settings-avatar-image alt="" hidden />
+                        <span data-settings-avatar-fallback>BA</span>
+                      </span>
+                      <div>
+                        <strong data-settings-profile-name>Beatriz Arnaut</strong>
+                        <p>JPG, PNG ou WebP. A imagem será otimizada automaticamente.</p>
+                        <div class="admin-inline-actions">
+                          <button type="button" data-select-avatar>Alterar fotografia</button>
+                          <button type="button" class="admin-text-danger" data-remove-avatar>Remover</button>
+                        </div>
+                      </div>
+                      <input data-avatar-upload type="file" accept="image/jpeg,image/png,image/webp" hidden />
+                    </div>
+                    <div class="admin-settings-fields">
+                      <label>
+                        <span>Nome apresentado</span>
+                        <input name="displayName" autocomplete="name" maxlength="80" required />
+                      </label>
+                      <label>
+                        <span>Email da conta</span>
+                        <input name="email" type="email" readonly />
+                      </label>
+                    </div>
+                    <div class="admin-settings-form-footer">
+                      <p class="admin-form-message" data-profile-message aria-live="polite"></p>
+                      <button class="admin-primary" type="submit" data-save-profile>Guardar perfil</button>
+                    </div>
+                  </form>
+                </article>
+
+                <article class="admin-panel admin-settings-card admin-settings-card--security">
+                  <div class="admin-settings-card__head">
+                    <div>
+                      <span>SEGURANÇA</span>
+                      <h3>Alterar palavra-passe</h3>
+                    </div>
+                    <span class="admin-security-mark" aria-hidden="true">⌁</span>
+                  </div>
+                  <form data-password-form>
+                    <label data-current-password-row>
+                      <span>Palavra-passe atual</span>
+                      <span class="admin-password-field">
+                        <input name="currentPassword" type="password" autocomplete="current-password" />
+                        <button type="button" data-password-toggle aria-label="Mostrar palavra-passe atual" aria-pressed="false">◉</button>
+                      </span>
+                    </label>
+                    <label>
+                      <span>Nova palavra-passe</span>
+                      <span class="admin-password-field">
+                        <input name="newPassword" type="password" autocomplete="new-password" minlength="10" required />
+                        <button type="button" data-password-toggle aria-label="Mostrar nova palavra-passe" aria-pressed="false">◉</button>
+                      </span>
+                    </label>
+                    <label>
+                      <span>Confirmar nova palavra-passe</span>
+                      <span class="admin-password-field">
+                        <input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required />
+                        <button type="button" data-password-toggle aria-label="Mostrar confirmação da palavra-passe" aria-pressed="false">◉</button>
+                      </span>
+                    </label>
+                    <p class="admin-password-hint">Use pelo menos 10 caracteres, incluindo maiúscula, minúscula e número.</p>
+                    <div class="admin-settings-form-footer">
+                      <p class="admin-form-message" data-password-message aria-live="polite"></p>
+                      <button class="admin-primary" type="submit" data-change-password>Atualizar palavra-passe</button>
+                    </div>
+                  </form>
+                </article>
+
+                <article class="admin-panel admin-settings-card admin-settings-card--session">
+                  <div class="admin-settings-card__head">
+                    <div>
+                      <span>SESSÃO</span>
+                      <h3>Acesso atual</h3>
+                    </div>
+                  </div>
+                  <dl class="admin-session-details">
+                    <div><dt>Conta</dt><dd data-session-email>—</dd></div>
+                    <div><dt>Último acesso</dt><dd data-session-last-sign-in>—</dd></div>
+                    <div><dt>Conta criada</dt><dd data-session-created-at>—</dd></div>
+                    <div><dt>Dispositivo</dt><dd data-session-device>Este navegador</dd></div>
+                  </dl>
+                  <p class="admin-session-note">Se não reconhecer um acesso, termine as outras sessões e altere imediatamente a palavra-passe.</p>
+                  <div class="admin-session-actions">
+                    <button type="button" data-signout-others>Terminar outras sessões</button>
+                    <button type="button" class="admin-text-danger" data-settings-logout>Terminar esta sessão</button>
+                  </div>
+                  <p class="admin-form-message" data-session-message aria-live="polite"></p>
+                </article>
               </div>
-              <div class="admin-settings-copy">
-                <p>As galerias usam bucket privado, URLs assinadas temporárias e códigos decifrados apenas no servidor para administradores autenticados.</p>
-                <ul>
-                  <li>Não partilhar códigos fora dos convidados.</li>
-                  <li>Regenerar código invalida sessões antigas.</li>
-                  <li>Manter backups das fotografias antes de eliminar galerias.</li>
-                </ul>
-              </div>
-            </article>
+            </div>
           </section>
         </main>
       </div>
@@ -172,17 +297,22 @@
     <aside class="admin-drawer" data-gallery-drawer aria-hidden="true">
       <form data-gallery-form>
         <input type="hidden" name="id" />
-        <header>
-          <div>
+        <header class="admin-drawer-topbar">
+          <div class="admin-drawer-heading">
             <span data-drawer-kicker>Nova galeria</span>
-            <h2 data-drawer-title>Criar galeria</h2>
+            <div class="admin-drawer-title-row">
+              <h2 data-drawer-title>Criar galeria</h2>
+              <span class="admin-drawer-save-state" data-drawer-save-state>Nova</span>
+            </div>
             <p data-drawer-meta>Fluxo em três passos com upload antes de concluir.</p>
           </div>
           <div class="admin-drawer-actions">
             <button type="button" data-preview-gallery>Pré-visualizar</button>
+            <button type="button" class="admin-drawer-quick-save" data-quick-save-drawer>Guardar rascunho</button>
             <button class="admin-actions-toggle" type="button" data-gallery-actions-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações">•••</button>
+            <button class="admin-drawer-icon-action" type="button" data-minimize-drawer aria-label="Minimizar editor" title="Minimizar">—</button>
+            <button class="admin-drawer-icon-action" type="button" data-close-drawer aria-label="Fechar editor" title="Fechar">×</button>
           </div>
-          <button type="button" data-close-drawer aria-label="Minimizar">×</button>
         </header>
 
         <div class="admin-stepper">
