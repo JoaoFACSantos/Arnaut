@@ -75,6 +75,10 @@ const cartKey = (publicId) => `arnaut_gallery_cart_${publicId}`;
 const favoritesKey = (publicId) => `arnaut_gallery_favorites_${publicId}`;
 const receiptKey = (orderId) => `arnaut_order_receipt_${orderId}`;
 
+function setText(element, value) {
+  if (element) element.textContent = String(value ?? '');
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
 }
@@ -287,6 +291,7 @@ function setFilter(filter) {
 function renderFlow() {
   const steps = $('[data-flow-steps]');
   const benefits = $('[data-flow-benefits]');
+  if (!steps || !benefits) return;
   if (album?.sales?.enabled) {
     steps.innerHTML = [
       ['▧', '1. Selecionar', 'Escolha as fotografias que deseja comprar.'],
@@ -306,25 +311,31 @@ function renderFlow() {
 }
 
 function configureSidebar() {
-  $('[data-sidebar-event]').textContent = album.eventType || 'Galeria privada';
-  $('[data-sidebar-location]').textContent = album.location || '—';
-  $('[data-sidebar-date]').textContent = formatDate(album.eventDate) || '—';
-  $('[data-sidebar-count]').textContent = `${photos.length} ${photos.length === 1 ? 'fotografia' : 'fotografias'}`;
-  $('[data-download-title]').textContent = album.downloadsEnabled ? 'Downloads disponíveis' : 'Downloads condicionados';
-  $('[data-download-copy]').textContent = album.downloadsEnabled
+  setText($('[data-sidebar-event]'), album.eventType || 'Galeria privada');
+  setText($('[data-sidebar-location]'), album.location || '—');
+  setText($('[data-sidebar-date]'), formatDate(album.eventDate) || '—');
+  setText($('[data-sidebar-count]'), `${photos.length} ${photos.length === 1 ? 'fotografia' : 'fotografias'}`);
+  setText($('[data-download-title]'), album.downloadsEnabled ? 'Downloads disponíveis' : 'Downloads condicionados');
+  setText($('[data-download-copy]'), album.downloadsEnabled
     ? 'Abra uma fotografia para descarregar a versão disponibilizada.'
-    : 'Os downloads estão sujeitos às opções definidas pela fotógrafa.';
-  salesAvailability.hidden = Boolean(album.sales?.enabled);
+    : 'Os downloads estão sujeitos às opções definidas pela fotógrafa.');
+  if (salesAvailability) salesAvailability.hidden = Boolean(album.sales?.enabled);
 
   const supportEmail = album.sales?.supportEmail || '';
   if (supportEmail) {
-    gallerySupport.href = `mailto:${supportEmail}?subject=${encodeURIComponent(`Ajuda com a galeria ${album.title}`)}`;
-    gallerySupport.hidden = false;
-    $('[data-help-contact]').href = gallerySupport.href;
-    $('[data-help-contact]').hidden = false;
+    if (gallerySupport) {
+      gallerySupport.href = `mailto:${supportEmail}?subject=${encodeURIComponent(`Ajuda com a galeria ${album.title}`)}`;
+      gallerySupport.hidden = false;
+    }
+    const helpContact = $('[data-help-contact]');
+    if (helpContact && gallerySupport) {
+      helpContact.href = gallerySupport.href;
+      helpContact.hidden = false;
+    }
   } else {
-    gallerySupport.hidden = true;
-    $('[data-help-contact]').hidden = true;
+    if (gallerySupport) gallerySupport.hidden = true;
+    const helpContact = $('[data-help-contact]');
+    if (helpContact) helpContact.hidden = true;
   }
 }
 
@@ -333,17 +344,17 @@ function renderGallery(data) {
   photos = data.photos || [];
   album = data.album;
 
-  title.textContent = album.title;
+  setText(title, album.title);
   const formattedDate = formatDate(album.eventDate);
-  meta.textContent = [album.location, formattedDate].filter(Boolean).join(' · ');
-  eventBadge.textContent = album.eventType || '';
-  eventBadge.hidden = !album.eventType;
-  allCount.textContent = photos.length;
+  setText(meta, [album.location, formattedDate].filter(Boolean).join(' · '));
+  setText(eventBadge, album.eventType || '');
+  if (eventBadge) eventBadge.hidden = !album.eventType;
+  setText(allCount, photos.length);
 
-  notice.hidden = false;
-  noticeText.textContent = album.sales?.enabled
+  if (notice) notice.hidden = false;
+  setText(noticeText, album.sales?.enabled
     ? 'Estas fotografias têm marca de água. Após a compra, receberá as versões finais sem marca.'
-    : 'Galeria privada · Explore e guarde as suas fotografias favoritas.';
+    : 'Galeria privada · Explore e guarde as suas fotografias favoritas.');
 
   loadSelections();
   galleryBody.classList.toggle('has-sales', Boolean(album.sales?.enabled));
@@ -372,9 +383,9 @@ async function loadGallery(publicId, token) {
 
 function updateFavoriteUi() {
   const count = favorites.size;
-  favoritesCount.textContent = count;
-  headerFavoritesCount.textContent = count;
-  headerFavoritesCount.hidden = count === 0;
+  setText(favoritesCount, count);
+  setText(headerFavoritesCount, count);
+  if (headerFavoritesCount) headerFavoritesCount.hidden = count === 0;
   if (!lightbox.hidden) updateLightboxFavorite();
 }
 
@@ -591,8 +602,8 @@ form.addEventListener('submit', async (event) => {
   try {
     const newSession = await callFunction('redeem-gallery-code', { code: codeInput.value, deviceId: getDeviceId() });
     sessionStorage.setItem(sessionKey(newSession.publicId), newSession.token);
-    window.history.replaceState(null, '', `galeria.html?id=${encodeURIComponent(newSession.publicId)}`);
-    await loadGallery(newSession.publicId, newSession.token);
+    window.location.replace(`galeria.html?id=${encodeURIComponent(newSession.publicId)}`);
+    return;
   } catch (error) {
     document.body.classList.remove('is-gallery-unlocked', 'has-gallery-sales');
     galleryView.hidden = true;
