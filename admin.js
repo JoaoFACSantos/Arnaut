@@ -101,6 +101,8 @@ const els = {
   copyInstructions: $('[data-copy-guest-instructions]'),
   openCreatedGallery: $('[data-open-created-gallery]'),
   closeCodeModal: $('[data-close-code-modal]'),
+  dismissCodeModal: $('[data-dismiss-code-modal]'),
+  originalDownloadsSetting: $('[data-original-downloads-setting]'),
   confirmModal: $('[data-confirm-modal]'),
   confirmTitle: $('[data-confirm-title]'),
   confirmMessage: $('[data-confirm-message]'),
@@ -171,6 +173,7 @@ const fields = {
   slug: els.drawerForm.elements.slug,
   isActive: els.drawerForm.elements.isActive,
   isArchived: els.drawerForm.elements.isArchived,
+  downloadsEnabled: els.drawerForm.elements.downloadsEnabled,
   watermarkEnabled: els.drawerForm.elements.watermarkEnabled,
   watermarkOriginalDownloads: els.drawerForm.elements.watermarkOriginalDownloads,
 };
@@ -1191,6 +1194,13 @@ function updateDrawerSaveState() {
   els.previewGallery.disabled = !currentAlbum;
 }
 
+function updateDownloadOptions() {
+  const downloadsAllowed = fields.downloadsEnabled.checked;
+  fields.watermarkOriginalDownloads.disabled = !downloadsAllowed;
+  els.originalDownloadsSetting?.classList.toggle('is-disabled', !downloadsAllowed);
+  els.originalDownloadsSetting?.setAttribute('aria-disabled', String(!downloadsAllowed));
+}
+
 function markDrawerDirty() {
   if (!els.drawer.classList.contains('is-open')) return;
   drawerDirty = true;
@@ -1209,8 +1219,10 @@ function resetForm() {
   fields.id.value = '';
   fields.isActive.checked = true;
   fields.isArchived.checked = false;
+  fields.downloadsEnabled.checked = true;
   fields.watermarkEnabled.checked = true;
   fields.watermarkOriginalDownloads.checked = false;
+  updateDownloadOptions();
   clearPendingFiles();
   renderPhotos([]);
   setCodeState('empty');
@@ -1238,9 +1250,11 @@ function openDrawer(album = null, step = 1) {
     fields.slug.value = album.slug || '';
     fields.isActive.checked = Boolean(album.is_active);
     fields.isArchived.checked = Boolean(album.is_archived);
+    fields.downloadsEnabled.checked = album.downloads_enabled !== false;
     fields.watermarkEnabled.checked = album.watermark_enabled !== false;
     fields.watermarkOriginalDownloads.checked = Boolean(album.watermark_original_downloads);
-    els.drawerKicker.textContent = 'Gerir galeria';
+    updateDownloadOptions();
+    els.drawerKicker.textContent = 'Editar galeria';
     els.drawerTitle.textContent = album.title || 'Galeria';
     els.drawerMeta.textContent = `${album.event_type || 'Evento'} · ${album.location || 'Sem local'} · ${album.access_code_masked || 'sem código'}`;
     renderPhotos(album.album_photos || []);
@@ -1338,7 +1352,7 @@ function buildPayload(overrides = {}) {
     description: fields.description.value,
     guestMessage: fields.guestMessage.value,
     coverPath: overrides.coverPath || currentAlbum?.cover_path || null,
-    downloadsEnabled: true,
+    downloadsEnabled: fields.downloadsEnabled.checked,
     downloadAllEnabled: false,
     watermarkEnabled: fields.watermarkEnabled.checked,
     watermarkOriginalDownloads: fields.watermarkOriginalDownloads.checked,
@@ -1668,7 +1682,11 @@ function renderConfirmSummary() {
     ['Fotografias', `${pendingFiles.length + photoCount(currentAlbum || {})}`],
     ['Estado', fields.isActive.checked ? 'Ativa' : 'Rascunho'],
     ['Marca de água', fields.watermarkEnabled.checked ? 'Ativa' : 'Desativada'],
-    ['Download', fields.watermarkOriginalDownloads.checked ? 'Original autorizado' : 'Versão visível'],
+    ['Downloads', !fields.downloadsEnabled.checked
+      ? 'Desativados'
+      : fields.watermarkOriginalDownloads.checked
+        ? 'Originais autorizados'
+        : 'Versão visível'],
     ['Expiração', fields.expiresAt.value ? formatDate(fields.expiresAt.value) : 'Sem expiração'],
   ];
   items.forEach(([label, value]) => {
@@ -2140,6 +2158,7 @@ els.restoreDrawer.addEventListener('click', restoreDrawer);
 els.discardDrawer.addEventListener('click', discardDrawer);
 els.drawerForm.addEventListener('input', markDrawerDirty);
 els.drawerForm.addEventListener('change', markDrawerDirty);
+fields.downloadsEnabled.addEventListener('change', updateDownloadOptions);
 els.previewGallery.addEventListener('click', () => {
   if (currentAlbum) window.open(albumUrl(currentAlbum), '_blank', 'noopener,noreferrer');
 });
@@ -2224,6 +2243,15 @@ els.closeCodeModal.addEventListener('click', () => {
   els.codeModal.close();
   const album = createdAlbumForModal || currentAlbum;
   if (album) openDrawer(album, 1);
+});
+els.dismissCodeModal?.addEventListener('click', () => els.codeModal.close());
+els.codeModal.addEventListener('click', (event) => {
+  const bounds = els.codeModal.getBoundingClientRect();
+  const clickedOutside = event.clientX < bounds.left
+    || event.clientX > bounds.right
+    || event.clientY < bounds.top
+    || event.clientY > bounds.bottom;
+  if (clickedOutside) els.codeModal.close();
 });
 els.confirmCancel.addEventListener('click', () => {
   els.confirmModal.close();

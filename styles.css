@@ -1840,6 +1840,12 @@ body.admin-v2 .admin-watermark-settings h3 {
   font-size: 16px;
 }
 
+body.admin-v2 .admin-watermark-settings .admin-check-card + h3 {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+}
+
 body.admin-v2 .admin-watermark-settings p {
   margin: 0;
   color: var(--admin-muted);
@@ -3060,28 +3066,29 @@ body.admin-v2 .admin-session-actions {
 }
 
 body.admin-v2 .admin-drawer .admin-drawer-topbar {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  padding: 17px 20px;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
 }
 
 body.admin-v2 .admin-drawer-heading {
   min-width: 0;
 }
 
-body.admin-v2 .admin-drawer-title-row {
+body.admin-v2 .admin-drawer-eyebrow {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  margin-bottom: 5px;
 }
 
-body.admin-v2 .admin-drawer-title-row h2 {
-  overflow: hidden;
-  margin: 2px 0;
-  font-size: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+body.admin-v2 .admin-drawer-heading > h2 {
+  margin: 0 0 4px;
+  font-size: clamp(22px, 2.6vw, 28px);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 body.admin-v2 .admin-drawer-save-state {
@@ -3106,20 +3113,26 @@ body.admin-v2 .admin-drawer-save-state.is-saving {
 
 body.admin-v2 .admin-drawer-heading > p {
   overflow: hidden;
-  max-width: 480px;
+  max-width: 560px;
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 body.admin-v2 .admin-drawer-actions {
+  width: 100%;
   flex-wrap: nowrap;
+  gap: 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  background: var(--admin-soft);
+  padding: 4px;
 }
 
 body.admin-v2 .admin-drawer-actions button {
   min-height: 38px;
-  border-color: var(--admin-border);
-  border-radius: 11px;
+  border-color: transparent;
+  border-radius: 12px;
   padding: 8px 11px;
   color: var(--admin-text);
   font-size: 12px;
@@ -3127,6 +3140,7 @@ body.admin-v2 .admin-drawer-actions button {
 }
 
 body.admin-v2 .admin-drawer-actions .admin-drawer-quick-save {
+  flex: 1;
   border-color: var(--admin-primary);
   background: var(--admin-primary);
   color: #fff;
@@ -3143,6 +3157,52 @@ body.admin-v2 .admin-drawer-actions .admin-actions-toggle {
   min-width: 38px;
   padding: 0;
   font-size: 18px;
+}
+
+body.admin-v2 .admin-drawer-actions .admin-drawer-icon-action {
+  background: transparent;
+}
+
+body.admin-v2 .admin-drawer-actions .admin-drawer-icon-action:hover,
+body.admin-v2 .admin-drawer-actions .admin-actions-toggle:hover,
+body.admin-v2 .admin-drawer-actions .admin-drawer-preview:hover {
+  background: #fff;
+}
+
+body.admin-v2 .admin-check-card.is-disabled {
+  opacity: .5;
+}
+
+body.admin-v2 .admin-check-card.is-disabled input {
+  cursor: not-allowed;
+}
+
+body.admin-v2 .admin-dialog[data-code-modal] {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+}
+
+body.admin-v2 .admin-dialog .admin-dialog-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--admin-border);
+  border-radius: 50%;
+  background: #fff;
+  padding: 0;
+  color: var(--admin-text);
+  font-size: 20px;
+  line-height: 1;
+}
+
+body.admin-v2 .admin-dialog .admin-dialog-close:hover {
+  background: var(--admin-accent-soft);
+  color: var(--admin-primary);
 }
 
 body.admin-v2 .admin-drawer-actions button:disabled {

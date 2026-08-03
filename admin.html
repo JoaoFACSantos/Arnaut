@@ -299,15 +299,15 @@
         <input type="hidden" name="id" />
         <header class="admin-drawer-topbar">
           <div class="admin-drawer-heading">
-            <span data-drawer-kicker>Nova galeria</span>
-            <div class="admin-drawer-title-row">
-              <h2 data-drawer-title>Criar galeria</h2>
+            <div class="admin-drawer-eyebrow">
+              <span data-drawer-kicker>Nova galeria</span>
               <span class="admin-drawer-save-state" data-drawer-save-state>Nova</span>
             </div>
+            <h2 data-drawer-title>Criar galeria</h2>
             <p data-drawer-meta>Fluxo em três passos com upload antes de concluir.</p>
           </div>
           <div class="admin-drawer-actions">
-            <button type="button" data-preview-gallery>Pré-visualizar</button>
+            <button type="button" class="admin-drawer-preview" data-preview-gallery>Pré-visualizar</button>
             <button type="button" class="admin-drawer-quick-save" data-quick-save-drawer>Guardar rascunho</button>
             <button class="admin-actions-toggle" type="button" data-gallery-actions-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações">•••</button>
             <button class="admin-drawer-icon-action" type="button" data-minimize-drawer aria-label="Minimizar editor" title="Minimizar">—</button>
@@ -338,6 +338,14 @@
               <label><input name="isArchived" type="checkbox" /> Arquivada</label>
             </div>
             <div class="admin-watermark-settings">
+              <h3>Downloads</h3>
+              <label class="admin-check-card">
+                <input name="downloadsEnabled" type="checkbox" checked />
+                <span>
+                  <strong>Permitir que os convidados descarreguem fotografias</strong>
+                  <small>Quando desligado, as opções de download deixam de aparecer na galeria.</small>
+                </span>
+              </label>
               <h3>Marca de água</h3>
               <label class="admin-check-card">
                 <input name="watermarkEnabled" type="checkbox" checked />
@@ -346,7 +354,7 @@
                   <small>Os convidados verão as versões com marca de água. Os originais permanecem privados.</small>
                 </span>
               </label>
-              <label class="admin-check-card">
+              <label class="admin-check-card" data-original-downloads-setting>
                 <input name="watermarkOriginalDownloads" type="checkbox" />
                 <span>
                   <strong>Permitir download dos ficheiros originais</strong>
@@ -400,6 +408,7 @@
     <div class="admin-drawer-backdrop" data-drawer-backdrop hidden></div>
 
     <dialog class="admin-dialog" data-code-modal>
+      <button class="admin-dialog-close" type="button" data-dismiss-code-modal aria-label="Fechar" title="Fechar">×</button>
       <span>✓</span>
       <h2 data-code-title>Galeria criada com sucesso</h2>
       <p>Guarde ou envie este código aos convidados.</p>
