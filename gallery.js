@@ -132,6 +132,18 @@ function clearElement(element) {
   while (element.firstChild) element.removeChild(element.firstChild);
 }
 
+function createHeartIcon() {
+  const namespace = 'http://www.w3.org/2000/svg';
+  const icon = document.createElementNS(namespace, 'svg');
+  const path = document.createElementNS(namespace, 'path');
+  icon.classList.add('client-heart-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  path.setAttribute('d', 'M12 21s-7.2-4.35-9.5-9.1C.65 8.42 2.15 4.5 6.1 3.65c2.15-.46 4.22.34 5.9 2.12 1.68-1.78 3.75-2.58 5.9-2.12 3.95.85 5.45 4.77 3.6 8.25C19.2 16.65 12 21 12 21Z');
+  icon.appendChild(path);
+  return icon;
+}
+
 function loadStoredSet(key, storage) {
   try { return new Set(JSON.parse(storage.getItem(key) || '[]')); }
   catch { return new Set(); }
@@ -197,7 +209,7 @@ function createPhotoCard(photo, index) {
   const favorite = document.createElement('button');
   favorite.type = 'button';
   favorite.className = 'client-photo__favorite';
-  favorite.textContent = '♡';
+  favorite.appendChild(createHeartIcon());
   favorite.setAttribute('aria-label', favorites.has(photo.id) ? 'Remover das favoritas' : 'Adicionar às favoritas');
   favorite.setAttribute('aria-pressed', String(favorites.has(photo.id)));
   favorite.addEventListener('click', () => toggleFavorite(photo.id));
@@ -469,7 +481,7 @@ function updateLightboxFavorite() {
   const photo = photos[activeIndex];
   if (!photo) return;
   const included = favorites.has(photo.id);
-  lightboxFavorite.textContent = '♡ Favorita';
+  lightboxFavorite.replaceChildren(createHeartIcon(), document.createTextNode(' Favorita'));
   lightboxFavorite.classList.toggle('is-selected', included);
   lightboxFavorite.setAttribute('aria-pressed', String(included));
 }

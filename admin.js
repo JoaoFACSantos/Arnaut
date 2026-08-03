@@ -565,7 +565,13 @@ function togglePasswordVisibility(button) {
   button.setAttribute('aria-label', show
     ? baseLabel.replace(/^Mostrar/, 'Ocultar')
     : baseLabel.replace(/^Ocultar/, 'Mostrar'));
-  button.textContent = show ? '◎' : '◉';
+  const showIcon = button.querySelector('[data-password-icon="show"]');
+  const hideIcon = button.querySelector('[data-password-icon="hide"]');
+  if (showIcon && hideIcon) {
+    showIcon.hidden = show;
+    hideIcon.hidden = !show;
+    button.classList.toggle('is-password-visible', show);
+  } else button.textContent = show ? '◎' : '◉';
   field.focus({ preventScroll: true });
   if (start !== null && end !== null) field.setSelectionRange(start, end);
 }

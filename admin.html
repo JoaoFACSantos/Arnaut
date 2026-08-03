@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
-    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="theme-color" content="#f7f2ec" />
     <title>Administração — Fotografia Arnaut</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,9 +12,9 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260803-gallery-rebuild-5" />
+    <link rel="stylesheet" href="styles.css?v=20260803-admin-nav-icons-14" />
     <script src="config.js"></script>
-    <script type="module" src="admin.js?v=20260803-gallery-rebuild-5"></script>
+    <script type="module" src="admin.js?v=20260803-admin-login-12"></script>
   </head>
   <body class="admin-v2">
     <section class="admin-auth-gate" data-auth-gate aria-live="polite">
@@ -31,26 +31,36 @@
       <div class="admin-login-card">
         <div class="admin-login-card__brand">
           <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
-          <span>ACESSO RESERVADO</span>
         </div>
-        <p>Fotografia Arnaut</p>
+        <div class="admin-login-card__eyebrow" aria-hidden="true">
+          <span></span>
+          <p>ACESSO RESERVADO</p>
+          <span></span>
+        </div>
         <h1>Área de administração</h1>
-        <p class="admin-login-card__intro">Inicie sessão para gerir galerias, fotografias e acessos privados.</p>
         <form data-login-form>
-          <label>
+          <label class="admin-login-field">
             <span>Email</span>
-            <input name="email" type="email" autocomplete="username" inputmode="email" required />
+            <span class="admin-login-input">
+              <img class="admin-login-input__icon admin-login-input__icon--email" src="assets/icon-email.svg" alt="" aria-hidden="true" />
+              <input name="email" type="email" autocomplete="username" inputmode="email" placeholder="O seu email" required />
+            </span>
           </label>
-          <label>
+          <label class="admin-login-field">
             <span>Palavra-passe</span>
             <span class="admin-password-field">
-              <input name="password" type="password" autocomplete="current-password" required />
-              <button type="button" data-password-toggle aria-label="Mostrar palavra-passe" aria-pressed="false">◉</button>
+              <img class="admin-login-input__icon admin-login-input__icon--lock" src="assets/icon-cadeado.svg" alt="" aria-hidden="true" />
+              <input name="password" type="password" autocomplete="current-password" placeholder="A sua palavra-passe" required />
+              <button class="admin-login-password-toggle password-toggle" type="button" data-password-toggle aria-label="Mostrar palavra-passe" aria-pressed="false">
+                <img class="admin-login-eye-icon" data-password-icon="show" src="icons/icon_olho_mostrar.svg" alt="" aria-hidden="true" />
+                <img class="admin-login-eye-icon" data-password-icon="hide" src="icons/icon_olho_ocultar.svg" alt="" aria-hidden="true" hidden />
+              </button>
             </span>
           </label>
           <div class="admin-login-options">
             <label class="admin-remember-option">
               <input name="remember" type="checkbox" />
+              <i class="admin-remember-check" aria-hidden="true"></i>
               <span>Manter sessão iniciada</span>
             </label>
             <button type="button" class="admin-text-button" data-forgot-password>Esqueci-me da palavra-passe</button>
@@ -68,11 +78,11 @@
           <span>EST. 2022</span>
         </div>
         <nav class="admin-side__nav" aria-label="Administração">
-          <button type="button" data-view="overview" class="is-active" title="Visão geral"><span>▦</span><em>Visão geral</em></button>
-          <button type="button" data-view="galleries" title="Galerias"><span>▧</span><em>Galerias</em></button>
-          <button type="button" data-view="orders" title="Encomendas"><span>🛒</span><em>Encomendas</em></button>
-          <button type="button" data-new-gallery title="Nova galeria"><span>＋</span><em>Nova galeria</em></button>
-          <button type="button" data-view="settings" title="Definições"><span>⚙</span><em>Definições</em></button>
+          <button type="button" data-view="overview" class="is-active" title="Visão geral"><span><img src="icons/icon_visao_geral.svg" alt="" aria-hidden="true" /></span><em>Visão geral</em></button>
+          <button type="button" data-view="galleries" title="Galerias"><span><img src="icons/icon_galerias.svg" alt="" aria-hidden="true" /></span><em>Galerias</em></button>
+          <button type="button" data-view="orders" title="Encomendas"><span><img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /></span><em>Encomendas</em></button>
+          <button type="button" data-new-gallery title="Nova galeria"><span><img src="icons/icon_nova_galeria.svg" alt="" aria-hidden="true" /></span><em>Nova galeria</em></button>
+          <button type="button" data-view="settings" title="Definições"><span><img src="icons/icon_definicoes.svg" alt="" aria-hidden="true" /></span><em>Definições</em></button>
         </nav>
         <div class="admin-storage-card">
           <span>Armazenamento</span>
