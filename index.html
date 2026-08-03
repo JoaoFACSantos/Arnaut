@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260803-public-5" />
   </head>
   <body>
     <div class="loader" aria-hidden="true">
@@ -79,17 +79,17 @@
           <p class="hero__edition">PORTFÓLIO / MMXXVI</p>
         </div>
 
-        <figure class="hero__visual image-hover">
+        <figure class="hero__visual image-hover" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="1" role="button" tabindex="0" aria-label="Ampliar retrato na Nazaré">
           <div class="hero__image-wrap">
             <img
-              src="assets/hero-coast.jpg"
-              alt="Mulher de vestido claro num campo junto ao oceano"
+              src="assets/portfolio/nazare-02.webp"
+              alt="Retrato de mulher na Nazaré com papagaios no céu"
               fetchpriority="high"
             />
           </div>
           <figcaption>
-            <span>Entre a terra e o mar</span>
-            <span>Ericeira, 2026</span>
+            <span>Fim de tarde na Nazaré</span>
+            <span>Nazaré, 2026</span>
           </figcaption>
           <div class="hero__stamp" aria-hidden="true">
             <svg viewBox="0 0 120 120">
@@ -136,62 +136,181 @@
             <p class="section-index">02 / Histórias escolhidas</p>
             <h2 id="work-title">Trabalho<br /><em>recente</em></h2>
           </div>
-          <p class="section-heading__note">Quatro formas de estar perto.<br />Uma só maneira de olhar.</p>
+          <p class="section-heading__note">Pessoas, afetos e lugares.<br />Um olhar atento em cada instante.</p>
         </header>
 
         <div class="filters reveal" role="group" aria-label="Filtrar portefólio">
-          <button class="filter is-active" type="button" data-filter="all">Todos <sup>04</sup></button>
-          <button class="filter" type="button" data-filter="casamentos">Casamentos <sup>01</sup></button>
-          <button class="filter" type="button" data-filter="marcas">Marcas <sup>01</sup></button>
-          <button class="filter" type="button" data-filter="pessoas">Pessoas <sup>02</sup></button>
+          <button class="filter is-active" type="button" data-filter="all">Todos <sup>14</sup></button>
+          <button class="filter" type="button" data-filter="pessoas">Pessoas <sup>08</sup></button>
+          <button class="filter" type="button" data-filter="lugares">Lugares <sup>06</sup></button>
         </div>
 
-        <div class="projects" aria-live="polite">
-          <article class="project project--wide reveal" data-category="casamentos">
-            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Sal e Promessas">
-              <img src="assets/story-wedding.jpg" alt="Casal recém-casado a correr numa praia" loading="lazy" />
+        <div class="projects projects--portfolio" aria-live="polite">
+          <article class="project project--portfolio-card project--portfolio-wide reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/casal-01.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="0" aria-label="Ampliar história Uma vida inteira">
+              <img src="assets/portfolio/casal-01.webp" alt="Casal a sorrir junto a uma parede de pedra" loading="lazy" />
               <span class="project__number">01</span>
-              <span class="project__view">Ver história ↗</span>
+              <span class="project__view">Ampliar imagem ↗</span>
             </a>
             <div class="project__meta">
-              <div><h3>Sal &amp; Promessas</h3><p>Marta e Tomás</p></div>
-              <p>Comporta / 2026</p>
+              <div><h3>Uma vida inteira</h3><p>Retrato de casal</p></div>
+              <p>01 / 05</p>
             </div>
           </article>
 
-          <article class="project project--portrait reveal" data-category="marcas">
-            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Matéria Prima">
-              <img src="assets/story-brand.jpg" alt="Ceramista no seu atelier com uma peça em barro" loading="lazy" />
+          <article class="project project--portfolio-card reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/sintra-02.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="1" aria-label="Ampliar história Pedra e Luz">
+              <img src="assets/portfolio/sintra-02.webp" alt="Arquitetura histórica e árvores em Sintra" loading="lazy" />
               <span class="project__number">02</span>
-              <span class="project__view">Ver história ↗</span>
+              <span class="project__view">Ampliar imagem ↗</span>
             </a>
             <div class="project__meta">
-              <div><h3>Matéria Prima</h3><p>Rita, ceramista</p></div>
-              <p>Leiria / 2026</p>
+              <div><h3>Pedra &amp; Luz</h3><p>Arquitetura e património</p></div>
+              <p>02 / 04</p>
             </div>
           </article>
 
-          <article class="project project--landscape reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Casa é onde estamos">
-              <img src="assets/story-family.jpg" alt="Família a brincar num campo ao fim da tarde" loading="lazy" />
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/nazare-01.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="0" aria-label="Ampliar história Dias de vento">
+              <img src="assets/portfolio/nazare-01.webp" alt="Retrato de mulher na praia ao fim da tarde" loading="lazy" />
               <span class="project__number">03</span>
-              <span class="project__view">Ver história ↗</span>
+              <span class="project__view">Ampliar imagem ↗</span>
             </a>
             <div class="project__meta">
-              <div><h3>Casa é onde estamos</h3><p>Família Andrade</p></div>
-              <p>Sintra / 2025</p>
+              <div><h3>Dias de vento</h3><p>Pessoas</p></div>
+              <p>01 / 05</p>
             </div>
           </article>
 
-          <article class="project project--crop reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="#contacto" aria-label="Ver história Maré Cheia">
-              <img src="assets/hero-coast.jpg" alt="Figura entre o campo dourado e o mar" loading="lazy" />
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/casal-02.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="1" aria-label="Ampliar história Uma vida inteira">
+              <img src="assets/portfolio/casal-02.webp" alt="Retrato de homem num jardim" loading="lazy" />
               <span class="project__number">04</span>
-              <span class="project__view">Ver história ↗</span>
+              <span class="project__view">Ampliar imagem ↗</span>
             </a>
             <div class="project__meta">
-              <div><h3>Maré Cheia</h3><p>Editorial pessoal</p></div>
-              <p>Ericeira / 2026</p>
+              <div><h3>Uma vida inteira</h3><p>Pessoas</p></div>
+              <p>02 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card project--portfolio-wide reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/sintra-01.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="0" aria-label="Ampliar história Pedra e Luz">
+              <img src="assets/portfolio/sintra-01.webp" alt="Fachada histórica enquadrada por árvores em Sintra" loading="lazy" />
+              <span class="project__number">05</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Pedra &amp; Luz</h3><p>Lugares</p></div>
+              <p>01 / 04</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/nazare-02.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="1" aria-label="Ampliar história Dias de vento">
+              <img src="assets/portfolio/nazare-02.webp" alt="Retrato de mulher na Nazaré com papagaios no céu" loading="lazy" />
+              <span class="project__number">06</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Dias de vento</h3><p>Pessoas</p></div>
+              <p>02 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/casal-03.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="2" aria-label="Ampliar história Uma vida inteira">
+              <img src="assets/portfolio/casal-03.webp" alt="Casal abraçado num jardim" loading="lazy" />
+              <span class="project__number">07</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Uma vida inteira</h3><p>Pessoas</p></div>
+              <p>03 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/sintra-03.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="2" aria-label="Ampliar história Pedra e Luz">
+              <img src="assets/portfolio/sintra-03.webp" alt="Detalhe de arcos neomanuelinos em Sintra" loading="lazy" />
+              <span class="project__number">08</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Pedra &amp; Luz</h3><p>Lugares</p></div>
+              <p>03 / 04</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/casal-04.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="3" aria-label="Ampliar história Uma vida inteira">
+              <img src="assets/portfolio/casal-04.webp" alt="Retrato de mulher num jardim" loading="lazy" />
+              <span class="project__number">09</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Uma vida inteira</h3><p>Pessoas</p></div>
+              <p>04 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card project--portfolio-wide reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/casal-05.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="4" aria-label="Ampliar história Uma vida inteira">
+              <img src="assets/portfolio/casal-05.webp" alt="Casal junto a uma árvore num jardim" loading="lazy" />
+              <span class="project__number">10</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Uma vida inteira</h3><p>Pessoas</p></div>
+              <p>05 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/sintra-04.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="3" aria-label="Ampliar história Pedra e Luz">
+              <img src="assets/portfolio/sintra-04.webp" alt="Pórtico histórico coberto por vegetação em Sintra" loading="lazy" />
+              <span class="project__number">11</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Pedra &amp; Luz</h3><p>Lugares</p></div>
+              <p>04 / 04</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/nazare-03.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="2" aria-label="Ampliar história Dias de vento">
+              <img src="assets/portfolio/nazare-03.webp" alt="Vista da praia da Nazaré com papagaios no céu" loading="lazy" />
+              <span class="project__number">12</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Dias de vento</h3><p>Lugares</p></div>
+              <p>03 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="pessoas">
+            <a class="project__image image-hover" href="assets/portfolio/nazare-04.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="3" aria-label="Ampliar história Dias de vento">
+              <img src="assets/portfolio/nazare-04.webp" alt="Casal sentado na praia sob papagaios coloridos" loading="lazy" />
+              <span class="project__number">13</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Dias de vento</h3><p>Pessoas</p></div>
+              <p>04 / 05</p>
+            </div>
+          </article>
+
+          <article class="project project--portfolio-card reveal" data-category="lugares">
+            <a class="project__image image-hover" href="assets/portfolio/nazare-05.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="4" aria-label="Ampliar história Dias de vento">
+              <img src="assets/portfolio/nazare-05.webp" alt="Casa histórica junto à costa da Nazaré" loading="lazy" />
+              <span class="project__number">14</span>
+              <span class="project__view">Ampliar imagem ↗</span>
+            </a>
+            <div class="project__meta">
+              <div><h3>Dias de vento</h3><p>Lugares</p></div>
+              <p>05 / 05</p>
             </div>
           </article>
         </div>
@@ -259,8 +378,8 @@
       </section>
 
       <section class="about section-pad" id="sobre" aria-labelledby="about-title">
-        <div class="about__image reveal image-hover">
-          <img src="assets/beatriz-arnaut.jpg" alt="Retrato de Beatriz Arnaut" loading="lazy" />
+        <div class="about__image reveal image-hover" data-portrait-open role="button" tabindex="0" aria-label="Ampliar retrato de Beatriz Arnaut">
+          <img src="assets/beatriz-arnaut.jpg?v=20260803-2" alt="Retrato de Beatriz Arnaut" loading="lazy" />
           <p><span>Fotógrafa, observadora,</span><span>colecionadora de luz.</span></p>
         </div>
         <div class="about__copy">
@@ -345,6 +464,21 @@
       </div>
     </footer>
 
-    <script src="script.js"></script>
+    <dialog class="portrait-lightbox" data-portrait-lightbox aria-label="Fotografia ampliada">
+      <div class="portrait-lightbox__frame">
+        <button type="button" class="portrait-lightbox__close" data-portrait-close aria-label="Fechar fotografia">×</button>
+        <figure>
+          <img data-lightbox-image src="assets/beatriz-arnaut.jpg?v=20260803-2" alt="Retrato ampliado de Beatriz Arnaut" />
+          <div class="portrait-lightbox__meta">
+            <figcaption data-lightbox-caption>Beatriz Arnaut · Fotógrafa</figcaption>
+            <span data-lightbox-counter aria-live="polite"></span>
+          </div>
+        </figure>
+        <button type="button" class="portrait-lightbox__nav portrait-lightbox__nav--prev" data-lightbox-prev aria-label="Fotografia anterior">←</button>
+        <button type="button" class="portrait-lightbox__nav portrait-lightbox__nav--next" data-lightbox-next aria-label="Fotografia seguinte">→</button>
+      </div>
+    </dialog>
+
+    <script src="script.js?v=20260803-public-5"></script>
   </body>
 </html>

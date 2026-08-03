@@ -12,9 +12,9 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260803-gallery-rebuild-5" />
     <script src="config.js"></script>
-    <script type="module" src="admin.js"></script>
+    <script type="module" src="admin.js?v=20260803-gallery-rebuild-5"></script>
   </head>
   <body class="admin-v2">
     <section class="admin-auth-gate" data-auth-gate aria-live="polite">
@@ -70,6 +70,7 @@
         <nav class="admin-side__nav" aria-label="Administração">
           <button type="button" data-view="overview" class="is-active" title="Visão geral"><span>▦</span><em>Visão geral</em></button>
           <button type="button" data-view="galleries" title="Galerias"><span>▧</span><em>Galerias</em></button>
+          <button type="button" data-view="orders" title="Encomendas"><span>🛒</span><em>Encomendas</em></button>
           <button type="button" data-new-gallery title="Nova galeria"><span>＋</span><em>Nova galeria</em></button>
           <button type="button" data-view="settings" title="Definições"><span>⚙</span><em>Definições</em></button>
         </nav>
@@ -173,6 +174,25 @@
               </div>
             </div>
             <div class="admin-gallery-board is-grid" data-gallery-board></div>
+          </section>
+
+          <section class="admin-view" data-view-panel="orders">
+            <div class="admin-toolbar">
+              <div><h2>Encomendas</h2><p>Pagamentos e entregas de fotografias digitais.</p></div>
+              <button class="admin-primary" type="button" data-orders-refresh>Atualizar</button>
+            </div>
+            <div class="admin-filters-v2 admin-order-filters">
+              <select data-order-gallery-filter><option value="">Todas as galerias</option></select>
+              <select data-order-status-filter>
+                <option value="">Todos os estados</option><option value="pending">Pendente</option>
+                <option value="paid">Paga</option><option value="partially_refunded">Reembolso parcial</option>
+                <option value="refunded">Reembolsada</option><option value="failed">Falhou</option><option value="expired">Expirada</option>
+              </select>
+              <input type="search" data-order-email-filter placeholder="Email do cliente" />
+              <input type="date" data-order-date-from aria-label="Data inicial" />
+              <input type="date" data-order-date-to aria-label="Data final" />
+            </div>
+            <div class="admin-orders-panel" data-orders-list><p class="admin-orders-empty">Abra esta área para carregar as encomendas.</p></div>
           </section>
 
           <section class="admin-view" data-view-panel="settings">
@@ -294,93 +314,132 @@
       <div class="admin-mobile-backdrop" data-sidebar-backdrop></div>
     </section>
 
-    <aside class="admin-drawer" data-gallery-drawer aria-hidden="true">
-      <form data-gallery-form>
-        <input type="hidden" name="id" />
-        <header class="admin-drawer-topbar">
-          <div class="admin-drawer-heading">
-            <div class="admin-drawer-eyebrow">
-              <span data-drawer-kicker>Nova galeria</span>
-              <span class="admin-drawer-save-state" data-drawer-save-state>Nova</span>
-            </div>
-            <h2 data-drawer-title>Criar galeria</h2>
-            <p data-drawer-meta>Fluxo em três passos com upload antes de concluir.</p>
-          </div>
-          <div class="admin-drawer-actions">
-            <button type="button" class="admin-drawer-preview" data-preview-gallery>Pré-visualizar</button>
-            <button type="button" class="admin-drawer-quick-save" data-quick-save-drawer>Guardar rascunho</button>
-            <button class="admin-actions-toggle" type="button" data-gallery-actions-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações">•••</button>
-            <button class="admin-drawer-icon-action" type="button" data-minimize-drawer aria-label="Minimizar editor" title="Minimizar">—</button>
-            <button class="admin-drawer-icon-action" type="button" data-close-drawer aria-label="Fechar editor" title="Fechar">×</button>
-          </div>
-        </header>
-
-        <div class="admin-stepper">
-          <button type="button" data-step-target="1" class="is-active">1 Informações</button>
-          <button type="button" data-step-target="2">2 Fotografias</button>
-          <button type="button" data-step-target="3">3 Confirmar</button>
+    <aside class="create-gallery-drawer is-create-mode" data-gallery-drawer aria-hidden="true" aria-labelledby="gallery-editor-title">
+      <header class="create-gallery-header">
+        <div>
+          <h2 id="gallery-editor-title" data-drawer-title>Criar galeria</h2>
+          <p data-drawer-meta>Adicione os detalhes do evento.</p>
         </div>
+        <div class="create-gallery-header__actions">
+          <button type="button" data-preview-gallery hidden>Pré-visualizar</button>
+          <button type="button" data-gallery-actions-toggle aria-label="Mais ações" title="Mais ações" hidden>•••</button>
+          <button type="button" data-minimize-drawer aria-label="Minimizar" title="Minimizar">—</button>
+          <button type="button" data-close-drawer aria-label="Fechar" title="Fechar">×</button>
+        </div>
+      </header>
 
-        <div class="admin-drawer-body">
-          <section class="admin-step is-active" data-step="1">
-            <div class="admin-form-grid">
-              <label><span>Nome do evento</span><input name="title" required /></label>
-              <label><span>Tipo</span><select name="eventType"><option>Casamento</option><option>Batizado</option><option>Sessão de família</option><option>Sessão de casal</option><option>Evento</option><option>Outro</option></select></label>
-              <label><span>Data</span><input name="eventDate" type="date" /></label>
-              <label><span>Localização</span><input name="location" /></label>
-              <label class="is-wide"><span>Descrição</span><textarea name="description" rows="3"></textarea></label>
-              <label class="is-wide"><span>Mensagem para convidados</span><textarea name="guestMessage" rows="2"></textarea></label>
-              <label><span>Expiração</span><input name="expiresAt" type="datetime-local" /></label>
-              <label><span>Slug interno</span><input name="slug" placeholder="gerado automaticamente" /></label>
+      <nav class="create-gallery-stepper" aria-label="Etapas da criação">
+        <button type="button" class="is-active" data-step-target="1" aria-current="step">
+          <span aria-hidden="true">1</span>
+          <strong>Detalhes</strong>
+        </button>
+        <button type="button" class="is-locked" data-step-target="2" disabled>
+          <span aria-hidden="true">2</span>
+          <strong>Fotografias</strong>
+        </button>
+        <button type="button" class="is-locked" data-step-target="3" disabled>
+          <span aria-hidden="true">3</span>
+          <strong data-final-step-label>Publicar</strong>
+        </button>
+      </nav>
+
+      <main class="create-gallery-content">
+        <form id="gallery-editor-form" data-gallery-form novalidate>
+          <input type="hidden" name="id" />
+          <input type="checkbox" name="isActive" checked hidden />
+
+          <section class="create-gallery-step is-active" data-step="1">
+            <h3>Detalhes do evento</h3>
+            <div class="create-gallery-fields">
+              <label class="is-wide"><span>Nome do evento <b>*</b></span><input name="title" placeholder="Ex.: Ana & André" required /></label>
+              <label><span>Tipo <b>*</b></span><select name="eventType" required><option value="" selected disabled>Selecione um tipo</option><option>Casamento</option><option>Batizado</option><option>Sessão de família</option><option>Sessão de casal</option><option>Evento</option><option>Outro</option></select></label>
+              <label><span>Data <b>*</b></span><input name="eventDate" type="date" required /></label>
+              <label class="is-wide"><span>Localização <b>*</b></span><input name="location" placeholder="Ex.: Pombal" required /></label>
             </div>
-            <div class="admin-switch-row">
-              <label><input name="isActive" type="checkbox" checked /> Publicar imediatamente</label>
-              <label><input name="isArchived" type="checkbox" /> Arquivada</label>
-            </div>
-            <div class="admin-watermark-settings">
-              <h3>Downloads</h3>
-              <label class="admin-check-card">
-                <input name="downloadsEnabled" type="checkbox" checked />
-                <span>
-                  <strong>Permitir que os convidados descarreguem fotografias</strong>
-                  <small>Quando desligado, as opções de download deixam de aparecer na galeria.</small>
-                </span>
-              </label>
-              <h3>Marca de água</h3>
-              <label class="admin-check-card">
-                <input name="watermarkEnabled" type="checkbox" checked />
-                <span>
-                  <strong>Aplicar marca de água às fotografias desta galeria</strong>
-                  <small>Os convidados verão as versões com marca de água. Os originais permanecem privados.</small>
-                </span>
-              </label>
-              <label class="admin-check-card" data-original-downloads-setting>
-                <input name="watermarkOriginalDownloads" type="checkbox" />
-                <span>
-                  <strong>Permitir download dos ficheiros originais</strong>
-                  <small>Quando desligado, os downloads usam a versão visível na galeria.</small>
-                </span>
-              </label>
-            </div>
+            <details class="create-gallery-more">
+              <summary><span>Mais opções</span><span aria-hidden="true">⌄</span></summary>
+              <div class="create-gallery-fields">
+                <label class="is-wide"><span>Descrição</span><textarea name="description" rows="3" placeholder="Uma mensagem curta sobre o evento…"></textarea></label>
+                <label class="is-wide"><span>Mensagem para convidados</span><textarea name="guestMessage" rows="2" placeholder="Será exibida na página de acesso."></textarea></label>
+                <label class="is-wide"><span>Endereço interno</span><input name="slug" placeholder="Gerado automaticamente" /></label>
+              </div>
+            </details>
           </section>
 
-          <section class="admin-step" data-step="2">
-            <div class="admin-upload-zone" data-dropzone>
-              <span>☁</span>
-              <strong>Arraste fotografias para aqui</strong>
-              <p>JPEG, PNG ou WebP até 50 MB por ficheiro.</p>
-              <input data-photo-upload type="file" accept="image/jpeg,image/png,image/webp" multiple />
-              <progress data-upload-progress value="0" max="1"></progress>
+          <section class="create-gallery-step" data-step="2">
+            <div class="create-gallery-upload" data-dropzone>
+              <span class="create-gallery-upload__icon" aria-hidden="true">↥</span>
+              <strong>Arraste as fotografias para aqui</strong>
+              <p>JPEG, PNG ou WebP · máximo 50 MB</p>
+              <button type="button" data-select-photos>Selecionar fotografias</button>
+              <input data-photo-upload type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
+              <progress data-upload-progress value="0" max="1" hidden></progress>
             </div>
-            <div class="admin-photo-grid" data-photo-list></div>
+            <div class="create-gallery-photo-grid" data-photo-list></div>
           </section>
 
-          <section class="admin-step" data-step="3">
-            <div class="admin-confirm-card" data-confirm-summary></div>
-            <div class="admin-code-card-v2" data-code-card>
+          <section class="create-gallery-step" data-step="3">
+            <div class="create-gallery-section create-gallery-publish-card">
+              <h3 data-final-panel-title>Estado da galeria</h3>
+              <p data-final-panel-description>Escolha como pretende guardar a galeria.</p>
+              <div class="create-gallery-publish-choices" role="group" aria-label="Estado da galeria">
+                <button type="button" data-publish-choice="active" aria-pressed="true">
+                  <span aria-hidden="true">◎</span>
+                  <span><strong>Publicar agora</strong><small>A galeria ficará ativa.</small></span>
+                </button>
+                <button type="button" data-publish-choice="draft" aria-pressed="false">
+                  <span aria-hidden="true">▱</span>
+                  <span><strong>Guardar como rascunho</strong><small>Poderá publicar mais tarde.</small></span>
+                </button>
+              </div>
+              <div class="create-gallery-expiration">
+                <label><span>Data de expiração</span><input name="expiresAt" type="datetime-local" /></label>
+                <button type="button" data-no-expiration aria-pressed="true"><span aria-hidden="true">✓</span> Sem expiração</button>
+              </div>
+            </div>
+
+            <div class="create-gallery-section create-gallery-permissions-card">
+              <h3>Downloads e proteção</h3>
+              <label class="create-gallery-option">
+                <input class="create-gallery-sr-only" name="downloadsEnabled" type="checkbox" checked />
+                <span class="create-gallery-check" aria-hidden="true"></span>
+                <span><strong>Permitir download gratuito</strong><small>Disponibiliza downloads sem exigir uma compra.</small></span>
+                <i aria-hidden="true">↓</i>
+              </label>
+              <label class="create-gallery-option">
+                <input class="create-gallery-sr-only" name="watermarkEnabled" type="checkbox" checked />
+                <span class="create-gallery-check" aria-hidden="true"></span>
+                <span><strong>Aplicar marca de água</strong><small>Os convidados verão versões protegidas.</small></span>
+                <i aria-hidden="true">◇</i>
+              </label>
+              <label class="create-gallery-option create-gallery-originals" data-original-downloads-setting>
+                <input class="create-gallery-sr-only" name="watermarkOriginalDownloads" type="checkbox" />
+                <span class="create-gallery-check" aria-hidden="true"></span>
+                <span><strong>Permitir originais</strong><small>Entrega o ficheiro sem marca de água.</small></span>
+              </label>
+            </div>
+
+            <div class="create-gallery-section create-gallery-sales-card">
+              <div class="create-gallery-sales-card__head">
+                <div><h3>Venda de fotografias</h3><p>Checkout seguro e entrega dos originais após pagamento.</p></div>
+                <label class="create-gallery-switch"><input name="salesEnabled" type="checkbox" /><span></span><em>Ativar</em></label>
+              </div>
+              <div class="create-gallery-sales-fields" data-sales-settings hidden>
+                <label class="is-wide create-gallery-sales-free"><input type="checkbox" data-sales-free-download checked /><span><strong>Permitir download gratuito</strong><small>Se ativo, os convidados também podem descarregar sem comprar.</small></span></label>
+                <label><span>Preço por fotografia</span><div class="create-gallery-money"><input name="photoPrice" type="number" min="0.50" step="0.01" inputmode="decimal" value="6.99" /><b>€</b></div></label>
+                <label><span>Moeda</span><select name="currency"><option value="EUR">EUR — Euro</option></select></label>
+                <label><span>Downloads disponíveis</span><div class="create-gallery-days"><input name="downloadExpiryDays" type="number" min="1" max="90" step="1" value="7" /><b>dias</b></div></label>
+                <label><span>Email de apoio</span><input name="salesSupportEmail" type="email" placeholder="apoio@fotografiaarnaut.pt" /></label>
+                <label class="is-wide"><span>Cancelamentos e reembolsos</span><textarea name="refundPolicyText" rows="3" placeholder="Texto a rever antes de ativar as vendas."></textarea><small>Este texto é apresentado ao cliente antes do pagamento.</small></label>
+              </div>
+            </div>
+
+            <div class="create-gallery-summary" data-confirm-summary></div>
+
+            <div class="create-gallery-code" data-code-card hidden>
               <p>Código da galeria</p>
               <strong data-inline-code-value>••••-••••-••••</strong>
-              <span data-inline-code-message>O código será gerado automaticamente ao criar.</span>
+              <span data-inline-code-message></span>
               <div>
                 <button type="button" data-inline-show-code disabled>Mostrar código</button>
                 <button type="button" data-inline-hide-code hidden>Ocultar</button>
@@ -391,21 +450,27 @@
               </div>
             </div>
           </section>
-        </div>
+        </form>
+      </main>
 
-        <footer>
-          <p class="admin-form-message" data-album-message aria-live="polite"></p>
-          <div>
-            <button type="button" data-prev-step>Voltar</button>
-            <button type="button" data-next-step>Continuar</button>
-            <button type="button" data-discard-drawer>Descartar</button>
-            <button class="admin-primary" type="submit" data-save-gallery>Guardar galeria</button>
-          </div>
-        </footer>
-      </form>
+      <footer class="create-gallery-footer">
+        <p data-album-message aria-live="polite"></p>
+        <button type="button" data-discard-drawer>Cancelar</button>
+        <div>
+          <button type="button" data-prev-step>Voltar</button>
+          <button type="button" data-quick-save-drawer>Guardar rascunho</button>
+          <button type="button" data-next-step>Continuar <span aria-hidden="true">→</span></button>
+          <button type="submit" form="gallery-editor-form" data-save-gallery>Criar galeria <span aria-hidden="true">✓</span></button>
+        </div>
+      </footer>
     </aside>
-    <button class="admin-drawer-tab" type="button" data-restore-drawer hidden>Nova galeria ›</button>
-    <div class="admin-drawer-backdrop" data-drawer-backdrop hidden></div>
+
+    <button class="create-gallery-minimized" type="button" data-restore-drawer hidden>
+      <span class="create-gallery-minimized__thumb" data-restore-thumb aria-hidden="true">+</span>
+      <span><strong data-restore-title>Nova galeria</strong><small data-restore-meta>Passo 1 de 3</small></span>
+      <span aria-hidden="true">›</span>
+    </button>
+    <div class="create-gallery-backdrop" data-drawer-backdrop hidden></div>
 
     <dialog class="admin-dialog" data-code-modal>
       <button class="admin-dialog-close" type="button" data-dismiss-code-modal aria-label="Fechar" title="Fechar">×</button>
@@ -438,6 +503,11 @@
         <button type="button" data-confirm-cancel>Cancelar</button>
         <button class="admin-danger" type="button" data-confirm-ok>Confirmar</button>
       </div>
+    </dialog>
+
+    <dialog class="admin-order-dialog" data-order-dialog>
+      <button type="button" class="admin-dialog-close" data-close-order-dialog aria-label="Fechar">×</button>
+      <div data-order-detail></div>
     </dialog>
 
     <dialog class="admin-dialog admin-picker-dialog" data-upload-picker-modal>

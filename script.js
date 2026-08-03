@@ -124,6 +124,136 @@ if (window.matchMedia('(pointer: fine)').matches) {
   });
 }
 
+const portraitTrigger = document.querySelector('[data-portrait-open]');
+const portraitLightbox = document.querySelector('[data-portrait-lightbox]');
+const portraitClose = document.querySelector('[data-portrait-close]');
+const lightboxImage = portraitLightbox?.querySelector('[data-lightbox-image]');
+const lightboxCaption = portraitLightbox?.querySelector('[data-lightbox-caption]');
+const lightboxCounter = portraitLightbox?.querySelector('[data-lightbox-counter]');
+const lightboxPrevious = portraitLightbox?.querySelector('[data-lightbox-prev]');
+const lightboxNext = portraitLightbox?.querySelector('[data-lightbox-next]');
+const projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
+const lightboxGalleries = {
+  casal: [
+    { src: 'assets/portfolio/casal-01.webp', alt: 'Casal a sorrir junto a uma parede de pedra' },
+    { src: 'assets/portfolio/casal-02.webp', alt: 'Retrato de homem num jardim' },
+    { src: 'assets/portfolio/casal-03.webp', alt: 'Casal abraçado num jardim' },
+    { src: 'assets/portfolio/casal-04.webp', alt: 'Retrato de mulher num jardim' },
+    { src: 'assets/portfolio/casal-05.webp', alt: 'Casal junto a uma árvore num jardim' },
+  ],
+  sintra: [
+    { src: 'assets/portfolio/sintra-01.webp', alt: 'Fachada histórica enquadrada por árvores em Sintra' },
+    { src: 'assets/portfolio/sintra-02.webp', alt: 'Arquitetura histórica e árvores em Sintra' },
+    { src: 'assets/portfolio/sintra-03.webp', alt: 'Detalhe de arcos neomanuelinos em Sintra' },
+    { src: 'assets/portfolio/sintra-04.webp', alt: 'Pórtico histórico coberto por vegetação em Sintra' },
+  ],
+  nazare: [
+    { src: 'assets/portfolio/nazare-01.webp', alt: 'Retrato de mulher na praia ao fim da tarde' },
+    { src: 'assets/portfolio/nazare-02.webp', alt: 'Retrato de mulher na Nazaré com papagaios no céu' },
+    { src: 'assets/portfolio/nazare-03.webp', alt: 'Vista da praia da Nazaré com papagaios no céu' },
+    { src: 'assets/portfolio/nazare-04.webp', alt: 'Casal sentado na praia sob papagaios coloridos' },
+    { src: 'assets/portfolio/nazare-05.webp', alt: 'Casa histórica junto à costa da Nazaré' },
+  ],
+};
+let activeLightboxTrigger = portraitTrigger;
+let activeLightboxItems = [];
+let activeLightboxIndex = 0;
+let activeLightboxLabel = '';
+
+const renderLightboxItem = () => {
+  const item = activeLightboxItems[activeLightboxIndex];
+  if (!item || !lightboxImage) return;
+
+  lightboxImage.src = item.src;
+  lightboxImage.alt = item.alt || 'Fotografia ampliada';
+  if (lightboxCaption) lightboxCaption.textContent = activeLightboxLabel;
+  if (lightboxCounter) {
+    lightboxCounter.textContent = activeLightboxItems.length > 1
+      ? `${activeLightboxIndex + 1} / ${activeLightboxItems.length}`
+      : '';
+  }
+
+  const hasSeveralImages = activeLightboxItems.length > 1;
+  if (lightboxPrevious) lightboxPrevious.hidden = !hasSeveralImages;
+  if (lightboxNext) lightboxNext.hidden = !hasSeveralImages;
+};
+
+const openPortraitLightbox = (trigger = portraitTrigger) => {
+  if (!portraitLightbox || portraitLightbox.open || !trigger) return;
+
+  const sourceImage = trigger.querySelector('img');
+  const project = trigger.closest('.project');
+  const projectTitle = project?.querySelector('.project__meta h3')?.textContent?.trim();
+  const projectSubtitle = project?.querySelector('.project__meta div p')?.textContent?.trim();
+  const projectLocation = project?.querySelector('.project__meta > p')?.textContent?.trim();
+  const heroCaption = trigger.querySelector('figcaption')?.textContent?.replace(/\s+/g, ' ')?.trim();
+  const gallery = lightboxGalleries[trigger.dataset.lightboxGallery];
+
+  activeLightboxItems = gallery || (sourceImage
+    ? [{ src: sourceImage.currentSrc || sourceImage.src, alt: sourceImage.alt }]
+    : []);
+  activeLightboxIndex = Math.min(
+    Math.max(Number.parseInt(trigger.dataset.lightboxStart || '0', 10) || 0, 0),
+    Math.max(activeLightboxItems.length - 1, 0),
+  );
+  activeLightboxLabel = project
+    ? [projectTitle, projectSubtitle, projectLocation].filter(Boolean).join(' · ')
+    : trigger === portraitTrigger
+      ? 'Beatriz Arnaut · Fotógrafa'
+      : heroCaption || 'Fotografia Arnaut';
+
+  activeLightboxTrigger = trigger;
+  renderLightboxItem();
+  cursor?.classList.remove('is-view');
+  document.body.classList.add('portrait-lightbox-open');
+  portraitLightbox.showModal();
+  portraitClose?.focus({ preventScroll: true });
+};
+
+const moveLightbox = (direction) => {
+  if (activeLightboxItems.length < 2) return;
+  activeLightboxIndex = (activeLightboxIndex + direction + activeLightboxItems.length) % activeLightboxItems.length;
+  renderLightboxItem();
+};
+
+const closePortraitLightbox = () => {
+  if (portraitLightbox?.open) portraitLightbox.close();
+};
+
+portraitTrigger?.addEventListener('click', () => openPortraitLightbox(portraitTrigger));
+portraitTrigger?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    openPortraitLightbox(portraitTrigger);
+  }
+});
+projectImageTriggers.forEach((trigger) => {
+  trigger.addEventListener('click', (event) => {
+    event.preventDefault();
+    openPortraitLightbox(trigger);
+  });
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openPortraitLightbox(trigger);
+    }
+  });
+});
+lightboxPrevious?.addEventListener('click', () => moveLightbox(-1));
+lightboxNext?.addEventListener('click', () => moveLightbox(1));
+portraitClose?.addEventListener('click', closePortraitLightbox);
+portraitLightbox?.addEventListener('click', (event) => {
+  if (event.target === portraitLightbox) closePortraitLightbox();
+});
+portraitLightbox?.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft') moveLightbox(-1);
+  if (event.key === 'ArrowRight') moveLightbox(1);
+});
+portraitLightbox?.addEventListener('close', () => {
+  document.body.classList.remove('portrait-lightbox-open');
+  activeLightboxTrigger?.focus({ preventScroll: true });
+});
+
 const heroImage = document.querySelector('.hero__image-wrap img');
 const contactBackdrop = document.querySelector('.contact__backdrop');
 

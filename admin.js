@@ -68,10 +68,17 @@ const els = {
   drawer: $('[data-gallery-drawer]'),
   drawerBackdrop: $('[data-drawer-backdrop]'),
   restoreDrawer: $('[data-restore-drawer]'),
+  restoreTitle: $('[data-restore-title]'),
+  restoreMeta: $('[data-restore-meta]'),
+  restoreThumb: $('[data-restore-thumb]'),
   drawerForm: $('[data-gallery-form]'),
   drawerTitle: $('[data-drawer-title]'),
-  drawerKicker: $('[data-drawer-kicker]'),
   drawerMeta: $('[data-drawer-meta]'),
+  finalStepLabel: $('[data-final-step-label]'),
+  finalPanelTitle: $('[data-final-panel-title]'),
+  finalPanelDescription: $('[data-final-panel-description]'),
+  publishChoices: $$('[data-publish-choice]'),
+  noExpiration: $('[data-no-expiration]'),
   closeDrawer: $('[data-close-drawer]'),
   discardDrawer: $('[data-discard-drawer]'),
   previewGallery: $('[data-preview-gallery]'),
@@ -90,6 +97,7 @@ const els = {
   saveGallery: $('[data-save-gallery]'),
   albumMessage: $('[data-album-message]'),
   dropzone: $('[data-dropzone]'),
+  selectPhotos: $('[data-select-photos]'),
   uploadInput: $('[data-photo-upload]'),
   uploadProgress: $('[data-upload-progress]'),
   photoList: $('[data-photo-list]'),
@@ -158,7 +166,18 @@ const els = {
   closeAccessModal: $('[data-close-access-modal]'),
   minimizeDrawer: $('[data-minimize-drawer]'),
   quickSaveDrawer: $('[data-quick-save-drawer]'),
-  drawerSaveState: $('[data-drawer-save-state]'),
+  salesSettings: $('[data-sales-settings]'),
+  salesFreeDownload: $('[data-sales-free-download]'),
+  ordersList: $('[data-orders-list]'),
+  ordersRefresh: $('[data-orders-refresh]'),
+  orderGalleryFilter: $('[data-order-gallery-filter]'),
+  orderStatusFilter: $('[data-order-status-filter]'),
+  orderEmailFilter: $('[data-order-email-filter]'),
+  orderDateFrom: $('[data-order-date-from]'),
+  orderDateTo: $('[data-order-date-to]'),
+  orderDialog: $('[data-order-dialog]'),
+  orderDetail: $('[data-order-detail]'),
+  closeOrderDialog: $('[data-close-order-dialog]'),
 };
 
 const fields = {
@@ -172,10 +191,15 @@ const fields = {
   expiresAt: els.drawerForm.elements.expiresAt,
   slug: els.drawerForm.elements.slug,
   isActive: els.drawerForm.elements.isActive,
-  isArchived: els.drawerForm.elements.isArchived,
   downloadsEnabled: els.drawerForm.elements.downloadsEnabled,
   watermarkEnabled: els.drawerForm.elements.watermarkEnabled,
   watermarkOriginalDownloads: els.drawerForm.elements.watermarkOriginalDownloads,
+  salesEnabled: els.drawerForm.elements.salesEnabled,
+  photoPrice: els.drawerForm.elements.photoPrice,
+  currency: els.drawerForm.elements.currency,
+  downloadExpiryDays: els.drawerForm.elements.downloadExpiryDays,
+  salesSupportEmail: els.drawerForm.elements.salesSupportEmail,
+  refundPolicyText: els.drawerForm.elements.refundPolicyText,
 };
 
 let session = null;
@@ -204,6 +228,9 @@ let pendingLoginNotice = '';
 let profileAvatarPath = '';
 let profileAvatarUrl = '';
 let saveAsDraftRequested = false;
+let detailsValidationAttempted = false;
+let orders = [];
+let ordersLoaded = false;
 const accessCodeCache = new Map();
 
 function clearElement(element) {
@@ -305,6 +332,25 @@ async function callAdmin(action, payload = {}) {
     error.code = body.code || '';
     throw error;
   }
+  return body;
+}
+
+async function callAdminOrders(action, payload = {}) {
+  if (!supabase || !functionsBase) throw new Error('Supabase não está configurado.');
+  const { data } = await supabase.auth.getSession();
+  session = data.session || session;
+  if (!session?.access_token) throw new Error('Sessão de administração inválida.');
+  const response = await fetch(`${functionsBase}/admin-orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: config.SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'Operação falhou.');
   return body;
 }
 
@@ -605,11 +651,12 @@ function estimateStorage() {
 function setView(view) {
   activeView = view;
   els.content.classList.toggle('is-overview-active', view === 'overview');
-  els.pageTitle.textContent = view === 'overview' ? 'Visão geral' : view === 'galleries' ? 'Galerias' : 'Definições';
+  els.pageTitle.textContent = view === 'overview' ? 'Visão geral' : view === 'galleries' ? 'Galerias' : view === 'orders' ? 'Encomendas' : 'Definições';
   els.viewPanels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.viewPanel === view));
   els.nav.forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
   if (view === 'overview') renderDashboard();
   if (view === 'galleries') renderGalleries();
+  if (view === 'orders') loadOrders();
   if (view === 'settings') refreshProfileUI();
   closeMobileSidebar();
 }
@@ -1124,14 +1171,112 @@ function renderAll() {
   if (activeView === 'galleries') renderGalleries();
 }
 
+function updateRestoreCard() {
+  if (els.restoreTitle) els.restoreTitle.textContent = currentAlbum
+    ? currentAlbum.title || 'Editar galeria'
+    : fields.title.value.trim() || 'Nova galeria';
+  if (els.restoreMeta) els.restoreMeta.textContent = currentAlbum
+    ? `Secção ${currentStep} de 3`
+    : `Passo ${currentStep} de 3`;
+  if (!els.restoreThumb) return;
+  els.restoreThumb.replaceChildren();
+  const pendingCover = pendingFiles.find((item) => item.id === selectedPendingCoverId);
+  const src = pendingCover?.previewUrl || currentAlbum?.cover_url;
+  if (src) {
+    const image = document.createElement('img');
+    image.src = src;
+    image.alt = '';
+    els.restoreThumb.appendChild(image);
+  } else {
+    els.restoreThumb.textContent = currentAlbum ? '▧' : '+';
+  }
+}
+
+function updatePublishChoice() {
+  els.publishChoices.forEach((button) => {
+    const isSelected = button.dataset.publishChoice === (fields.isActive.checked ? 'active' : 'draft');
+    button.classList.toggle('is-selected', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
+}
+
+function noExpirationSelected() {
+  return els.noExpiration?.getAttribute('aria-pressed') === 'true';
+}
+
+function setNoExpiration(selected) {
+  if (!els.noExpiration) return;
+  els.noExpiration.setAttribute('aria-pressed', String(selected));
+  els.noExpiration.classList.toggle('is-selected', selected);
+  fields.expiresAt.disabled = selected;
+  fields.expiresAt.closest('label')?.classList.toggle('is-disabled', selected);
+}
+
+function requiredDetailFields() {
+  return $$('[data-step="1"] [required]', els.drawerForm);
+}
+
+function detailFieldIsValid(field) {
+  return String(field.value || '').trim().length > 0 && field.checkValidity();
+}
+
+function updateStepAvailability() {
+  const detailsComplete = currentAlbum || requiredDetailFields().every(detailFieldIsValid);
+  els.stepButtons.forEach((button) => {
+    const locked = Number(button.dataset.stepTarget) > 1 && !detailsComplete;
+    button.disabled = locked;
+    button.classList.toggle('is-locked', locked);
+    button.setAttribute('aria-disabled', String(locked));
+  });
+  requiredDetailFields().forEach((field) => {
+    const invalid = detailsValidationAttempted && !detailFieldIsValid(field);
+    field.setAttribute('aria-invalid', String(invalid));
+    field.closest('label')?.classList.toggle('is-invalid', invalid);
+  });
+  if (detailsComplete && detailsValidationAttempted) {
+    detailsValidationAttempted = false;
+    setMessage('');
+  }
+  return detailsComplete;
+}
+
+function validateRequiredDetails() {
+  if (currentAlbum || updateStepAvailability()) return true;
+  detailsValidationAttempted = true;
+  updateStepAvailability();
+  setMessage('Preencha o nome do evento, a data e a localização para continuar.', 'error');
+  requiredDetailFields().find((field) => !detailFieldIsValid(field))?.focus();
+  return false;
+}
+
 function setStep(step) {
-  currentStep = Math.max(1, Math.min(3, step));
+  const totalSteps = 3;
+  const targetStep = Math.max(1, Math.min(totalSteps, step));
+  if (targetStep > 1 && !validateRequiredDetails()) return;
+  currentStep = targetStep;
+  updateStepAvailability();
+  if (!currentAlbum && els.drawerMeta) {
+    els.drawerMeta.textContent = {
+      1: 'Adicione os detalhes do evento.',
+      2: 'Adicione as fotografias e escolha a capa.',
+      3: 'Reveja as definições e publique a galeria.',
+    }[currentStep];
+  }
+  els.drawer.dataset.currentStep = String(currentStep);
   els.steps.forEach((panel) => panel.classList.toggle('is-active', Number(panel.dataset.step) === currentStep));
-  els.stepButtons.forEach((button) => button.classList.toggle('is-active', Number(button.dataset.stepTarget) === currentStep));
-  els.prevStep.hidden = currentStep === 1;
-  els.nextStep.hidden = currentStep === 3;
-  els.saveGallery.hidden = currentStep !== 3;
+  els.stepButtons.forEach((button) => {
+    const target = Number(button.dataset.stepTarget);
+    const isCurrent = target === currentStep;
+    button.classList.toggle('is-active', isCurrent);
+    button.classList.toggle('is-complete', target < currentStep);
+    if (isCurrent) button.setAttribute('aria-current', 'step');
+    else button.removeAttribute('aria-current');
+  });
+  els.prevStep.hidden = currentAlbum || currentStep === 1;
+  els.nextStep.hidden = currentAlbum || currentStep === totalSteps;
+  els.saveGallery.hidden = !currentAlbum && currentStep !== totalSteps;
   if (currentStep === 3) renderConfirmSummary();
+  updateRestoreCard();
 }
 
 function closeGalleryActionsMenu() {
@@ -1180,25 +1325,32 @@ function toggleGalleryActionsMenu() {
 }
 
 function updateDrawerSaveState() {
-  if (!els.drawerSaveState) return;
-  els.drawerSaveState.classList.toggle('is-dirty', drawerDirty);
-  els.drawerSaveState.classList.toggle('is-saving', drawerSaving);
-  els.drawerSaveState.textContent = drawerSaving
-    ? 'A guardar…'
-    : drawerDirty
-      ? 'Alterações por guardar'
-      : currentAlbum
-        ? 'Guardada'
-        : 'Nova';
   els.quickSaveDrawer.textContent = currentAlbum ? 'Guardar alterações' : 'Guardar rascunho';
-  els.previewGallery.disabled = !currentAlbum;
+  if (els.previewGallery) {
+    els.previewGallery.disabled = !currentAlbum;
+    els.previewGallery.hidden = !currentAlbum;
+  }
+  if (els.galleryActionsToggle) els.galleryActionsToggle.hidden = !currentAlbum;
 }
 
 function updateDownloadOptions() {
   const downloadsAllowed = fields.downloadsEnabled.checked;
+  if (els.salesFreeDownload) els.salesFreeDownload.checked = downloadsAllowed;
   fields.watermarkOriginalDownloads.disabled = !downloadsAllowed;
   els.originalDownloadsSetting?.classList.toggle('is-disabled', !downloadsAllowed);
   els.originalDownloadsSetting?.setAttribute('aria-disabled', String(!downloadsAllowed));
+}
+
+function updateSalesOptions() {
+  const enabled = fields.salesEnabled.checked;
+  els.salesSettings.hidden = !enabled;
+  fields.watermarkEnabled.disabled = enabled;
+  if (enabled) fields.watermarkEnabled.checked = true;
+  fields.photoPrice.required = enabled;
+  fields.downloadExpiryDays.required = enabled;
+  fields.salesSupportEmail.required = enabled;
+  fields.refundPolicyText.required = enabled;
+  if (currentStep === 3) renderConfirmSummary();
 }
 
 function markDrawerDirty() {
@@ -1215,21 +1367,36 @@ function markDrawerSaved() {
 function resetForm() {
   currentAlbum = null;
   lastShownCode = '';
+  els.drawer.classList.add('is-create-mode');
+  els.drawer.classList.remove('is-edit-mode');
   els.drawerForm.reset();
+  detailsValidationAttempted = false;
   fields.id.value = '';
   fields.isActive.checked = true;
-  fields.isArchived.checked = false;
   fields.downloadsEnabled.checked = true;
   fields.watermarkEnabled.checked = true;
   fields.watermarkOriginalDownloads.checked = false;
+  fields.salesEnabled.checked = false;
+  fields.photoPrice.value = '6.99';
+  fields.currency.value = 'EUR';
+  fields.downloadExpiryDays.value = '7';
+  fields.salesSupportEmail.value = '';
+  fields.refundPolicyText.value = '';
+  setNoExpiration(true);
+  updatePublishChoice();
   updateDownloadOptions();
+  updateSalesOptions();
+  els.uploadProgress.hidden = true;
   clearPendingFiles();
   renderPhotos([]);
   setCodeState('empty');
   setMessage('');
-  els.drawerKicker.textContent = 'Nova galeria';
   els.drawerTitle.textContent = 'Criar galeria';
-  els.drawerMeta.textContent = 'Fluxo em três passos com upload antes de concluir.';
+  els.finalStepLabel.textContent = 'Publicar';
+  els.finalPanelTitle.textContent = 'Estado da galeria';
+  els.finalPanelDescription.textContent = 'Escolha como pretende guardar a galeria.';
+  els.saveGallery.textContent = 'Criar galeria';
+  els.discardDrawer.textContent = 'Cancelar';
   updateGalleryActionsState();
   setStep(1);
   markDrawerSaved();
@@ -1239,6 +1406,8 @@ function openDrawer(album = null, step = 1) {
   resetForm();
   if (album) {
     currentAlbum = album;
+    els.drawer.classList.remove('is-create-mode');
+    els.drawer.classList.add('is-edit-mode');
     fields.id.value = album.id || '';
     fields.title.value = album.title || '';
     fields.eventType.value = album.event_type || 'Outro';
@@ -1249,14 +1418,26 @@ function openDrawer(album = null, step = 1) {
     fields.expiresAt.value = toDateTimeLocal(album.expires_at);
     fields.slug.value = album.slug || '';
     fields.isActive.checked = Boolean(album.is_active);
-    fields.isArchived.checked = Boolean(album.is_archived);
     fields.downloadsEnabled.checked = album.downloads_enabled !== false;
     fields.watermarkEnabled.checked = album.watermark_enabled !== false;
     fields.watermarkOriginalDownloads.checked = Boolean(album.watermark_original_downloads);
+    fields.salesEnabled.checked = Boolean(album.sales_enabled);
+    fields.photoPrice.value = Number(album.photo_price_cents || 699) / 100;
+    fields.currency.value = album.currency || 'EUR';
+    fields.downloadExpiryDays.value = album.download_expiry_days || 7;
+    fields.salesSupportEmail.value = album.sales_support_email || '';
+    fields.refundPolicyText.value = album.refund_policy_text || '';
+    setNoExpiration(!fields.expiresAt.value);
+    updatePublishChoice();
     updateDownloadOptions();
-    els.drawerKicker.textContent = 'Editar galeria';
-    els.drawerTitle.textContent = album.title || 'Galeria';
-    els.drawerMeta.textContent = `${album.event_type || 'Evento'} · ${album.location || 'Sem local'} · ${album.access_code_masked || 'sem código'}`;
+    updateSalesOptions();
+    els.drawerTitle.textContent = 'Editar galeria';
+    els.drawerMeta.textContent = `${album.title || 'Galeria'} · ${album.event_type || 'Evento'}`;
+    els.finalStepLabel.textContent = 'Acesso';
+    els.finalPanelTitle.textContent = 'Acesso';
+    els.finalPanelDescription.textContent = 'Publicação, permissões e código.';
+    els.saveGallery.textContent = 'Guardar alterações';
+    els.discardDrawer.textContent = 'Fechar';
     renderPhotos(album.album_photos || []);
     setCodeState('hidden');
   }
@@ -1319,14 +1500,13 @@ async function requestCloseDrawer() {
 }
 
 function quickSaveDrawer() {
-  if (!fields.title.value.trim()) {
+  if (!validateRequiredDetails()) {
     setStep(1);
-    fields.title.focus();
-    setMessage('Indique o nome do evento antes de guardar.', 'error');
     return;
   }
   if (!currentAlbum) {
     fields.isActive.checked = false;
+    updatePublishChoice();
     saveAsDraftRequested = true;
   }
   els.drawerForm.requestSubmit(els.saveGallery);
@@ -1342,6 +1522,7 @@ async function discardDrawer() {
 }
 
 function buildPayload(overrides = {}) {
+  const isArchived = Boolean(currentAlbum?.is_archived);
   return {
     id: fields.id.value || null,
     title: fields.title.value,
@@ -1356,9 +1537,15 @@ function buildPayload(overrides = {}) {
     downloadAllEnabled: false,
     watermarkEnabled: fields.watermarkEnabled.checked,
     watermarkOriginalDownloads: fields.watermarkOriginalDownloads.checked,
+    salesEnabled: fields.salesEnabled.checked,
+    photoPriceCents: Math.round(Number(fields.photoPrice.value || 0) * 100),
+    currency: fields.currency.value || 'EUR',
+    downloadExpiryDays: Number(fields.downloadExpiryDays.value || 7),
+    salesSupportEmail: fields.salesSupportEmail.value,
+    refundPolicyText: fields.refundPolicyText.value,
     isActive: fields.isActive.checked,
-    isArchived: fields.isArchived.checked,
-    status: fields.isArchived.checked ? 'archived' : (fields.isActive.checked ? 'active' : 'draft'),
+    isArchived,
+    status: isArchived ? 'archived' : (fields.isActive.checked ? 'active' : 'draft'),
     expiresAt: fields.expiresAt.value ? new Date(fields.expiresAt.value).toISOString() : null,
     ...overrides,
   };
@@ -1366,6 +1553,19 @@ function buildPayload(overrides = {}) {
 
 async function saveGallery(event) {
   event.preventDefault();
+  if (!validateRequiredDetails()) {
+    setStep(1);
+    return;
+  }
+  if (fields.salesEnabled.checked) {
+    const price = Number(fields.photoPrice.value);
+    const days = Number(fields.downloadExpiryDays.value);
+    if (price < 0.5 || days < 1 || days > 90 || !fields.salesSupportEmail.validity.valid || !fields.salesSupportEmail.value || !fields.refundPolicyText.value.trim()) {
+      setStep(3);
+      setMessage('Complete o preço, validade, email de apoio e política de reembolso antes de ativar as vendas.', 'error');
+      return;
+    }
+  }
   if (drawerSaving) return;
   drawerSaving = true;
   updateDrawerSaveState();
@@ -1456,14 +1656,57 @@ function clearPendingFiles() {
   selectedPendingCoverId = null;
 }
 
+function photoActionsMenu(actions) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'create-gallery-photo-menu';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'create-gallery-photo-menu__toggle';
+  toggle.textContent = '•••';
+  toggle.setAttribute('aria-label', 'Ações da fotografia');
+  toggle.setAttribute('aria-expanded', 'false');
+  const panel = document.createElement('div');
+  panel.className = 'create-gallery-photo-menu__panel';
+  panel.append(...actions);
+  toggle.addEventListener('click', () => {
+    const isOpen = wrapper.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', String(isOpen));
+  });
+  wrapper.append(toggle, panel);
+  return wrapper;
+}
+
 function renderPhotos(existing = []) {
   clearElement(els.photoList);
+  updateRestoreCard();
   const hasItems = existing.length || pendingFiles.length;
-  if (!hasItems) return renderEmpty(els.photoList, 'Ainda não existem fotografias nesta galeria.');
+  if (!hasItems) {
+    const empty = document.createElement('p');
+    empty.className = 'create-gallery-photo-empty';
+    empty.textContent = 'As fotografias adicionadas aparecerão aqui.';
+    els.photoList.appendChild(empty);
+    return;
+  }
+
+  const listHeader = document.createElement('div');
+  listHeader.className = 'create-gallery-photo-head';
+  const listTitle = document.createElement('h4');
+  listTitle.textContent = `Fotografias adicionadas (${existing.length + pendingFiles.length})`;
+  const orderToggle = document.createElement('button');
+  orderToggle.type = 'button';
+  orderToggle.textContent = 'Ordenar';
+  orderToggle.disabled = existing.length < 2;
+  orderToggle.title = existing.length < 2 ? 'Adicione ou guarde mais fotografias para ordenar' : 'Alterar a ordem das fotografias';
+  orderToggle.addEventListener('click', () => {
+    const isOrdering = els.photoList.classList.toggle('is-ordering');
+    orderToggle.textContent = isOrdering ? 'Concluir' : 'Ordenar';
+  });
+  listHeader.append(listTitle, orderToggle);
+  els.photoList.appendChild(listHeader);
 
   pendingFiles.forEach((item) => {
     const card = document.createElement('article');
-    card.className = `admin-photo-card${selectedPendingCoverId === item.id ? ' is-cover' : ''}`;
+    card.className = `create-gallery-photo${selectedPendingCoverId === item.id ? ' is-cover' : ''}`;
     card.innerHTML = `<img src="${item.previewUrl}" alt="${escapeText(item.file.name)}"><strong>${escapeText(item.file.name)}</strong>`;
     const caption = document.createElement('input');
     caption.placeholder = 'Legenda';
@@ -1483,24 +1726,26 @@ function renderPhotos(existing = []) {
       renderPhotos(existing);
       markDrawerDirty();
     });
-    card.append(caption, cover, remove);
+    cover.classList.add('create-gallery-photo-cover-action');
+    remove.classList.add('create-gallery-photo-delete-action');
+    card.append(caption, photoActionsMenu([cover, remove]));
     els.photoList.appendChild(card);
   });
 
   existing.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).forEach((photo, index, ordered) => {
     const card = document.createElement('article');
-    card.className = `admin-photo-card${[photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(currentAlbum?.cover_path) ? ' is-cover' : ''}`;
+    card.className = `create-gallery-photo${[photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(currentAlbum?.cover_path) ? ' is-cover' : ''}`;
     const status = watermarkStatus(photo);
     const mode = photo.watermark_mode || 'inherit';
     const watermarkControl = document.createElement('label');
-    watermarkControl.className = 'admin-photo-watermark-toggle';
+    watermarkControl.className = 'create-gallery-photo-watermark';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = photoUsesWatermark(photo);
     checkbox.addEventListener('change', () => setPhotoWatermarkMode(photo, checkbox.checked ? 'enabled' : 'disabled'));
     watermarkControl.append(checkbox, document.createTextNode(' Usar marca de água'));
     card.innerHTML = `
-      <div class="admin-photo-placeholder">Foto</div>
+      <div class="create-gallery-photo-placeholder">Foto</div>
       <strong>${escapeText(photo.filename)}</strong>
       <span>${escapeText(photo.caption || 'Sem legenda')}</span>
       <small class="admin-processing-status admin-processing-status--${escapeText(status.key)}">${escapeText(status.label)}</small>
@@ -1513,18 +1758,22 @@ function renderPhotos(existing = []) {
     if (status.key === 'failed') {
       card.append(actionButton('Tentar novamente', () => retryPhotoProcessing(photo)));
     }
-    card.append(
-      actionButton('Capa', () => setCover(photo)),
-      actionButton('↑', () => reorderPhoto(ordered, index, index - 1)),
-      actionButton('↓', () => reorderPhoto(ordered, index, index + 1)),
-      actionButton('Eliminar', () => deletePhoto(photo)),
-    );
+    const setCoverButton = actionButton('Capa', () => setCover(photo));
+    const moveUpButton = actionButton('↑', () => reorderPhoto(ordered, index, index - 1));
+    const moveDownButton = actionButton('↓', () => reorderPhoto(ordered, index, index + 1));
+    const deleteButton = actionButton('Eliminar', () => deletePhoto(photo));
+    setCoverButton.classList.add('create-gallery-photo-cover-action');
+    moveUpButton.classList.add('create-gallery-photo-order-action');
+    moveDownButton.classList.add('create-gallery-photo-order-action');
+    deleteButton.classList.add('create-gallery-photo-delete-action');
+    card.append(photoActionsMenu([setCoverButton, moveUpButton, moveDownButton, deleteButton]));
     els.photoList.appendChild(card);
   });
 }
 
 async function uploadPendingFiles(album) {
   if (!pendingFiles.length) return { coverPath: currentAlbum?.cover_path || null, uploadedCount: 0 };
+  els.uploadProgress.hidden = false;
   els.uploadProgress.value = 0;
   els.uploadProgress.max = pendingFiles.length;
   const uploadedCount = pendingFiles.length;
@@ -1557,6 +1806,7 @@ async function uploadPendingFiles(album) {
     els.uploadProgress.value = index + 1;
   }
   clearPendingFiles();
+  els.uploadProgress.hidden = true;
   return { coverPath, uploadedCount };
 }
 
@@ -1674,26 +1924,46 @@ async function deletePhoto(photo) {
 
 function renderConfirmSummary() {
   clearElement(els.confirmSummary);
+  const title = document.createElement('h4');
+  title.textContent = 'Resumo da galeria';
+  const content = document.createElement('div');
+  content.className = 'create-gallery-summary__content';
+  const cover = document.createElement('span');
+  cover.className = 'create-gallery-summary__cover';
+  const pendingCover = pendingFiles.find((item) => item.id === selectedPendingCoverId);
+  const coverUrl = pendingCover?.previewUrl || currentAlbum?.cover_url;
+  if (coverUrl) {
+    const image = document.createElement('img');
+    image.src = coverUrl;
+    image.alt = 'Capa da galeria';
+    cover.appendChild(image);
+  } else {
+    cover.innerHTML = '<b aria-hidden="true">▧</b><small>Sem capa</small>';
+  }
+  const details = document.createElement('div');
+  details.className = 'create-gallery-summary__details';
+  const name = document.createElement('strong');
+  name.textContent = fields.title.value || 'Galeria sem nome';
+  const meta = document.createElement('p');
+  meta.textContent = [fields.eventType.value, fields.location.value, formatDate(fields.eventDate.value, '')].filter(Boolean).join(' · ');
+  const facts = document.createElement('div');
+  facts.className = 'create-gallery-summary__facts';
   const items = [
-    ['Nome', fields.title.value || '—'],
-    ['Tipo', fields.eventType.value || '—'],
-    ['Data', formatDate(fields.eventDate.value, '—')],
-    ['Local', fields.location.value || '—'],
     ['Fotografias', `${pendingFiles.length + photoCount(currentAlbum || {})}`],
     ['Estado', fields.isActive.checked ? 'Ativa' : 'Rascunho'],
-    ['Marca de água', fields.watermarkEnabled.checked ? 'Ativa' : 'Desativada'],
-    ['Downloads', !fields.downloadsEnabled.checked
-      ? 'Desativados'
-      : fields.watermarkOriginalDownloads.checked
-        ? 'Originais autorizados'
-        : 'Versão visível'],
+    ['Downloads', fields.downloadsEnabled.checked ? 'Sim' : 'Não'],
+    ['Marca de água', fields.watermarkEnabled.checked ? 'Sim' : 'Não'],
+    ['Venda de fotos', fields.salesEnabled.checked ? `${Number(fields.photoPrice.value || 0).toLocaleString('pt-PT', { style: 'currency', currency: fields.currency.value || 'EUR' })} / foto` : 'Não'],
     ['Expiração', fields.expiresAt.value ? formatDate(fields.expiresAt.value) : 'Sem expiração'],
   ];
   items.forEach(([label, value]) => {
     const row = document.createElement('div');
     row.innerHTML = `<span>${label}</span><strong>${escapeText(value)}</strong>`;
-    els.confirmSummary.appendChild(row);
+    facts.appendChild(row);
   });
+  details.append(name, meta, facts);
+  content.append(cover, details);
+  els.confirmSummary.append(title, content);
 }
 
 function setCodeState(state, code = '') {
@@ -1821,6 +2091,97 @@ async function loadAlbums() {
   } catch (error) {
     if (requestVersion !== albumLoadVersion) return;
     toast(friendlyError(error, 'Não foi possível carregar as galerias.'), 'error');
+  }
+}
+
+function orderMoney(cents, currency = 'EUR') {
+  return new Intl.NumberFormat('pt-PT', { style: 'currency', currency }).format(Number(cents || 0) / 100);
+}
+
+const orderStatusLabels = {
+  pending: 'Pendente', paid: 'Paga', partially_refunded: 'Reembolso parcial',
+  refunded: 'Reembolsada', failed: 'Falhou', expired: 'Expirada',
+};
+
+function populateOrderGalleryFilter() {
+  if (!els.orderGalleryFilter) return;
+  const selected = els.orderGalleryFilter.value;
+  els.orderGalleryFilter.replaceChildren(new Option('Todas as galerias', ''));
+  albums.forEach((album) => els.orderGalleryFilter.append(new Option(album.title, album.id)));
+  els.orderGalleryFilter.value = selected;
+}
+
+async function loadOrders() {
+  if (!els.ordersList) return;
+  populateOrderGalleryFilter();
+  els.ordersList.innerHTML = '<p class="admin-orders-empty">A carregar encomendas…</p>';
+  try {
+    const data = await callAdminOrders('list', { filters: {
+      galleryId: els.orderGalleryFilter.value,
+      status: els.orderStatusFilter.value,
+      email: els.orderEmailFilter.value,
+      dateFrom: els.orderDateFrom.value,
+      dateTo: els.orderDateTo.value,
+    } });
+    orders = data.orders || [];
+    ordersLoaded = true;
+    renderOrders();
+  } catch (error) {
+    els.ordersList.innerHTML = `<p class="admin-orders-empty">${escapeText(friendlyError(error, 'Não foi possível carregar as encomendas.'))}</p>`;
+  }
+}
+
+function renderOrders() {
+  clearElement(els.ordersList);
+  if (!orders.length) {
+    els.ordersList.innerHTML = '<p class="admin-orders-empty">Não existem encomendas com estes filtros.</p>';
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'admin-orders-table';
+  table.innerHTML = '<thead><tr><th>Encomenda</th><th>Galeria</th><th>Cliente</th><th>Fotos</th><th>Total</th><th>Estado</th><th>Data</th><th></th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  orders.forEach((order) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td><strong>${escapeText(order.order_number)}</strong></td><td>${escapeText(order.album?.title || '—')}</td><td>${escapeText(order.customer_email || 'A aguardar')}</td><td>${Number(order.itemCount || 0)}</td><td><strong>${escapeText(orderMoney(order.total_cents, order.currency))}</strong></td><td><span class="admin-order-status is-${escapeText(order.status)}">${escapeText(orderStatusLabels[order.status] || order.status)}</span></td><td>${escapeText(formatDateTime(order.paid_at || order.created_at))}</td><td><button type="button" class="admin-order-open">Ver</button></td>`;
+    row.querySelector('.admin-order-open').addEventListener('click', () => openOrderDetail(order.id));
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  els.ordersList.appendChild(table);
+}
+
+async function openOrderDetail(orderId) {
+  els.orderDetail.innerHTML = '<p class="admin-orders-empty">A carregar detalhes…</p>';
+  els.orderDialog.showModal();
+  try {
+    const { order } = await callAdminOrders('detail', { orderId });
+    const itemCards = (order.items || []).map((item) => `<article><img src="${escapeText(item.previewUrl || '')}" alt="" /><div><strong>${escapeText(item.filename)}</strong><small>${escapeText(orderMoney(item.unitPriceCents, order.currency))}</small></div></article>`).join('');
+    els.orderDetail.innerHTML = `
+      <header class="admin-order-detail-head"><span>ENCOMENDA</span><h2>${escapeText(order.order_number)}</h2><p>${escapeText(order.album?.title || '')}</p></header>
+      <div class="admin-order-detail-grid"><dl>
+        <div><dt>Cliente</dt><dd>${escapeText(order.customer_email || 'A aguardar pagamento')}</dd></div>
+        <div><dt>Estado</dt><dd><span class="admin-order-status is-${escapeText(order.status)}">${escapeText(orderStatusLabels[order.status] || order.status)}</span></dd></div>
+        <div><dt>Total</dt><dd>${escapeText(orderMoney(order.total_cents, order.currency))}</dd></div>
+        <div><dt>Pago em</dt><dd>${escapeText(formatDateTime(order.paid_at))}</dd></div>
+        <div><dt>Downloads até</dt><dd>${escapeText(formatDateTime(order.expires_at))}</dd></div>
+        <div><dt>Email enviado</dt><dd>${escapeText(formatDateTime(order.email_sent_at, 'Não'))}</dd></div>
+        <details class="admin-order-stripe"><summary>Referências Stripe</summary><small>Sessão: ${escapeText(order.stripe_checkout_session_id || '—')}<br>Pagamento: ${escapeText(order.stripe_payment_intent_id || '—')}</small></details>
+      </dl><section class="admin-order-items">${itemCards}</section></div>
+      <footer class="admin-order-detail-actions"><button type="button" data-order-resend>Reenviar email</button><button type="button" class="admin-text-danger" data-order-invalidate>Invalidar downloads</button></footer>`;
+    els.orderDetail.querySelector('[data-order-resend]').addEventListener('click', async (event) => {
+      await withBusy(event.currentTarget, 'A enviar…', async () => {
+        try { await callAdminOrders('resend-email', { orderId }); toast('Email reenviado.'); }
+        catch (error) { toast(friendlyError(error, 'Não foi possível enviar o email.'), 'error'); }
+      });
+    });
+    els.orderDetail.querySelector('[data-order-invalidate]').addEventListener('click', async () => {
+      if (!await askConfirm('Invalidar downloads?', 'As ligações desta encomenda deixam de funcionar imediatamente.')) return;
+      try { await callAdminOrders('invalidate-downloads', { orderId }); els.orderDialog.close(); await loadOrders(); toast('Downloads invalidados.'); }
+      catch (error) { toast(friendlyError(error, 'Não foi possível invalidar os downloads.'), 'error'); }
+    });
+  } catch (error) {
+    els.orderDetail.innerHTML = `<p class="admin-orders-empty">${escapeText(friendlyError(error, 'Não foi possível carregar a encomenda.'))}</p>`;
   }
 }
 
@@ -2158,8 +2519,41 @@ els.restoreDrawer.addEventListener('click', restoreDrawer);
 els.discardDrawer.addEventListener('click', discardDrawer);
 els.drawerForm.addEventListener('input', markDrawerDirty);
 els.drawerForm.addEventListener('change', markDrawerDirty);
+els.drawerForm.addEventListener('change', () => {
+  if (currentStep === 3) renderConfirmSummary();
+});
+requiredDetailFields().forEach((field) => {
+  field.addEventListener('input', updateStepAvailability);
+  field.addEventListener('change', updateStepAvailability);
+});
 fields.downloadsEnabled.addEventListener('change', updateDownloadOptions);
-els.previewGallery.addEventListener('click', () => {
+els.salesFreeDownload?.addEventListener('change', () => {
+  fields.downloadsEnabled.checked = els.salesFreeDownload.checked;
+  updateDownloadOptions();
+  markDrawerDirty();
+});
+fields.salesEnabled.addEventListener('change', () => {
+  updateSalesOptions();
+  markDrawerDirty();
+});
+fields.title.addEventListener('input', updateRestoreCard);
+els.publishChoices.forEach((button) => button.addEventListener('click', () => {
+  fields.isActive.checked = button.dataset.publishChoice === 'active';
+  updatePublishChoice();
+  markDrawerDirty();
+  if (currentStep === 3) renderConfirmSummary();
+}));
+els.noExpiration?.addEventListener('click', () => {
+  const selected = !noExpirationSelected();
+  if (selected) fields.expiresAt.value = '';
+  setNoExpiration(selected);
+  markDrawerDirty();
+  if (currentStep === 3) renderConfirmSummary();
+});
+fields.expiresAt.addEventListener('input', () => {
+  if (fields.expiresAt.value && noExpirationSelected()) setNoExpiration(false);
+});
+els.previewGallery?.addEventListener('click', () => {
   if (currentAlbum) window.open(albumUrl(currentAlbum), '_blank', 'noopener,noreferrer');
 });
 els.galleryActionsToggle?.addEventListener('click', (event) => {
@@ -2201,6 +2595,11 @@ els.layoutButtons.forEach((button) => button.addEventListener('click', () => {
   els.layoutButtons.forEach((item) => item.classList.toggle('is-active', item === button));
   renderGalleries();
 }));
+els.ordersRefresh?.addEventListener('click', loadOrders);
+[els.orderGalleryFilter, els.orderStatusFilter, els.orderDateFrom, els.orderDateTo].forEach((element) => element?.addEventListener('change', loadOrders));
+els.orderEmailFilter?.addEventListener('input', debounce(loadOrders));
+els.closeOrderDialog?.addEventListener('click', () => els.orderDialog.close());
+els.orderDialog?.addEventListener('click', (event) => { if (event.target === els.orderDialog) els.orderDialog.close(); });
 els.uploadInput.addEventListener('change', () => {
   addPendingFiles([...els.uploadInput.files]);
   els.uploadInput.value = '';
@@ -2244,6 +2643,7 @@ els.closeCodeModal.addEventListener('click', () => {
   const album = createdAlbumForModal || currentAlbum;
   if (album) openDrawer(album, 1);
 });
+els.selectPhotos?.addEventListener('click', () => els.uploadInput.click());
 els.dismissCodeModal?.addEventListener('click', () => els.codeModal.close());
 els.codeModal.addEventListener('click', (event) => {
   const bounds = els.codeModal.getBoundingClientRect();

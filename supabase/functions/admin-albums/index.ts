@@ -19,7 +19,7 @@ import {
   sanitizeText,
 } from '../_shared/security.js';
 
-const ADMIN_ALBUM_SELECT = 'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
+const ADMIN_ALBUM_SELECT = 'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
 const ADMIN_ALBUM_WITH_PHOTOS_SELECT = `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
 const DEFAULT_GITHUB_REPOSITORY = 'JoaoFACSantos/Arnaut';
 const DEFAULT_GITHUB_WORKFLOW = 'process-watermarks.yml';
@@ -93,8 +93,27 @@ Deno.serve(async (request) => {
       const album = body.album || {};
       const id = album.id || null;
       const slug = normalizeSlug(album.slug || album.title);
+      const salesEnabled = Boolean(album.salesEnabled);
+      const photoPriceCents = Math.round(Number(album.photoPriceCents || 0));
+      const currency = sanitizeText(album.currency, 3).toUpperCase() || 'EUR';
+      const downloadExpiryDays = Math.round(Number(album.downloadExpiryDays || 7));
+      const salesSupportEmail = sanitizeText(album.salesSupportEmail, 180) || null;
+      const refundPolicyText = sanitizeText(album.refundPolicyText, 3000) || null;
 
       if (!isValidSlug(slug)) return json({ error: 'Slug inválido.' }, 400);
+      if (salesEnabled && (!Number.isInteger(photoPriceCents) || photoPriceCents < 50)) {
+        return json({ error: 'Defina um preço válido por fotografia (mínimo 0,50 €).' }, 400);
+      }
+      if (salesEnabled && !/^[A-Z]{3}$/.test(currency)) return json({ error: 'Moeda inválida.' }, 400);
+      if (salesEnabled && (!Number.isInteger(downloadExpiryDays) || downloadExpiryDays < 1 || downloadExpiryDays > 90)) {
+        return json({ error: 'A validade dos downloads deve estar entre 1 e 90 dias.' }, 400);
+      }
+      if (salesEnabled && (!salesSupportEmail || !salesSupportEmail.includes('@'))) {
+        return json({ error: 'Defina um e-mail de apoio para as vendas.' }, 400);
+      }
+      if (salesEnabled && !refundPolicyText) {
+        return json({ error: 'Adicione a política de cancelamento e reembolso.' }, 400);
+      }
 
       const payload: Record<string, unknown> = {
         slug,
@@ -107,11 +126,17 @@ Deno.serve(async (request) => {
         cover_path: album.coverPath || null,
         downloads_enabled: album.downloadsEnabled !== false,
         download_all_enabled: Boolean(album.downloadAllEnabled),
-        watermark_enabled: album.watermarkEnabled !== false,
+        watermark_enabled: salesEnabled ? true : album.watermarkEnabled !== false,
         watermark_position: 'bottom-center',
         watermark_opacity: 0.68,
         watermark_scale: 0.22,
         watermark_original_downloads: Boolean(album.watermarkOriginalDownloads),
+        sales_enabled: salesEnabled,
+        photo_price_cents: salesEnabled ? photoPriceCents : null,
+        currency,
+        download_expiry_days: downloadExpiryDays,
+        sales_support_email: salesSupportEmail,
+        refund_policy_text: refundPolicyText,
         is_active: album.isActive !== false,
         is_archived: Boolean(album.isArchived),
         status: album.isArchived ? 'archived' : (album.isActive === false ? 'disabled' : sanitizeText(album.status, 20) || 'active'),
@@ -363,6 +388,14 @@ Deno.serve(async (request) => {
 
     if (action === 'delete-album') {
       const albumId = String(body.albumId || '');
+      const { count: orderCount, error: orderCountError } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('gallery_id', albumId);
+      if (orderCountError) throw orderCountError;
+      if ((orderCount || 0) > 0) {
+        return json({ error: 'Esta galeria tem encomendas associadas e deve ser arquivada em vez de eliminada.' }, 409);
+      }
       const { data: photos } = await supabase.from('album_photos').select('storage_path, original_path, web_path, watermarked_path, thumbnail_path').eq('album_id', albumId);
       const paths = (photos || []).flatMap((photo) => [photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path]).filter(Boolean);
       if (paths.length) await supabase.storage.from(BUCKET).remove(paths);

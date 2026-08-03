@@ -9,3 +9,15 @@ verify_jwt = false
 
 [functions.redeem-gallery-code]
 verify_jwt = false
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.order-access]
+verify_jwt = false
+
+[functions.admin-orders]
+verify_jwt = false

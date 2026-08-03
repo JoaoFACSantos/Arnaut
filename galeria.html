@@ -4,20 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Galerias privadas da Fotografia Arnaut." />
-    <meta name="theme-color" content="#f1ede4" />
+    <meta name="theme-color" content="#f5f1eb" />
     <title>Galerias privadas — Fotografia Arnaut</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="config.js" defer></script>
     <script src="gallery.js" defer></script>
   </head>
-  <body class="utility-page">
-    <header class="site-header is-scrolled" data-header>
+  <body class="utility-page gallery-public-page">
+    <header class="site-header is-scrolled" data-site-header>
       <a class="brand" href="index.html" aria-label="Fotografia Arnaut — início">
         <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
       </a>
@@ -29,13 +29,11 @@
       <a class="header-cta" href="index.html#contacto">Contacto <span>↗</span></a>
     </header>
 
-    <main class="private-shell">
+    <main class="private-shell" data-private-shell>
       <section class="private-login" data-gallery-login>
         <p class="section-index">Área de clientes</p>
         <h1>Aceder à galeria</h1>
-        <p>
-          Introduza o código disponibilizado durante o evento para aceder à galeria privada.
-        </p>
+        <p>Introduza o código disponibilizado durante o evento para aceder à galeria privada.</p>
         <form class="private-form" data-gallery-form>
           <label>
             <span>Código da galeria</span>
@@ -45,38 +43,170 @@
           <p class="form-message" data-gallery-message aria-live="polite"></p>
           <p class="form-status" data-gallery-status aria-live="polite"></p>
         </form>
-        <p class="privacy-note">
-          Esta área é privada. Em caso de dificuldade, contacte a Fotografia Arnaut pelo contacto indicado no site.
-        </p>
+        <p class="privacy-note">Esta área é privada. Em caso de dificuldade, contacte a Fotografia Arnaut pelo contacto indicado no site.</p>
       </section>
 
-      <section class="gallery-view" data-gallery-view hidden>
-        <div class="gallery-hero">
-          <div>
-            <p class="section-index">Galeria privada</p>
-            <h1 data-gallery-title></h1>
-            <p class="gallery-meta" data-gallery-meta></p>
-            <p data-gallery-description></p>
+      <section class="client-gallery" data-gallery-view hidden>
+        <header class="client-gallery__header">
+          <a class="client-gallery__brand" href="index.html" aria-label="Fotografia Arnaut — início">
+            <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+          </a>
+          <div class="client-gallery__identity">
+            <div class="client-gallery__title-row">
+              <h1 data-gallery-title></h1>
+              <span class="client-gallery__event-badge" data-gallery-event-type hidden></span>
+            </div>
+            <p data-gallery-meta></p>
           </div>
-          <img data-gallery-cover hidden alt="" />
+          <nav class="client-gallery__actions" aria-label="Ações da galeria">
+            <button type="button" data-favorites-action aria-label="Ver favoritas">
+              <span class="client-gallery__action-icon" aria-hidden="true">♡</span>
+              <span>Favoritas</span>
+              <b data-header-favorites-count hidden>0</b>
+            </button>
+            <button type="button" data-share-gallery aria-label="Partilhar galeria">
+              <span class="client-gallery__action-icon" aria-hidden="true">⌯</span>
+              <span>Partilhar</span>
+            </button>
+            <button type="button" data-gallery-help aria-label="Ajuda">
+              <span class="client-gallery__action-icon" aria-hidden="true">?</span>
+              <span>Ajuda</span>
+            </button>
+            <button type="button" data-open-cart-top class="client-gallery__cart-action" aria-label="Abrir carrinho" hidden>
+              <span class="client-gallery__action-icon" aria-hidden="true">▱</span>
+              <span>Carrinho</span>
+              <b data-header-cart-count>0</b>
+            </button>
+          </nav>
+        </header>
+
+        <aside class="client-gallery__notice" data-gallery-notice>
+          <span class="client-gallery__notice-icon" aria-hidden="true">i</span>
+          <p data-gallery-notice-text></p>
+          <button type="button" data-dismiss-notice aria-label="Fechar informação">×</button>
+        </aside>
+
+        <div class="client-gallery__body" data-gallery-body>
+          <section class="client-gallery__main" aria-label="Fotografias da galeria">
+            <div class="client-gallery__toolbar">
+              <div class="client-gallery__filters" role="group" aria-label="Filtrar fotografias">
+                <button type="button" class="is-active" data-gallery-filter="all" aria-pressed="true">
+                  <span aria-hidden="true">▦</span> Todas <b data-all-count>0</b>
+                </button>
+                <button type="button" data-gallery-filter="favorites" aria-pressed="false">
+                  <span aria-hidden="true">♡</span> Favoritas <b data-favorites-count>0</b>
+                </button>
+              </div>
+              <label class="client-gallery__sort">
+                <span>Ordenar por:</span>
+                <select data-gallery-sort aria-label="Ordenar fotografias">
+                  <option value="original">Ordem da galeria</option>
+                  <option value="recent">Mais recentes</option>
+                  <option value="name">Nome do ficheiro</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="client-gallery__grid" data-gallery-grid></div>
+
+            <section class="client-gallery__flow" data-gallery-flow>
+              <h2>Como funciona</h2>
+              <div class="client-gallery__flow-steps" data-flow-steps></div>
+              <div class="client-gallery__flow-benefits" data-flow-benefits></div>
+            </section>
+          </section>
+
+          <aside class="client-gallery__sidebar" data-gallery-sidebar>
+            <h2>Sobre esta galeria</h2>
+            <dl class="client-gallery__facts">
+              <div><dt><span aria-hidden="true">◫</span> Evento</dt><dd data-sidebar-event>—</dd></div>
+              <div><dt><span aria-hidden="true">⌖</span> Local</dt><dd data-sidebar-location>—</dd></div>
+              <div><dt><span aria-hidden="true">□</span> Data</dt><dd data-sidebar-date>—</dd></div>
+              <div><dt><span aria-hidden="true">▧</span> Fotografias</dt><dd data-sidebar-count>0 fotografias</dd></div>
+              <div><dt><span aria-hidden="true">▣</span> Código de acesso</dt><dd>••••••••</dd></div>
+            </dl>
+            <div class="client-gallery__download-info">
+              <span aria-hidden="true">⇩</span>
+              <div><strong data-download-title>Downloads</strong><p data-download-copy></p></div>
+            </div>
+            <div class="client-gallery__availability" data-sales-availability>
+              <span aria-hidden="true">⊘</span>
+              <div><strong>Venda indisponível</strong><p>Esta galeria não tem venda de fotografias disponível.</p></div>
+            </div>
+            <a class="client-gallery__support" data-gallery-support hidden><span aria-hidden="true">✉</span> Pedir ajuda</a>
+            <p class="client-gallery__privacy"><span aria-hidden="true">◇</span> Galeria privada para convidados autorizados.</p>
+          </aside>
+
+          <aside class="client-cart" data-cart-dialog hidden aria-label="O seu carrinho">
+            <header>
+              <h2>O seu carrinho</h2>
+              <button type="button" data-close-cart aria-label="Fechar carrinho">×</button>
+            </header>
+            <div class="client-cart__items" data-cart-items></div>
+            <button type="button" class="client-cart__clear" data-clear-cart><span aria-hidden="true">⌫</span> Limpar carrinho</button>
+            <div class="client-cart__summary">
+              <p><span data-cart-subtotal-label>Subtotal</span><strong data-cart-subtotal></strong></p>
+              <p><span>Desconto</span><strong>0,00 €</strong></p>
+              <p class="client-cart__total"><span>Total</span><strong data-cart-dialog-total></strong></p>
+              <small>IVA incluído à taxa legal em vigor</small>
+            </div>
+            <label class="client-cart__terms">
+              <input type="checkbox" data-cart-terms />
+              <span>Li e aceito as condições de compra e disponibilização digital.</span>
+            </label>
+            <details class="client-cart__policy"><summary>Consultar condições</summary><p data-cart-policy></p></details>
+            <button type="button" class="client-cart__checkout" data-checkout><span aria-hidden="true">▣</span> Finalizar compra</button>
+            <button type="button" class="client-cart__continue" data-cart-continue>Continuar a escolher</button>
+            <p class="client-cart__message" data-cart-message aria-live="polite"></p>
+            <small class="client-cart__secure">◇ Pagamento seguro com Stripe</small>
+          </aside>
         </div>
-        <p class="privacy-note" data-gallery-privacy hidden>
-          Esta galeria é privada e destina-se exclusivamente aos convidados autorizados.
-          Não partilhe o código ou o endereço sem autorização.
-        </p>
-        <div class="gallery-grid" data-gallery-grid></div>
+
+        <div class="client-gallery__mobile-backdrop" data-cart-backdrop hidden></div>
+      </section>
+
+      <section class="order-receipt" data-order-receipt hidden aria-live="polite">
+        <div class="order-receipt__status" data-order-status-icon>✓</div>
+        <p class="section-index">Encomenda de fotografias</p>
+        <h1 data-order-title>A confirmar pagamento…</h1>
+        <p data-order-message>Estamos a confirmar o pagamento de forma segura.</p>
+        <div data-order-summary></div>
+        <div class="order-download-list" data-order-downloads></div>
+        <button type="button" class="order-back" data-order-back>Voltar à galeria</button>
       </section>
     </main>
 
-    <div class="lightbox" data-lightbox hidden aria-modal="true" role="dialog" aria-label="Fotografia em destaque">
+    <div class="client-cart-bar" data-cart-bar hidden>
+      <div class="client-cart-bar__intro"><span aria-hidden="true">▱</span><p>Clique nas fotografias<br />para adicionar ao carrinho.</p></div>
+      <strong data-cart-count>0 selecionadas</strong>
+      <div class="client-cart-bar__thumbs" data-cart-thumbs></div>
+      <div class="client-cart-bar__total"><span>Subtotal</span><strong data-cart-total>0,00 €</strong></div>
+      <button type="button" data-open-cart><span aria-hidden="true">▱</span> Ver carrinho</button>
+    </div>
+
+    <div class="lightbox client-lightbox" data-lightbox hidden aria-modal="true" role="dialog" aria-label="Fotografia em destaque">
       <button type="button" data-lightbox-close aria-label="Fechar">×</button>
       <button type="button" data-lightbox-prev aria-label="Fotografia anterior">←</button>
       <img data-lightbox-image alt="" />
       <button type="button" data-lightbox-next aria-label="Fotografia seguinte">→</button>
       <div class="lightbox__footer">
         <p data-lightbox-caption></p>
-        <a data-lightbox-download download hidden>Descarregar ↗</a>
+        <div>
+          <button type="button" data-lightbox-favorite>♡ Favorita</button>
+          <button type="button" data-lightbox-select hidden>Adicionar</button>
+          <a data-lightbox-download download hidden>Descarregar ↗</a>
+        </div>
       </div>
     </div>
+
+    <dialog class="client-help" data-help-dialog>
+      <button type="button" data-close-help aria-label="Fechar ajuda">×</button>
+      <p class="section-index">Ajuda</p>
+      <h2>Como podemos ajudar?</h2>
+      <p data-help-copy>Explore a galeria, marque as suas favoritas e abra qualquer fotografia para a ver em detalhe.</p>
+      <a data-help-contact hidden>Contactar a Fotografia Arnaut</a>
+    </dialog>
+
+    <div class="gallery-toast" data-gallery-toast hidden role="status" aria-live="polite"></div>
   </body>
 </html>

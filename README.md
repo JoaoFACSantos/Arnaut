@@ -103,6 +103,58 @@ npx supabase functions deploy get-gallery
 npx supabase functions deploy admin-albums
 ```
 
+## Venda opcional de fotografias
+
+As galerias continuam privadas e sem comércio por defeito. Ao ativar **Venda de fotografias** numa galeria, o visitante vê apenas as versões processadas com marca de água, pode selecionar fotografias e é encaminhado para o Checkout alojado da Stripe. O preço e os ficheiros selecionados são sempre recalculados e validados no servidor.
+
+Fluxo de confiança:
+
+1. `create-checkout-session` valida a sessão temporária da galeria, os UUIDs, a pertença das fotografias e o preço guardado na base de dados.
+2. A função cria a encomenda pendente e uma sessão Stripe Checkout. O frontend recebe apenas o URL do Checkout.
+3. `stripe-webhook` valida a assinatura sobre o corpo bruto e é a única função autorizada a marcar a encomenda como paga.
+4. `order-access` autentica uma ligação opaca de recibo, cujo token só existe em hash na base de dados.
+5. Depois do pagamento, cada clique em download cria uma URL assinada do original com validade de 2 minutos. Uma fotografia fora da encomenda nunca é assinada.
+6. `admin-orders` exige uma sessão Supabase pertencente a `gallery_admins`. Permite consultar, reenviar o email e invalidar downloads; não permite marcar pagamentos manualmente.
+
+O carrinho é temporário e fica em `sessionStorage`; não contém preços de confiança. As tabelas `orders`, `order_items`, `order_access_tokens`, `stripe_webhook_events` e `commerce_attempts` têm RLS ativa. A migration necessária é `supabase/migrations/202608030001_photo_sales.sql`.
+
+Secrets adicionais das Edge Functions:
+
+```env
+ORDER_TOKEN_PEPPER=
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+ORDER_FROM_EMAIL=Fotografia Arnaut <compras@dominio-verificado.pt>
+SALES_SUPPORT_EMAIL=apoio@fotografiaarnaut.pt
+SITE_URL=https://o-seu-dominio.pt
+```
+
+`RESEND_API_KEY` e `ORDER_FROM_EMAIL` são necessários para o email transacional. O pagamento e os downloads continuam seguros se o email estiver temporariamente indisponível; o administrador pode reenviá-lo depois.
+
+Aplicação e deploy:
+
+```powershell
+npx supabase db push
+npx supabase secrets set --env-file .env
+npx supabase functions deploy create-checkout-session
+npx supabase functions deploy stripe-webhook
+npx supabase functions deploy order-access
+npx supabase functions deploy admin-orders
+npx supabase functions deploy get-gallery
+npx supabase functions deploy admin-albums
+```
+
+Na Stripe, crie um webhook para:
+
+```text
+https://PROJECT_REF.supabase.co/functions/v1/stripe-webhook
+```
+
+Eventos usados: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` e `charge.refunded`.
+
+Teste primeiro com chaves Stripe de teste. Crie uma galeria, deixe a marca de água ativa, preencha preço/prazo/email/política, carregue fotografias já processadas e conclua o Checkout com um cartão de teste. Confirme que a encomenda passa de `pending` para `paid`, que o email chega, que apenas as fotografias compradas têm download e que a ação **Invalidar downloads** bloqueia imediatamente as ligações.
+
 ## Criar o primeiro álbum
 
 1. Abra `/admin.html`.
@@ -201,6 +253,13 @@ Supabase Edge Functions:
 - `ACCESS_CODE_PEPPER`
 - `SESSION_TOKEN_PEPPER`
 - `GALLERY_CODE_ENCRYPTION_KEY`
+- `ORDER_TOKEN_PEPPER`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `ORDER_FROM_EMAIL`
+- `SALES_SUPPORT_EMAIL`
+- `SITE_URL`
 - `SUPABASE_URL` automático
 - `SUPABASE_SECRET_KEYS` ou `SUPABASE_SERVICE_ROLE_KEY` automático/secret
 
@@ -232,6 +291,8 @@ Os testes cobrem normalização de slugs, geração/formatação/máscara de có
 - Os uploads mostram progresso por ficheiro concluído, não percentagem de bytes.
 - O worker de marca de água deve estar agendado/ativo num ambiente privado para processar a fila automaticamente após uploads.
 - Não existe botão “descarregar todas” para evitar criar um fluxo inseguro ou pesado; há download individual quando autorizado.
+- A primeira versão de comércio não gera ZIP; cada original comprado é entregue individualmente com URL assinada curta.
+- A política de cancelamento/reembolso é texto definido pela administradora e deve ser revista juridicamente antes de ativar vendas reais.
 
 ## Referências oficiais úteis
 
