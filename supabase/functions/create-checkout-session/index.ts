@@ -1,7 +1,8 @@
-import Stripe from 'npm:stripe@^22';
+import Stripe from 'stripe';
 import { createServiceClient } from '../_shared/supabase.ts';
 import {
   corsHeaders,
+  errorMessage,
   getClientIp,
   getEnv,
   hashSessionToken,
@@ -51,7 +52,9 @@ Deno.serve(async (request) => {
     .eq('action', 'checkout')
     .gte('created_at', since);
   if ((count || 0) >= CHECKOUT_RATE_LIMIT) {
-    return json({ error: 'Foram iniciadas demasiadas tentativas de pagamento. Tente novamente dentro de alguns minutos.' }, 429);
+    return json({
+      error: 'Foram iniciadas demasiadas tentativas de pagamento. Tente novamente dentro de alguns minutos.',
+    }, 429);
   }
 
   const ipHash = await hashSessionToken(getClientIp(request), getEnv('SESSION_TOKEN_PEPPER'));
@@ -97,7 +100,9 @@ Deno.serve(async (request) => {
   const checkoutUnitPriceCents = centsForStripe(Number(order.total_cents) / photoIds.length);
 
   const siteUrl = getSiteUrl();
-  const successUrl = `${siteUrl}/galeria.html?order=${encodeURIComponent(order.order_public_id)}&receipt_token=${encodeURIComponent(receiptToken)}&checkout=success`;
+  const successUrl = `${siteUrl}/galeria.html?order=${encodeURIComponent(order.order_public_id)}&receipt_token=${
+    encodeURIComponent(receiptToken)
+  }&checkout=success`;
   const cancelUrl = `${siteUrl}/galeria.html?id=${encodeURIComponent(publicId)}&checkout=cancelled`;
   const stripe = new Stripe(stripeSecret);
 
@@ -144,7 +149,7 @@ Deno.serve(async (request) => {
     if (attempt?.id) await supabase.from('commerce_attempts').update({ success: true }).eq('id', attempt.id);
     return json({ url: checkout.url });
   } catch (error) {
-    console.error('Stripe Checkout creation error', error?.message || error);
+    console.error('Stripe Checkout creation error', errorMessage(error));
     await supabase.from('orders').update({ status: 'failed' }).eq('id', order.order_id).eq('status', 'pending');
     return json({ error: 'Não foi possível iniciar o pagamento. Tente novamente.' }, 502);
   }

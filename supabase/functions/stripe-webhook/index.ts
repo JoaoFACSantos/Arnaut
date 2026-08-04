@@ -1,6 +1,6 @@
-import Stripe from 'npm:stripe@^22';
+import Stripe from 'stripe';
 import { createServiceClient } from '../_shared/supabase.ts';
-import { getEnv } from '../_shared/security.js';
+import { errorMessage, getEnv } from '../_shared/security.js';
 import { sendOrderConfirmationEmail } from '../_shared/commerce.ts';
 
 const stripeSecret = String(getEnv('STRIPE_SECRET_KEY') || '').trim();
@@ -29,7 +29,7 @@ Deno.serve(async (request) => {
       cryptoProvider,
     );
   } catch (error) {
-    console.error('Stripe webhook signature rejected', error?.message || error);
+    console.error('Stripe webhook signature rejected', errorMessage(error));
     return new Response('Invalid signature', { status: 400 });
   }
 
@@ -65,7 +65,7 @@ Deno.serve(async (request) => {
     }).eq('event_id', event.id);
     return Response.json({ received: true });
   } catch (error) {
-    const message = String(error?.message || error).slice(0, 500);
+    const message = errorMessage(error).slice(0, 500);
     console.error(`Stripe event ${event.id} failed`, message);
     await supabase.from('stripe_webhook_events').update({
       status: 'failed',
@@ -96,7 +96,7 @@ async function markOrderPaid(supabase: ReturnType<typeof createServiceClient>, s
       try {
         await sendOrderConfirmationEmail(supabase, order.id, 'email');
       } catch (emailError) {
-        console.error('Order confirmation email failed', emailError?.message || emailError);
+        console.error('Order confirmation email failed', errorMessage(emailError));
       }
     }
     return;
@@ -116,13 +116,16 @@ async function markOrderPaid(supabase: ReturnType<typeof createServiceClient>, s
     expires_at: expiresAt,
   }).eq('id', order.id).in('status', ['pending', 'paid']);
   if (error) throw error;
-  await supabase.from('order_access_tokens').update({ expires_at: expiresAt }).eq('order_id', order.id).is('revoked_at', null);
+  await supabase.from('order_access_tokens').update({ expires_at: expiresAt }).eq('order_id', order.id).is(
+    'revoked_at',
+    null,
+  );
 
   if (!order.email_sent_at && customerEmail) {
     try {
       await sendOrderConfirmationEmail(supabase, order.id, 'email');
     } catch (emailError) {
-      console.error('Order confirmation email failed', emailError?.message || emailError);
+      console.error('Order confirmation email failed', errorMessage(emailError));
     }
   }
 }
@@ -139,7 +142,10 @@ async function updatePendingOrder(
   const { error } = await supabase.from('orders').update({ status }).eq('id', order.id).eq('status', 'pending');
   if (error) throw error;
   if (revokeTokens) {
-    await supabase.from('order_access_tokens').update({ revoked_at: now }).eq('order_id', order.id).is('revoked_at', null);
+    await supabase.from('order_access_tokens').update({ revoked_at: now }).eq('order_id', order.id).is(
+      'revoked_at',
+      null,
+    );
   }
 }
 
@@ -164,6 +170,9 @@ async function applyRefund(supabase: ReturnType<typeof createServiceClient>, cha
   }).eq('id', order.id);
   if (updateError) throw updateError;
   if (fullyRefunded) {
-    await supabase.from('order_access_tokens').update({ revoked_at: now }).eq('order_id', order.id).is('revoked_at', null);
+    await supabase.from('order_access_tokens').update({ revoked_at: now }).eq('order_id', order.id).is(
+      'revoked_at',
+      null,
+    );
   }
 }

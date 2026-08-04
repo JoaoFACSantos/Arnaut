@@ -1,0 +1,22 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:stripe@22": "22.4.0"
+  },
+  "npm": {
+    "stripe@22.4.0": {
+      "integrity": "sha512-LVJ+tcSYeqOSnXr3i+Kz2tZ7y0crLLdP2uwD/4wccrmEVyn0g/Heo0pF7as7rxS/sOjJzrb1lxgZY0Y0Dx1pSA=="
+    }
+  },
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.112.0"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.112.0": "f420344a1c52d354b8af85dfdcfa10d2178c0840526dbc39768a24de3b956a95"
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:stripe@22"
+    ]
+  }
+}

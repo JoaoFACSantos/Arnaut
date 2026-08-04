@@ -1,0 +1,11 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "stripe": "npm:stripe@^22"
+  },
+  "fmt": {
+    "lineWidth": 120,
+    "singleQuote": true
+  }
+}

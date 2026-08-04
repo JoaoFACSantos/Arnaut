@@ -1,9 +1,5 @@
 import { createServiceClient } from './supabase.ts';
-import {
-  getEnv,
-  hashSessionToken,
-  randomToken,
-} from './security.js';
+import { getEnv, hashSessionToken, randomToken } from './security.js';
 import { canDownloadOrder } from './commerce.js';
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
@@ -28,25 +24,27 @@ export async function validateGallerySession(
 
   const { data: album } = await supabase
     .from('albums')
-    .select('id, public_id, title, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, watermark_enabled, downloads_enabled, is_active, is_archived, status, expires_at, session_version')
+    .select(
+      'id, public_id, title, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, watermark_enabled, downloads_enabled, is_active, is_archived, status, expires_at, session_version',
+    )
     .eq('id', session.album_id)
     .eq('public_id', publicId)
     .maybeSingle();
 
   const albumExpired = album?.expires_at && new Date(album.expires_at).getTime() <= Date.now();
   if (
-    !album
-    || !album.is_active
-    || album.is_archived
-    || album.status !== 'active'
-    || albumExpired
-    || album.session_version !== session.session_version
+    !album ||
+    !album.is_active ||
+    album.is_archived ||
+    album.status !== 'active' ||
+    albumExpired ||
+    album.session_version !== session.session_version
   ) return null;
 
   return { session, album };
 }
 
-export async function hashOrderAccessToken(token: string) {
+export function hashOrderAccessToken(token: string) {
   return hashSessionToken(`order:${String(token || '').trim()}`, getEnv('ORDER_TOKEN_PEPPER'));
 }
 
@@ -86,7 +84,9 @@ export async function authenticateOrderAccess(
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, public_id, order_number, gallery_id, album_session_id, customer_email, currency, subtotal_cents, discount_cents, total_cents, status, created_at, paid_at, expires_at, downloads_invalidated_at, email_sent_at')
+    .select(
+      'id, public_id, order_number, gallery_id, album_session_id, customer_email, currency, subtotal_cents, discount_cents, total_cents, status, created_at, paid_at, expires_at, downloads_invalidated_at, email_sent_at',
+    )
     .eq('id', access.order_id)
     .eq('public_id', orderPublicId)
     .maybeSingle();
@@ -128,7 +128,9 @@ export async function sendOrderConfirmationEmail(
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, public_id, order_number, customer_email, currency, total_cents, status, paid_at, expires_at, downloads_invalidated_at, albums(title, sales_support_email), order_items(id)')
+    .select(
+      'id, public_id, order_number, customer_email, currency, total_cents, status, paid_at, expires_at, downloads_invalidated_at, albums(title, sales_support_email), order_items(id)',
+    )
     .eq('id', orderId)
     .maybeSingle();
   if (orderError) throw orderError;
@@ -140,7 +142,9 @@ export async function sendOrderConfirmationEmail(
   const itemCount = Array.isArray(order.order_items) ? order.order_items.length : 0;
   const supportEmail = String(album?.sales_support_email || getEnv('SALES_SUPPORT_EMAIL') || '').trim();
   const token = await createOrderAccessToken(supabase, order.id, purpose, order.expires_at);
-  const downloadUrl = `${getSiteUrl()}/galeria.html?order=${encodeURIComponent(order.public_id)}&receipt_token=${encodeURIComponent(token)}`;
+  const downloadUrl = `${getSiteUrl()}/galeria.html?order=${encodeURIComponent(order.public_id)}&receipt_token=${
+    encodeURIComponent(token)
+  }`;
   const supportBlock = supportEmail
     ? `<p>Apoio: <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></p>`
     : '';
@@ -149,12 +153,20 @@ export async function sendOrderConfirmationEmail(
       <h1 style="font-family:Georgia,serif;font-weight:400">Pagamento confirmado</h1>
       <p>Recebemos o pagamento da sua encomenda de fotografias digitais.</p>
       <table style="width:100%;border-collapse:collapse;margin:24px 0">
-        <tr><td style="padding:8px 0">Encomenda</td><td style="padding:8px 0;text-align:right"><strong>${escapeHtml(order.order_number)}</strong></td></tr>
-        <tr><td style="padding:8px 0">Galeria</td><td style="padding:8px 0;text-align:right">${escapeHtml(album?.title || '')}</td></tr>
+        <tr><td style="padding:8px 0">Encomenda</td><td style="padding:8px 0;text-align:right"><strong>${
+    escapeHtml(order.order_number)
+  }</strong></td></tr>
+        <tr><td style="padding:8px 0">Galeria</td><td style="padding:8px 0;text-align:right">${
+    escapeHtml(album?.title || '')
+  }</td></tr>
         <tr><td style="padding:8px 0">Fotografias</td><td style="padding:8px 0;text-align:right">${itemCount}</td></tr>
-        <tr><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right"><strong>${escapeHtml(formatMoney(order.total_cents, order.currency))}</strong></td></tr>
+        <tr><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right"><strong>${
+    escapeHtml(formatMoney(order.total_cents, order.currency))
+  }</strong></td></tr>
       </table>
-      <p><a href="${escapeHtml(downloadUrl)}" style="display:inline-block;padding:14px 22px;background:#9b6546;color:#fff;text-decoration:none;border-radius:10px">Aceder às fotografias</a></p>
+      <p><a href="${
+    escapeHtml(downloadUrl)
+  }" style="display:inline-block;padding:14px 22px;background:#9b6546;color:#fff;text-decoration:none;border-radius:10px">Aceder às fotografias</a></p>
       <p>Os downloads ficam disponíveis até ${escapeHtml(new Date(order.expires_at).toLocaleDateString('pt-PT'))}.</p>
       ${supportBlock}
     </div>`;

@@ -26,6 +26,10 @@ export function sanitizeText(value, maxLength = 500) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
+export function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function normalizeGalleryCode(value) {
   return String(value || '')
     .toUpperCase()
@@ -66,11 +70,11 @@ export async function hmacSha256Hex(value, pepper) {
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function hashAccessCode(code, pepper) {
+export function hashAccessCode(code, pepper) {
   return hmacSha256Hex(normalizeGalleryCode(code), pepper);
 }
 
-export async function lookupAccessCode(code, pepper) {
+export function lookupAccessCode(code, pepper) {
   return hmacSha256Hex(`lookup:${normalizeGalleryCode(code)}`, pepper);
 }
 
@@ -122,7 +126,7 @@ export async function decryptGalleryCode(payload, secret) {
   return new TextDecoder().decode(plain);
 }
 
-export async function hashSessionToken(token, pepper) {
+export function hashSessionToken(token, pepper) {
   return hmacSha256Hex(String(token || '').trim(), pepper);
 }
 
@@ -177,10 +181,10 @@ export function assertAllowedImage(fileLike) {
 }
 
 export function getClientIp(request) {
-  const header = request.headers.get('cf-connecting-ip')
-    || request.headers.get('x-forwarded-for')
-    || request.headers.get('x-real-ip')
-    || 'unknown';
+  const header = request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for') ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
   return header.split(',')[0].trim();
 }
 

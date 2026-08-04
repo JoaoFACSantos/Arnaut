@@ -1,8 +1,8 @@
 import { createServiceClient } from '../_shared/supabase.ts';
 import {
-  GALLERY_SESSION_SECONDS,
   constantTimeEqual,
   corsHeaders,
+  GALLERY_SESSION_SECONDS,
   getClientIp,
   getEnv,
   hashAccessCode,
@@ -65,7 +65,7 @@ Deno.serve(async (request) => {
   const expired = album?.expires_at && new Date(album.expires_at).getTime() <= Date.now();
   const available = album && album.is_active && !album.is_archived && album.status === 'active' && !expired;
 
-  if (!validHash || !available) {
+  if (!album || !validHash || !available) {
     await supabase.from('album_access_attempts').insert({
       album_id: album?.id || null,
       slug: 'code-only',

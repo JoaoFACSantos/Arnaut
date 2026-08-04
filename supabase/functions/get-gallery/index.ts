@@ -1,13 +1,30 @@
 import { createServiceClient } from '../_shared/supabase.ts';
 import {
   BUCKET,
-  SIGNED_URL_SECONDS,
   corsHeaders,
   getEnv,
   hashSessionToken,
   json,
   readJson,
+  SIGNED_URL_SECONDS,
 } from '../_shared/security.js';
+
+type GalleryPhotoRow = {
+  id: string;
+  storage_path: string;
+  original_path: string | null;
+  web_path: string | null;
+  watermarked_path: string | null;
+  thumbnail_path: string | null;
+  watermark_mode: 'inherit' | 'enabled' | 'disabled';
+  processing_status: string;
+  filename: string;
+  caption: string | null;
+  sort_order: number;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -36,13 +53,18 @@ Deno.serve(async (request) => {
 
   const { data: album } = await supabase
     .from('albums')
-    .select('id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, downloads_enabled, watermark_enabled, watermark_original_downloads, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, is_active, is_archived, status, expires_at, session_version')
+    .select(
+      'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, downloads_enabled, watermark_enabled, watermark_original_downloads, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, is_active, is_archived, status, expires_at, session_version',
+    )
     .eq('id', session.album_id)
     .eq('public_id', publicId)
     .maybeSingle();
 
   const expired = album?.expires_at && new Date(album.expires_at).getTime() <= Date.now();
-  if (!album || !album.is_active || album.is_archived || album.status !== 'active' || expired || album.session_version !== session.session_version) {
+  if (
+    !album || !album.is_active || album.is_archived || album.status !== 'active' || expired ||
+    album.session_version !== session.session_version
+  ) {
     return json({ error: 'Esta galeria expirou ou foi desativada.' }, 403);
   }
 
@@ -51,17 +73,24 @@ Deno.serve(async (request) => {
     .update({ last_accessed_at: new Date().toISOString() })
     .eq('id', session.id);
 
-  const loadPhotos = async (select: string) => supabase
-    .from('album_photos')
-    .select(select)
-    .eq('album_id', album.id)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
+  const loadPhotos = (select: string) =>
+    supabase
+      .from('album_photos')
+      .select(select)
+      .eq('album_id', album.id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
 
-  let { data: photos, error } = await loadPhotos('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, filename, caption, sort_order, width, height, created_at');
+  const initialPhotos = await loadPhotos(
+    'id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, filename, caption, sort_order, width, height, created_at',
+  );
+  let photos = (initialPhotos.data || []) as unknown as GalleryPhotoRow[];
+  let error = initialPhotos.error;
   if (error) {
-    const fallback = await loadPhotos('id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, filename, caption, sort_order, width, height, created_at');
-    photos = (fallback.data || []).map((photo) => ({
+    const fallback = await loadPhotos(
+      'id, storage_path, original_path, watermarked_path, thumbnail_path, processing_status, filename, caption, sort_order, width, height, created_at',
+    );
+    photos = ((fallback.data || []) as unknown as GalleryPhotoRow[]).map((photo) => ({
       ...photo,
       web_path: null,
       watermark_mode: 'inherit',
@@ -85,15 +114,12 @@ Deno.serve(async (request) => {
   const visiblePhotos = (photos || [])
     .map((photo) => {
       const mode = photo.watermark_mode || 'inherit';
-      const usesWatermark = album.sales_enabled || mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
+      const usesWatermark = album.sales_enabled || mode === 'enabled' ||
+        (mode === 'inherit' && album.watermark_enabled);
       const fallbackOriginal = photo.original_path || photo.storage_path;
-      const viewPath = usesWatermark
-        ? photo.watermarked_path
-        : photo.web_path || fallbackOriginal;
+      const viewPath = usesWatermark ? photo.watermarked_path : photo.web_path || fallbackOriginal;
       const thumbnailPath = photo.thumbnail_path || viewPath;
-      const ready = usesWatermark
-        ? photo.processing_status === 'ready' && photo.watermarked_path
-        : Boolean(viewPath);
+      const ready = usesWatermark ? photo.processing_status === 'ready' && photo.watermarked_path : Boolean(viewPath);
       const downloadPath = album.downloads_enabled
         ? (album.watermark_original_downloads ? fallbackOriginal : viewPath)
         : null;
@@ -102,19 +128,27 @@ Deno.serve(async (request) => {
     .filter((photo) => Boolean(photo.ready));
   const pendingPhotoCount = (photos || []).length - visiblePhotos.length;
 
-  const signedPhotos = await Promise.all(visiblePhotos.map(async (photo) => ({
-    id: photo.id,
-    filename: photo.filename,
-    caption: photo.caption,
-    width: photo.width,
-    height: photo.height,
-    thumbUrl: await sign(photo.thumbnailPath || photo.viewPath),
-    url: await sign(photo.viewPath),
-    downloadUrl: photo.downloadPath ? await sign(photo.downloadPath, true) : null,
-  })));
+  const signedPhotos = await Promise.all(visiblePhotos.map(async (photo) => {
+    const thumbPath = photo.thumbnailPath || photo.viewPath;
+    return {
+      id: photo.id,
+      filename: photo.filename,
+      caption: photo.caption,
+      width: photo.width,
+      height: photo.height,
+      thumbUrl: thumbPath ? await sign(thumbPath) : null,
+      url: photo.viewPath ? await sign(photo.viewPath) : null,
+      downloadUrl: photo.downloadPath ? await sign(photo.downloadPath, true) : null,
+    };
+  }));
 
-  const coverPhoto = visiblePhotos.find((photo) => [photo.original_path, photo.storage_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(album.cover_path)) || visiblePhotos[0];
-  const coverUrl = coverPhoto ? await sign(coverPhoto.thumbnailPath || coverPhoto.viewPath) : null;
+  const coverPhoto = visiblePhotos.find((photo) =>
+    [photo.original_path, photo.storage_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(
+      album.cover_path,
+    )
+  ) || visiblePhotos[0];
+  const coverPath = coverPhoto ? coverPhoto.thumbnailPath || coverPhoto.viewPath : null;
+  const coverUrl = coverPath ? await sign(coverPath) : null;
 
   return json({
     album: {
@@ -126,17 +160,21 @@ Deno.serve(async (request) => {
       location: album.location,
       description: album.guest_message || album.description,
       downloadsEnabled: album.downloads_enabled,
-      sales: album.sales_enabled ? {
-        enabled: true,
-        photoPriceCents: album.photo_price_cents,
-        currency: album.currency,
-        downloadExpiryDays: album.download_expiry_days,
-        supportEmail: album.sales_support_email,
-        refundPolicyText: album.refund_policy_text,
-      } : { enabled: false },
+      sales: album.sales_enabled
+        ? {
+          enabled: true,
+          photoPriceCents: album.photo_price_cents,
+          currency: album.currency,
+          downloadExpiryDays: album.download_expiry_days,
+          supportEmail: album.sales_support_email,
+          refundPolicyText: album.refund_policy_text,
+        }
+        : { enabled: false },
       coverUrl,
     },
-    photos: signedPhotos.filter((photo) => Boolean(photo.url)),
+    photos: signedPhotos.filter((photo) =>
+      Boolean(photo.url)
+    ),
     pendingPhotoCount,
     signedUrlSeconds: SIGNED_URL_SECONDS,
   });

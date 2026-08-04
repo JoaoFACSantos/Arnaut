@@ -1,5 +1,6 @@
 import { createServiceClient } from '../_shared/supabase.ts';
 import {
+  constantTimeEqual,
   corsHeaders,
   getClientIp,
   getEnv,
@@ -9,7 +10,6 @@ import {
   json,
   randomToken,
   readJson,
-  constantTimeEqual,
 } from '../_shared/security.js';
 
 const GENERIC_ERROR = 'Galeria ou código inválido.';

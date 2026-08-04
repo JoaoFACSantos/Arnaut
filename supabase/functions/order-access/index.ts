@@ -1,22 +1,37 @@
 import { createServiceClient } from '../_shared/supabase.ts';
+import { BUCKET, corsHeaders, getClientIp, getEnv, hashSessionToken, json, readJson } from '../_shared/security.js';
 import {
-  BUCKET,
-  corsHeaders,
-  getClientIp,
-  getEnv,
-  hashSessionToken,
-  json,
-  readJson,
-} from '../_shared/security.js';
-import {
+  authenticateOrderAccess,
   ORDER_DOWNLOAD_URL_SECONDS,
   ORDER_STATUS_POLL_SECONDS,
-  authenticateOrderAccess,
   orderDownloadAvailable,
 } from '../_shared/commerce.ts';
 
 const RATE_WINDOW_MINUTES = 10;
 const RATE_LIMIT = 40;
+
+type OrderReference = {
+  id: string;
+  status?: string;
+  expires_at?: string | null;
+  downloads_invalidated_at?: string | null;
+  [key: string]: unknown;
+};
+
+type OrderItemRow = {
+  id: string;
+  photo_id: string;
+  unit_price_cents: number;
+  album_photos: OrderPhotoRow | OrderPhotoRow[] | null;
+};
+
+type OrderPhotoRow = {
+  filename: string | null;
+  thumbnail_path?: string | null;
+  watermarked_path?: string | null;
+  original_path?: string | null;
+  storage_path?: string | null;
+};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -52,16 +67,19 @@ Deno.serve(async (request) => {
   return json({ error: 'Ação desconhecida.' }, 400);
 });
 
-async function orderStatus(supabase: ReturnType<typeof createServiceClient>, order: Record<string, any>) {
+async function orderStatus(supabase: ReturnType<typeof createServiceClient>, order: OrderReference) {
   const { data, error } = await supabase.from('orders')
-    .select('id, public_id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, status, created_at, paid_at, expires_at, downloads_invalidated_at, albums(title, sales_support_email, refund_policy_text), order_items(id, photo_id, unit_price_cents, album_photos(filename, thumbnail_path, watermarked_path))')
+    .select(
+      'id, public_id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, status, created_at, paid_at, expires_at, downloads_invalidated_at, albums(title, sales_support_email, refund_policy_text), order_items(id, photo_id, unit_price_cents, album_photos(filename, thumbnail_path, watermarked_path))',
+    )
     .eq('id', order.id)
     .maybeSingle();
   if (error || !data) return json({ error: 'Encomenda não encontrada.' }, 404);
 
   const album = Array.isArray(data.albums) ? data.albums[0] : data.albums;
   const downloadAvailable = orderDownloadAvailable(data);
-  const items = await Promise.all((data.order_items || []).map(async (item: any) => {
+  const orderItems = (data.order_items || []) as unknown as OrderItemRow[];
+  const items = await Promise.all(orderItems.map(async (item) => {
     const photo = Array.isArray(item.album_photos) ? item.album_photos[0] : item.album_photos;
     let previewUrl = null;
     const previewPath = photo?.thumbnail_path || photo?.watermarked_path;
@@ -104,7 +122,7 @@ async function orderStatus(supabase: ReturnType<typeof createServiceClient>, ord
 
 async function createDownload(
   supabase: ReturnType<typeof createServiceClient>,
-  order: Record<string, any>,
+  order: OrderReference,
   photoId: string,
 ) {
   if (!photoId || !orderDownloadAvailable(order)) {

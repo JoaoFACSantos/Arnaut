@@ -57,4 +57,3 @@ export function safeOrderStatus(value) {
     ? status
     : 'pending';
 }
-

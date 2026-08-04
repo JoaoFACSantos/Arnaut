@@ -230,7 +230,6 @@ let profileAvatarUrl = '';
 let saveAsDraftRequested = false;
 let detailsValidationAttempted = false;
 let orders = [];
-let ordersLoaded = false;
 const accessCodeCache = new Map();
 
 function clearElement(element) {
@@ -334,7 +333,6 @@ async function callAdmin(action, payload = {}) {
   }
   return body;
 }
-
 async function callAdminOrders(action, payload = {}) {
   if (!supabase || !functionsBase) throw new Error('Supabase não está configurado.');
   const { data } = await supabase.auth.getSession();
@@ -2130,7 +2128,6 @@ async function loadOrders() {
       dateTo: els.orderDateTo.value,
     } });
     orders = data.orders || [];
-    ordersLoaded = true;
     renderOrders();
   } catch (error) {
     els.ordersList.innerHTML = `<p class="admin-orders-empty">${escapeText(friendlyError(error, 'Não foi possível carregar as encomendas.'))}</p>`;
@@ -2738,10 +2735,3 @@ if (!supabase) {
   });
   await verifyAuthentication();
 }
-
-window.adminActions = {
-  regenerateCode,
-  endSessions,
-  setAlbumState,
-  deleteAlbum,
-};

@@ -1,26 +1,29 @@
 import { createServiceClient, requireAdmin } from '../_shared/supabase.ts';
 import {
-  BUCKET,
   assertAllowedImage,
+  BUCKET,
   buildStoragePath,
   corsHeaders,
   decryptGalleryCode,
   encryptGalleryCode,
+  errorMessage,
   generateGalleryCode,
   getEnv,
   hashAccessCode,
-  lookupAccessCode,
   isValidSlug,
   json,
+  lookupAccessCode,
   maskGalleryCode,
-  normalizeSlug,
   normalizeGalleryCode,
+  normalizeSlug,
   readJson,
   sanitizeText,
 } from '../_shared/security.js';
 
-const ADMIN_ALBUM_SELECT = 'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
-const ADMIN_ALBUM_WITH_PHOTOS_SELECT = `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
+const ADMIN_ALBUM_SELECT =
+  'id, public_id, slug, title, event_type, event_date, location, description, guest_message, cover_path, access_code_last_four, access_code_created_at, downloads_enabled, download_all_enabled, watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version, sales_enabled, photo_price_cents, currency, download_expiry_days, sales_support_email, refund_policy_text, status, is_active, is_archived, expires_at, session_version, created_at, updated_at';
+const ADMIN_ALBUM_WITH_PHOTOS_SELECT =
+  `${ADMIN_ALBUM_SELECT}, album_photos(id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at)`;
 const DEFAULT_GITHUB_REPOSITORY = 'JoaoFACSantos/Arnaut';
 const DEFAULT_GITHUB_WORKFLOW = 'process-watermarks.yml';
 const DEFAULT_GITHUB_BRANCH = 'master';
@@ -34,7 +37,10 @@ Deno.serve(async (request) => {
   const supabase = createServiceClient();
   const admin = await requireAdmin(request, supabase);
   if (!admin.ok) {
-    return json({ error: admin.response.status === 403 ? 'Acesso restrito à administradora.' : 'Sessão inválida.' }, admin.response.status);
+    return json(
+      { error: admin.response.status === 403 ? 'Acesso restrito à administradora.' : 'Sessão inválida.' },
+      admin.response.status,
+    );
   }
 
   const body = await readJson(request);
@@ -58,7 +64,8 @@ Deno.serve(async (request) => {
         if (sessionError) throw sessionError;
         (sessions || []).forEach((session) => {
           const previous = sessionsByAlbum.get(session.album_id) || { count: 0, lastAccessedAt: null };
-          const nextLastAccessedAt = !previous.lastAccessedAt || new Date(session.last_accessed_at).getTime() > new Date(previous.lastAccessedAt).getTime()
+          const nextLastAccessedAt = !previous.lastAccessedAt ||
+              new Date(session.last_accessed_at).getTime() > new Date(previous.lastAccessedAt).getTime()
             ? session.last_accessed_at
             : previous.lastAccessedAt;
           sessionsByAlbum.set(session.album_id, { count: previous.count + 1, lastAccessedAt: nextLastAccessedAt });
@@ -105,7 +112,9 @@ Deno.serve(async (request) => {
         return json({ error: 'Defina um preço válido por fotografia (mínimo 0,50 €).' }, 400);
       }
       if (salesEnabled && !/^[A-Z]{3}$/.test(currency)) return json({ error: 'Moeda inválida.' }, 400);
-      if (salesEnabled && (!Number.isInteger(downloadExpiryDays) || downloadExpiryDays < 1 || downloadExpiryDays > 90)) {
+      if (
+        salesEnabled && (!Number.isInteger(downloadExpiryDays) || downloadExpiryDays < 1 || downloadExpiryDays > 90)
+      ) {
         return json({ error: 'A validade dos downloads deve estar entre 1 e 90 dias.' }, 400);
       }
       if (salesEnabled && (!salesSupportEmail || !salesSupportEmail.includes('@'))) {
@@ -139,7 +148,9 @@ Deno.serve(async (request) => {
         refund_policy_text: refundPolicyText,
         is_active: album.isActive !== false,
         is_archived: Boolean(album.isArchived),
-        status: album.isArchived ? 'archived' : (album.isActive === false ? 'disabled' : sanitizeText(album.status, 20) || 'active'),
+        status: album.isArchived
+          ? 'archived'
+          : (album.isActive === false ? 'disabled' : sanitizeText(album.status, 20) || 'active'),
         expires_at: album.expiresAt || null,
       };
 
@@ -148,7 +159,9 @@ Deno.serve(async (request) => {
       if (id) {
         const { data: currentAlbum, error: currentAlbumError } = await supabase
           .from('albums')
-          .select('watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version')
+          .select(
+            'watermark_enabled, watermark_position, watermark_opacity, watermark_scale, watermark_original_downloads, watermark_version',
+          )
           .eq('id', id)
           .maybeSingle();
         if (currentAlbumError) throw currentAlbumError;
@@ -162,7 +175,12 @@ Deno.serve(async (request) => {
           .select(ADMIN_ALBUM_SELECT)
           .single();
         if (error) throw error;
-        return json({ album: { ...data, access_code_masked: data.access_code_last_four ? `••••-••••-${data.access_code_last_four}` : null } });
+        return json({
+          album: {
+            ...data,
+            access_code_masked: data.access_code_last_four ? `••••-••••-${data.access_code_last_four}` : null,
+          },
+        });
       }
 
       const code = await createUniqueCode(supabase);
@@ -277,7 +295,9 @@ Deno.serve(async (request) => {
           processing_status: 'pending',
           watermark_version: 0,
         })
-        .select('id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at')
+        .select(
+          'id, storage_path, original_path, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, processing_error, filename, caption, sort_order, width, height, format, size_bytes, processed_at, watermark_version, created_at',
+        )
         .single();
       if (error) throw error;
       await enqueueWatermarkJobs(supabase, photo.albumId, [data.id]);
@@ -308,11 +328,11 @@ Deno.serve(async (request) => {
         .filter((photo) => {
           const mode = photo.watermark_mode || 'inherit';
           const needsWatermark = mode === 'enabled' || (mode === 'inherit' && album.watermark_enabled);
-          return !photo.web_path
-            || !photo.thumbnail_path
-            || (needsWatermark && !photo.watermarked_path)
-            || photo.processing_status === 'failed'
-            || Number(photo.watermark_version || 0) < Number(album.watermark_version || 1);
+          return !photo.web_path ||
+            !photo.thumbnail_path ||
+            (needsWatermark && !photo.watermarked_path) ||
+            photo.processing_status === 'failed' ||
+            Number(photo.watermark_version || 0) < Number(album.watermark_version || 1);
         })
         .map((photo) => photo.id);
       const queued = await enqueueWatermarkJobs(supabase, albumId, photoIds);
@@ -372,7 +392,13 @@ Deno.serve(async (request) => {
         .eq('id', photoId)
         .maybeSingle();
       if (findError) throw findError;
-      const paths = [photo?.storage_path, photo?.original_path, photo?.web_path, photo?.watermarked_path, photo?.thumbnail_path].filter(Boolean);
+      const paths = [
+        photo?.storage_path,
+        photo?.original_path,
+        photo?.web_path,
+        photo?.watermarked_path,
+        photo?.thumbnail_path,
+      ].filter(Boolean);
       if (paths.length) await supabase.storage.from(BUCKET).remove([...new Set(paths)]);
       await supabase.from('album_photos').delete().eq('id', photoId);
       return json({ ok: true });
@@ -396,8 +422,13 @@ Deno.serve(async (request) => {
       if ((orderCount || 0) > 0) {
         return json({ error: 'Esta galeria tem encomendas associadas e deve ser arquivada em vez de eliminada.' }, 409);
       }
-      const { data: photos } = await supabase.from('album_photos').select('storage_path, original_path, web_path, watermarked_path, thumbnail_path').eq('album_id', albumId);
-      const paths = (photos || []).flatMap((photo) => [photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path]).filter(Boolean);
+      const { data: photos } = await supabase.from('album_photos').select(
+        'storage_path, original_path, web_path, watermarked_path, thumbnail_path',
+      ).eq('album_id', albumId);
+      const paths = (photos || []).flatMap((
+        photo,
+      ) => [photo.storage_path, photo.original_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path])
+        .filter(Boolean);
       if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
       await supabase.from('albums').delete().eq('id', albumId);
       return json({ ok: true });
@@ -405,7 +436,7 @@ Deno.serve(async (request) => {
 
     return json({ error: 'Ação desconhecida.' }, 400);
   } catch (error) {
-    console.error('admin-albums error', error?.message || error);
+    console.error('admin-albums error', errorMessage(error));
     return json({ error: 'Não foi possível concluir a operação.' }, 500);
   }
 });
@@ -431,11 +462,11 @@ function sanitizeWatermarkMode(value: unknown) {
 }
 
 function watermarkConfigChanged(current: Record<string, unknown>, next: Record<string, unknown>) {
-  return Boolean(current.watermark_enabled) !== Boolean(next.watermark_enabled)
-    || String(current.watermark_position || 'bottom-center') !== String(next.watermark_position || 'bottom-center')
-    || Number(current.watermark_opacity ?? 0.3) !== Number(next.watermark_opacity ?? 0.3)
-    || Number(current.watermark_scale ?? 0.2) !== Number(next.watermark_scale ?? 0.2)
-    || Boolean(current.watermark_original_downloads) !== Boolean(next.watermark_original_downloads);
+  return Boolean(current.watermark_enabled) !== Boolean(next.watermark_enabled) ||
+    String(current.watermark_position || 'bottom-center') !== String(next.watermark_position || 'bottom-center') ||
+    Number(current.watermark_opacity ?? 0.3) !== Number(next.watermark_opacity ?? 0.3) ||
+    Number(current.watermark_scale ?? 0.2) !== Number(next.watermark_scale ?? 0.2) ||
+    Boolean(current.watermark_original_downloads) !== Boolean(next.watermark_original_downloads);
 }
 
 async function triggerWatermarkWorkflow() {
@@ -459,7 +490,9 @@ async function triggerWatermarkWorkflow() {
 
   try {
     const response = await fetch(
-      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`,
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${
+        encodeURIComponent(workflow)
+      }/dispatches`,
       {
         method: 'POST',
         signal: controller.signal,
@@ -514,16 +547,19 @@ async function enqueueWatermarkJobs(
 
   const { error: jobError } = await supabase
     .from('image_processing_jobs')
-    .upsert(ids.map((photoId) => ({
-      album_id: albumId,
-      photo_id: photoId,
-      job_type: 'watermark',
-      status: 'pending',
-      processing_error: null,
-      locked_at: null,
-      locked_by: null,
-      finished_at: null,
-    })), { onConflict: 'photo_id,job_type', ignoreDuplicates: false });
+    .upsert(
+      ids.map((photoId) => ({
+        album_id: albumId,
+        photo_id: photoId,
+        job_type: 'watermark',
+        status: 'pending',
+        processing_error: null,
+        locked_at: null,
+        locked_by: null,
+        finished_at: null,
+      })),
+      { onConflict: 'photo_id,job_type', ignoreDuplicates: false },
+    );
 
   if (jobError) throw jobError;
   return ids.length;
