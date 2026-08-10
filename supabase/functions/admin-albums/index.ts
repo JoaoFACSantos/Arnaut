@@ -567,27 +567,47 @@ async function enqueueWatermarkJobs(
 
 async function getStorageUsage(supabase: ReturnType<typeof createServiceClient>) {
   try {
-    const { data, error } = await supabase
-      .schema('storage')
-      .from('objects')
-      .select('metadata')
-      .eq('bucket_id', BUCKET)
-      .like('name', 'albums/%');
-    if (error) throw error;
+    const objects: Array<{ name: string; metadata: Record<string, unknown> | null }> = [];
+    const pageSize = 1000;
+    for (let offset = 0;; offset += pageSize) {
+      const { data, error } = await supabase
+        .schema('storage')
+        .from('objects')
+        .select('name, metadata')
+        .eq('bucket_id', BUCKET)
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      objects.push(...((data || []) as Array<{ name: string; metadata: Record<string, unknown> | null }>));
+      if ((data || []).length < pageSize) break;
+    }
     let knownSizes = 0;
-    const bytes = (data || []).reduce((total, item) => {
-      const rawSize = item?.metadata?.size ?? item?.metadata?.contentLength;
+    const breakdown = { originals: 0, web: 0, thumbnails: 0, watermarked: 0, other: 0 };
+    const bytes = objects.reduce((total, item) => {
+      const metadata = item.metadata || {};
+      const rawSize = metadata.size ?? metadata.contentLength;
       if (rawSize === null || rawSize === undefined) return total;
       const size = Number(rawSize);
       if (!Number.isFinite(size)) return total;
       knownSizes += 1;
+      const path = String(item.name || '');
+      if (/\/(?:web-watermarked|thumbs-watermarked|watermarked)\//.test(path)) breakdown.watermarked += size;
+      else if (/\/originals\//.test(path)) breakdown.originals += size;
+      else if (/\/web\//.test(path)) breakdown.web += size;
+      else if (/\/thumbs\//.test(path)) breakdown.thumbnails += size;
+      else breakdown.other += size;
       return total + size;
     }, 0);
-    if (!knownSizes) throw new Error('Storage size metadata unavailable.');
+    if (objects.length > 0 && !knownSizes) throw new Error('Storage size metadata unavailable.');
+    const { count: photoCount, error: countError } = await supabase
+      .from('album_photos')
+      .select('id', { count: 'exact', head: true });
+    if (countError) throw countError;
     return {
       bytes,
       quotaBytes: 150 * 1024 * 1024 * 1024,
       source: 'storage.objects',
+      photoCount: photoCount || 0,
+      breakdown,
     };
   } catch {
     try {
@@ -609,6 +629,14 @@ async function getStorageUsage(supabase: ReturnType<typeof createServiceClient>)
         quotaBytes: 150 * 1024 * 1024 * 1024,
         source: 'album_photos.size_bytes',
         approximate: true,
+        photoCount: (data || []).length,
+        breakdown: {
+          originals: bytes,
+          web: null,
+          thumbnails: null,
+          watermarked: null,
+          other: null,
+        },
       };
     } catch {
       return null;

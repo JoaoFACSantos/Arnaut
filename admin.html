@@ -6,6 +6,7 @@
     <meta name="robots" content="noindex,nofollow" />
     <meta name="theme-color" content="#f7f2ec" />
     <title>Administração — Fotografia Arnaut</title>
+    <link rel="icon" type="image/png" href="assets/logo-arnaut.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,8 +14,10 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260803-admin-nav-icons-14" />
+    <link rel="stylesheet" href="admin-settings.css?v=20260804-settings-1" />
+    <link rel="stylesheet" href="admin-billing.css?v=20260810-billing-1" />
     <script src="config.js"></script>
-    <script type="module" src="admin.js?v=20260803-admin-login-12"></script>
+    <script type="module" src="admin.js?v=20260810-billing-1"></script>
   </head>
   <body class="admin-v2">
     <section class="admin-auth-gate" data-auth-gate aria-live="polite">
@@ -82,6 +85,7 @@
           <button type="button" data-view="galleries" title="Galerias"><span><img src="icons/icon_galerias.svg" alt="" aria-hidden="true" /></span><em>Galerias</em></button>
           <button type="button" data-view="orders" title="Encomendas"><span><img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /></span><em>Encomendas</em></button>
           <button type="button" data-new-gallery title="Nova galeria"><span><img src="icons/icon_nova_galeria.svg" alt="" aria-hidden="true" /></span><em>Nova galeria</em></button>
+          <button type="button" data-view="billing" title="Faturação"><span><i class="admin-billing-nav-icon" aria-hidden="true"></i></span><em>Faturação</em></button>
           <button type="button" data-view="settings" title="Definições"><span><img src="icons/icon_definicoes.svg" alt="" aria-hidden="true" /></span><em>Definições</em></button>
         </nav>
         <div class="admin-storage-card">
@@ -107,7 +111,10 @@
         <header class="admin-topbar">
           <button class="admin-icon-action" type="button" data-toggle-sidebar aria-label="Abrir ou recolher menu">☰</button>
           <h1 data-page-title>Visão geral</h1>
-          <button class="admin-logout-v2" type="button" data-logout>Terminar sessão</button>
+          <button class="admin-mobile-profile" type="button" data-mobile-profile-menu aria-label="Abrir menu do perfil" aria-expanded="false">
+            <img data-mobile-avatar-image alt="" hidden />
+            <span data-mobile-avatar-fallback>BA</span>
+          </button>
         </header>
 
         <main class="admin-content">
@@ -205,116 +212,258 @@
             <div class="admin-orders-panel" data-orders-list><p class="admin-orders-empty">Abra esta área para carregar as encomendas.</p></div>
           </section>
 
+          <section class="admin-view" data-view-panel="billing">
+            <div class="admin-billing-page" data-billing-page>
+              <header class="admin-billing-heading">
+                <div><h2>Faturação</h2><p>Gerir faturação, pagamentos e dados fiscais.</p></div>
+                <button type="button" class="admin-billing-refresh" data-billing-refresh>Atualizar</button>
+              </header>
+
+              <div class="admin-billing-error" data-billing-error hidden role="alert">
+                <div><strong>Não foi possível carregar os dados de faturação.</strong><p data-billing-error-message>Verifique a ligação e tente novamente.</p></div>
+                <button type="button" data-billing-retry>Tentar novamente</button>
+              </div>
+
+              <div data-billing-dashboard-view>
+                <div class="admin-billing-metrics" data-billing-metrics aria-live="polite">
+                  <article class="admin-billing-metric is-skeleton"></article><article class="admin-billing-metric is-skeleton"></article>
+                  <article class="admin-billing-metric is-skeleton"></article><article class="admin-billing-metric is-skeleton"></article>
+                </div>
+
+                <div class="admin-billing-layout">
+                  <div class="admin-billing-main-column">
+                    <article class="admin-billing-card admin-billing-recent-card">
+                      <header><div><h3>Registos recentes</h3><p>Referências internas das encomendas e pagamentos.</p></div><button type="button" data-billing-view-all>Ver todas →</button></header>
+                      <div class="admin-billing-table-wrap" data-billing-recent-table><div class="admin-billing-table-skeleton"></div></div>
+                    </article>
+
+                    <article class="admin-billing-card admin-billing-chart-card">
+                      <header><div><h3>Resumo de pagamentos</h3><p>Apenas pagamentos confirmados, descontando reembolsos.</p></div>
+                        <select data-billing-chart-range aria-label="Período do resumo de pagamentos">
+                          <option value="1">Este mês</option><option value="3">Últimos 3 meses</option>
+                          <option value="6" selected>Últimos 6 meses</option><option value="12">Últimos 12 meses</option>
+                        </select>
+                      </header>
+                      <div class="admin-billing-chart" data-billing-chart><div class="admin-billing-chart-skeleton"></div></div>
+                    </article>
+                  </div>
+
+                  <aside class="admin-billing-side-column">
+                    <article class="admin-billing-card admin-billing-stripe-card">
+                      <header><h3>Método de pagamento</h3><button type="button" data-billing-manage-stripe>Gerir métodos</button></header>
+                      <div class="admin-billing-stripe" data-billing-stripe><div class="admin-billing-card-skeleton"></div></div>
+                    </article>
+
+                    <article class="admin-billing-card admin-billing-profile-card">
+                      <header><h3>Dados fiscais</h3><button type="button" data-billing-edit-profile>Editar</button></header>
+                      <div class="admin-billing-profile" data-billing-profile><div class="admin-billing-card-skeleton"></div></div>
+                    </article>
+
+                    <article class="admin-billing-card admin-billing-actions-card">
+                      <header><h3>Ações rápidas</h3></header>
+                      <div class="admin-billing-actions">
+                        <button type="button" disabled title="Emissão de faturas ainda não configurada."><span>＋</span><b>Nova fatura</b><small>Emissão não configurada</small></button>
+                        <button type="button" data-billing-export><span>↓</span><b>Exportar</b><small>Exportar faturação</small></button>
+                        <button type="button" data-billing-update-profile><span>⚙</span><b>Atualizar dados</b><small>Dados fiscais</small></button>
+                      </div>
+                    </article>
+                  </aside>
+                </div>
+              </div>
+
+              <section class="admin-billing-list-view" data-billing-list-view hidden>
+                <header class="admin-billing-list-heading"><div><button type="button" data-billing-back>← Voltar</button><h3>Todos os registos</h3><p>Pagamentos e referências internas associados às encomendas.</p></div><button type="button" data-billing-export>Exportar CSV</button></header>
+                <div class="admin-billing-list-filters">
+                  <input type="search" data-billing-search placeholder="Pesquisar referência ou email" autocomplete="off" />
+                  <select data-billing-status-filter aria-label="Filtrar por estado"><option value="">Todos os estados</option><option value="paid">Pago</option><option value="pending">Pendente</option><option value="failed">Falhado</option><option value="expired">Expirado</option><option value="partially_refunded">Reembolso parcial</option><option value="refunded">Reembolsado</option></select>
+                  <input type="date" data-billing-date-from aria-label="Data inicial" /><input type="date" data-billing-date-to aria-label="Data final" />
+                  <select data-billing-sort aria-label="Ordenar registos"><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option><option value="amount-desc">Maior valor</option><option value="amount-asc">Menor valor</option></select>
+                </div>
+                <div class="admin-billing-card admin-billing-full-table"><div class="admin-billing-table-wrap" data-billing-list-table></div><footer data-billing-pagination></footer></div>
+              </section>
+            </div>
+          </section>
+
           <section class="admin-view" data-view-panel="settings">
             <div class="admin-settings-page">
               <header class="admin-settings-heading">
-                <div>
-                  <span>CONTA E SEGURANÇA</span>
-                  <h2>Definições</h2>
-                  <p>Atualize o perfil e controle a segurança da conta administrativa.</p>
-                </div>
-                <span class="admin-session-pill" data-session-status>Autenticada</span>
+                <h2>Definições</h2>
+                <p>Gerir a sua conta, preferências e configurações da plataforma.</p>
               </header>
 
-              <div class="admin-settings-grid">
-                <article class="admin-panel admin-settings-card admin-settings-card--profile">
-                  <div class="admin-settings-card__head">
-                    <div>
-                      <span>PERFIL</span>
-                      <h3>Identidade da administradora</h3>
-                    </div>
+              <div class="admin-settings-layout">
+                <aside class="admin-settings-nav" aria-label="Secções das definições">
+                  <strong>Definições</strong>
+                  <div class="admin-settings-nav__items" role="tablist" aria-orientation="vertical">
+                    <button type="button" class="is-active" data-settings-section="profile" role="tab" aria-selected="true">
+                      <img src="icons/icon_visao_geral.svg" alt="" aria-hidden="true" /><span><b>Perfil</b><small>Informações pessoais</small></span>
+                    </button>
+                    <button type="button" data-settings-section="account" role="tab" aria-selected="false">
+                      <img src="assets/icon-email.svg" alt="" aria-hidden="true" /><span><b>Conta</b><small>Email e palavra-passe</small></span>
+                    </button>
+                    <button type="button" data-settings-section="preferences" role="tab" aria-selected="false">
+                      <img src="icons/icon_definicoes.svg" alt="" aria-hidden="true" /><span><b>Preferências</b><small>Opções das galerias</small></span>
+                    </button>
+                    <button type="button" data-settings-section="notifications" role="tab" aria-selected="false">
+                      <img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /><span><b>Notificações</b><small>Emails e alertas</small></span>
+                    </button>
+                    <button type="button" data-settings-section="storage" role="tab" aria-selected="false">
+                      <img src="icons/icon_galerias.svg" alt="" aria-hidden="true" /><span><b>Armazenamento</b><small>Utilização de espaço</small></span>
+                    </button>
+                    <button type="button" data-settings-section="security" role="tab" aria-selected="false">
+                      <img src="assets/icon-cadeado.svg" alt="" aria-hidden="true" /><span><b>Segurança</b><small>Sessões e acessos</small></span>
+                    </button>
+                    <button type="button" data-settings-section="billing" role="tab" aria-selected="false">
+                      <img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /><span><b>Faturação</b><small>Estado e pagamentos</small></span>
+                    </button>
                   </div>
-                  <form data-profile-form>
-                    <div class="admin-avatar-editor">
-                      <span class="admin-avatar-preview" aria-hidden="true">
-                        <img data-settings-avatar-image alt="" hidden />
-                        <span data-settings-avatar-fallback>BA</span>
-                      </span>
-                      <div>
-                        <strong data-settings-profile-name>Beatriz Arnaut</strong>
-                        <p>JPG, PNG ou WebP. A imagem será otimizada automaticamente.</p>
-                        <div class="admin-inline-actions">
-                          <button type="button" data-select-avatar>Alterar fotografia</button>
-                          <button type="button" class="admin-text-danger" data-remove-avatar>Remover</button>
+                  <a class="admin-settings-help" data-support-link href="mailto:fotografiaarnaut@gmail.com">
+                    <span aria-hidden="true">?</span><span><b>Precisa de ajuda?</b><small>Contactar suporte</small></span><i aria-hidden="true">›</i>
+                  </a>
+                </aside>
+
+                <div class="admin-settings-content">
+                  <section class="admin-settings-section is-active" data-settings-panel="profile" role="tabpanel">
+                    <article class="admin-panel admin-settings-card admin-settings-profile-card">
+                      <header><div><h3>Informações de perfil</h3><p>Dados apresentados na área administrativa.</p></div></header>
+                      <form data-profile-form data-settings-form="profile">
+                        <div class="admin-profile-editor">
+                          <div class="admin-avatar-editor">
+                            <span class="admin-avatar-preview" aria-hidden="true">
+                              <img data-settings-avatar-image alt="" hidden />
+                              <span data-settings-avatar-fallback>BA</span>
+                            </span>
+                            <div class="admin-avatar-copy">
+                              <strong data-settings-profile-name>Beatriz Arnaut</strong>
+                              <small>Administradora</small>
+                              <p>Personalize a fotografia apresentada no painel.</p>
+                              <div class="admin-inline-actions">
+                                <button type="button" data-select-avatar>Alterar fotografia</button>
+                                <button type="button" class="admin-text-danger" data-remove-avatar>Remover</button>
+                              </div>
+                              <div class="admin-avatar-progress" data-avatar-progress hidden><i></i><span>A preparar fotografia…</span></div>
+                            </div>
+                            <input data-avatar-upload type="file" accept="image/jpeg,image/png,image/webp" hidden />
+                          </div>
+                          <div class="admin-settings-fields">
+                            <label><span>Nome completo</span><input name="fullName" autocomplete="name" maxlength="80" required /></label>
+                            <label><span>Função</span><input name="roleLabel" value="Administradora" readonly /></label>
+                            <label class="admin-field-wide"><span>Sobre</span><textarea name="bio" maxlength="280" rows="4" placeholder="Fotógrafa e gestora da plataforma."></textarea><small><span data-bio-count>0</span>/280</small></label>
+                          </div>
                         </div>
+                        <footer class="admin-settings-form-footer">
+                          <p class="admin-form-message" data-profile-message aria-live="polite"></p>
+                          <button class="admin-primary" type="submit" data-save-profile disabled>Guardar alterações</button>
+                        </footer>
+                      </form>
+                    </article>
+
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Informações de contacto</h3><p>Contacto e localização usados pela plataforma.</p></div></header>
+                      <form data-contact-form data-settings-form="contact">
+                        <div class="admin-settings-fields">
+                          <label><span>Email</span><input name="email" type="email" readonly /><small>Altere o email na secção Conta.</small></label>
+                          <label><span>Telefone <em>opcional</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="32" placeholder="+351" /></label>
+                          <label><span>Fuso horário</span><select name="timezone"><option value="Europe/Lisbon">Lisboa — Europe/Lisbon</option></select></label>
+                          <label><span>Idioma</span><select name="locale"><option value="pt-PT">Português (Portugal)</option></select></label>
+                        </div>
+                        <footer class="admin-settings-form-footer">
+                          <p class="admin-form-message" data-contact-message aria-live="polite"></p>
+                          <button class="admin-primary" type="submit" data-save-contact disabled>Guardar alterações</button>
+                        </footer>
+                      </form>
+                    </article>
+                  </section>
+
+                  <section class="admin-settings-section" data-settings-panel="account" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Email da conta</h3><p>A alteração é confirmada através do novo endereço.</p></div><span class="admin-status-badge is-success" data-email-status>Confirmado</span></header>
+                      <form data-email-form data-settings-form="email">
+                        <div class="admin-settings-fields">
+                          <label><span>Email atual</span><input name="currentEmail" type="email" readonly /></label>
+                          <label><span>Novo email</span><input name="newEmail" type="email" autocomplete="email" placeholder="novo@email.pt" /></label>
+                        </div>
+                        <p class="admin-pending-note" data-email-pending hidden>Alteração de email pendente de confirmação.</p>
+                        <footer class="admin-settings-form-footer"><p class="admin-form-message" data-email-message aria-live="polite"></p><button class="admin-primary" type="submit" data-change-email disabled>Alterar email</button></footer>
+                      </form>
+                    </article>
+
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Alterar palavra-passe</h3><p>Use uma palavra-passe exclusiva para esta conta.</p></div></header>
+                      <form data-password-form data-settings-form="password">
+                        <div class="admin-settings-fields admin-password-grid">
+                          <label data-current-password-row><span>Palavra-passe atual</span><span class="admin-password-field"><input name="currentPassword" type="password" autocomplete="current-password" /><button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar palavra-passe atual" aria-pressed="false"><img data-password-icon="show" src="icons/icon_olho_mostrar.svg" alt="" /><img data-password-icon="hide" src="icons/icon_olho_ocultar.svg" alt="" hidden /></button></span></label>
+                          <label><span>Nova palavra-passe</span><span class="admin-password-field"><input name="newPassword" type="password" autocomplete="new-password" minlength="10" required /><button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar nova palavra-passe" aria-pressed="false"><img data-password-icon="show" src="icons/icon_olho_mostrar.svg" alt="" /><img data-password-icon="hide" src="icons/icon_olho_ocultar.svg" alt="" hidden /></button></span></label>
+                          <label><span>Confirmar nova palavra-passe</span><span class="admin-password-field"><input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required /><button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar confirmação da palavra-passe" aria-pressed="false"><img data-password-icon="show" src="icons/icon_olho_mostrar.svg" alt="" /><img data-password-icon="hide" src="icons/icon_olho_ocultar.svg" alt="" hidden /></button></span></label>
+                          <div class="admin-password-strength"><span>Segurança</span><div><i data-password-strength-bar></i></div><b data-password-strength-label>—</b></div>
+                        </div>
+                        <p class="admin-password-hint">Mínimo de 10 caracteres, com maiúscula, minúscula e número.</p>
+                        <footer class="admin-settings-form-footer"><p class="admin-form-message" data-password-message aria-live="polite"></p><button class="admin-primary" type="submit" data-change-password>Alterar palavra-passe</button></footer>
+                      </form>
+                    </article>
+                  </section>
+
+                  <section class="admin-settings-section" data-settings-panel="preferences" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Preferências da plataforma</h3><p>Valores usados apenas ao criar novas galerias.</p></div></header>
+                      <form data-preferences-form data-settings-form="preferences">
+                        <div class="admin-settings-fields">
+                          <label><span>Formato da data</span><select name="dateFormat"><option value="dd/mm/yyyy">dd/mm/aaaa</option></select></label>
+                          <label><span>Duração padrão</span><select name="expiryPreset"><option value="none">Sem expiração</option><option value="7">7 dias</option><option value="15">15 dias</option><option value="30">30 dias</option><option value="60">60 dias</option><option value="custom">Personalizada</option></select></label>
+                          <label data-custom-expiry hidden><span>Dias até expirar</span><input name="customExpiryDays" type="number" min="1" max="365" value="30" /></label>
+                          <label><span>Moeda padrão</span><select name="currency"><option value="EUR">EUR — Euro</option></select></label>
+                        </div>
+                        <div class="admin-settings-switches">
+                          <label><span><b>Permitir downloads</b><small>Ativar em novas galerias.</small></span><input name="downloadsEnabled" type="checkbox" role="switch" /></label>
+                          <label><span><b>Aplicar marca de água</b><small>Proteger novas galerias por defeito.</small></span><input name="watermarkEnabled" type="checkbox" role="switch" /></label>
+                          <label><span><b>Ativar venda de fotografias</b><small>Disponível porque o sistema de vendas está configurado.</small></span><input name="salesEnabled" type="checkbox" role="switch" /></label>
+                        </div>
+                        <footer class="admin-settings-form-footer"><p class="admin-form-message" data-preferences-message aria-live="polite"></p><button class="admin-primary" type="submit" data-save-preferences disabled>Guardar preferências</button></footer>
+                      </form>
+                    </article>
+                  </section>
+
+                  <section class="admin-settings-section" data-settings-panel="notifications" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card admin-empty-feature">
+                      <span class="admin-empty-feature__icon" aria-hidden="true">✉</span><div><h3>Notificações administrativas</h3><p>O envio automático de alertas ainda não está configurado. Não foram criados controlos sem efeito.</p><small>As confirmações de compra enviadas aos clientes continuam a funcionar através do fluxo de encomendas.</small></div>
+                    </article>
+                  </section>
+
+                  <section class="admin-settings-section" data-settings-panel="storage" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Armazenamento</h3><p>Utilização real dos ficheiros privados das galerias.</p></div><button type="button" data-storage-refresh>Tentar novamente</button></header>
+                      <div class="admin-storage-settings" data-storage-settings data-state="loading">
+                        <div class="admin-storage-summary"><strong data-storage-total>A calcular…</strong><span data-storage-percent>—</span></div>
+                        <div class="admin-storage-progress" aria-hidden="true"><i data-storage-settings-bar></i></div>
+                        <p data-storage-source>Estamos a calcular os ficheiros guardados.</p>
+                        <div class="admin-storage-breakdown" data-storage-breakdown></div>
                       </div>
-                      <input data-avatar-upload type="file" accept="image/jpeg,image/png,image/webp" hidden />
-                    </div>
-                    <div class="admin-settings-fields">
-                      <label>
-                        <span>Nome apresentado</span>
-                        <input name="displayName" autocomplete="name" maxlength="80" required />
-                      </label>
-                      <label>
-                        <span>Email da conta</span>
-                        <input name="email" type="email" readonly />
-                      </label>
-                    </div>
-                    <div class="admin-settings-form-footer">
-                      <p class="admin-form-message" data-profile-message aria-live="polite"></p>
-                      <button class="admin-primary" type="submit" data-save-profile>Guardar perfil</button>
-                    </div>
-                  </form>
-                </article>
+                    </article>
+                  </section>
 
-                <article class="admin-panel admin-settings-card admin-settings-card--security">
-                  <div class="admin-settings-card__head">
-                    <div>
-                      <span>SEGURANÇA</span>
-                      <h3>Alterar palavra-passe</h3>
-                    </div>
-                    <span class="admin-security-mark" aria-hidden="true">⌁</span>
-                  </div>
-                  <form data-password-form>
-                    <label data-current-password-row>
-                      <span>Palavra-passe atual</span>
-                      <span class="admin-password-field">
-                        <input name="currentPassword" type="password" autocomplete="current-password" />
-                        <button type="button" data-password-toggle aria-label="Mostrar palavra-passe atual" aria-pressed="false">◉</button>
-                      </span>
-                    </label>
-                    <label>
-                      <span>Nova palavra-passe</span>
-                      <span class="admin-password-field">
-                        <input name="newPassword" type="password" autocomplete="new-password" minlength="10" required />
-                        <button type="button" data-password-toggle aria-label="Mostrar nova palavra-passe" aria-pressed="false">◉</button>
-                      </span>
-                    </label>
-                    <label>
-                      <span>Confirmar nova palavra-passe</span>
-                      <span class="admin-password-field">
-                        <input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required />
-                        <button type="button" data-password-toggle aria-label="Mostrar confirmação da palavra-passe" aria-pressed="false">◉</button>
-                      </span>
-                    </label>
-                    <p class="admin-password-hint">Use pelo menos 10 caracteres, incluindo maiúscula, minúscula e número.</p>
-                    <div class="admin-settings-form-footer">
-                      <p class="admin-form-message" data-password-message aria-live="polite"></p>
-                      <button class="admin-primary" type="submit" data-change-password>Atualizar palavra-passe</button>
-                    </div>
-                  </form>
-                </article>
+                  <section class="admin-settings-section" data-settings-panel="security" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card">
+                      <header><div><h3>Sessões ativas</h3><p>Gerir os dispositivos onde a sua conta está iniciada.</p></div></header>
+                      <div class="admin-current-session">
+                        <span class="admin-device-icon" aria-hidden="true">▣</span><div><strong>Este dispositivo</strong><small data-session-device>Este navegador</small></div><span class="admin-status-badge is-success" data-session-status>Ativa</span>
+                      </div>
+                      <dl class="admin-session-details">
+                        <div><dt>Conta</dt><dd data-session-email>—</dd></div>
+                        <div><dt>Último início de sessão</dt><dd data-session-last-sign-in>—</dd></div>
+                        <div><dt>Conta criada</dt><dd data-session-created-at>—</dd></div>
+                      </dl>
+                      <p class="admin-session-note">O Supabase não disponibiliza uma lista completa dos restantes dispositivos. Pode terminar as outras sessões com segurança.</p>
+                      <div class="admin-session-actions"><button type="button" data-signout-others>Terminar outras sessões</button><button type="button" class="admin-text-danger" data-signout-all>Terminar todas as sessões</button></div>
+                      <p class="admin-form-message" data-session-message aria-live="polite"></p>
+                    </article>
+                  </section>
 
-                <article class="admin-panel admin-settings-card admin-settings-card--session">
-                  <div class="admin-settings-card__head">
-                    <div>
-                      <span>SESSÃO</span>
-                      <h3>Acesso atual</h3>
-                    </div>
-                  </div>
-                  <dl class="admin-session-details">
-                    <div><dt>Conta</dt><dd data-session-email>—</dd></div>
-                    <div><dt>Último acesso</dt><dd data-session-last-sign-in>—</dd></div>
-                    <div><dt>Conta criada</dt><dd data-session-created-at>—</dd></div>
-                    <div><dt>Dispositivo</dt><dd data-session-device>Este navegador</dd></div>
-                  </dl>
-                  <p class="admin-session-note">Se não reconhecer um acesso, termine as outras sessões e altere imediatamente a palavra-passe.</p>
-                  <div class="admin-session-actions">
-                    <button type="button" data-signout-others>Terminar outras sessões</button>
-                    <button type="button" class="admin-text-danger" data-settings-logout>Terminar esta sessão</button>
-                  </div>
-                  <p class="admin-form-message" data-session-message aria-live="polite"></p>
-                </article>
+                  <section class="admin-settings-section" data-settings-panel="billing" role="tabpanel" hidden>
+                    <article class="admin-panel admin-settings-card admin-empty-feature">
+                      <span class="admin-empty-feature__icon" aria-hidden="true">€</span><div><h3>Faturação e pagamentos</h3><p>A configuração privada da Stripe é gerida através das variáveis seguras do Supabase. Nenhuma chave é guardada no navegador.</p><small>Consulte a página de Faturação para acompanhar vendas, pagamentos, reembolsos e dados fiscais.</small><button type="button" data-view="billing">Abrir Faturação</button></div>
+                    </article>
+                  </section>
+                </div>
               </div>
             </div>
           </section>
@@ -322,6 +471,10 @@
       </div>
 
       <div class="admin-mobile-backdrop" data-sidebar-backdrop></div>
+      <div class="admin-profile-popover" data-profile-popover role="menu" hidden>
+        <button type="button" data-profile-edit role="menuitem">Editar perfil</button>
+        <button type="button" class="admin-text-danger" data-profile-logout role="menuitem">Terminar sessão</button>
+      </div>
     </section>
 
     <aside class="create-gallery-drawer is-create-mode" data-gallery-drawer aria-hidden="true" aria-labelledby="gallery-editor-title">
@@ -520,6 +673,29 @@
       <div data-order-detail></div>
     </dialog>
 
+    <dialog class="admin-billing-dialog admin-billing-profile-dialog" data-billing-profile-dialog aria-labelledby="billing-profile-title">
+      <form method="dialog" data-billing-profile-form>
+        <header><div><span>Dados fiscais</span><h2 id="billing-profile-title">Editar dados fiscais</h2><p>Informação usada na área administrativa de faturação.</p></div><button type="button" data-close-billing-profile aria-label="Fechar">×</button></header>
+        <div class="admin-billing-form-grid">
+          <label class="is-wide"><span>Nome / Empresa</span><input name="businessName" maxlength="120" autocomplete="organization" /></label>
+          <label><span>NIF</span><input name="taxId" maxlength="32" inputmode="numeric" /></label>
+          <label><span>Email de faturação</span><input name="billingEmail" type="email" maxlength="180" autocomplete="email" /></label>
+          <label class="is-wide"><span>Morada</span><input name="addressLine1" maxlength="180" autocomplete="address-line1" /></label>
+          <label class="is-wide"><span>Complemento de morada</span><input name="addressLine2" maxlength="180" autocomplete="address-line2" /></label>
+          <label><span>Código postal</span><input name="postalCode" maxlength="24" autocomplete="postal-code" /></label>
+          <label><span>Localidade</span><input name="city" maxlength="100" autocomplete="address-level2" /></label>
+          <label class="is-wide"><span>País</span><input name="country" maxlength="80" autocomplete="country-name" /></label>
+        </div>
+        <p class="admin-form-message" data-billing-profile-message aria-live="polite"></p>
+        <footer><button type="button" data-close-billing-profile>Cancelar</button><button class="admin-primary" type="submit">Guardar alterações</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="admin-billing-dialog admin-billing-detail-dialog" data-billing-detail-dialog aria-labelledby="billing-detail-title">
+      <button type="button" class="admin-dialog-close" data-close-billing-detail aria-label="Fechar">×</button>
+      <div data-billing-detail><div class="admin-billing-detail-skeleton"></div></div>
+    </dialog>
+
     <dialog class="admin-dialog admin-picker-dialog" data-upload-picker-modal>
       <header class="admin-modal-head">
         <div>
@@ -555,7 +731,30 @@
         </div>
         <button type="button" data-close-access-modal aria-label="Fechar">×</button>
       </header>
+      <div class="admin-access-toolbar">
+        <label class="admin-access-search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" data-access-search placeholder="Pesquisar galerias..." autocomplete="off" />
+        </label>
+        <div class="admin-access-filter-group" role="group" aria-label="Filtrar códigos por estado">
+          <button type="button" class="is-active" data-access-filter="active">Ativas <b data-access-active-count>0</b></button>
+          <button type="button" data-access-filter="expired">Expiradas <b data-access-expired-count>0</b></button>
+        </div>
+        <label class="admin-access-sort">
+          <span>Ordenar</span>
+          <select data-access-sort aria-label="Ordenar códigos">
+            <option value="recent">Mais recentes</option>
+            <option value="oldest">Mais antigas</option>
+            <option value="title-asc">Nome A-Z</option>
+            <option value="title-desc">Nome Z-A</option>
+          </select>
+        </label>
+      </div>
       <div class="admin-access-list" data-access-list></div>
+      <footer class="admin-access-footer">
+        <small data-access-total>0 códigos no total</small>
+        <button type="button" data-close-access-modal>Fechar</button>
+      </footer>
     </dialog>
 
     <div class="admin-toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>

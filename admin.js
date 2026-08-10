@@ -1,5 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dayDifference, formatExpirationStatus, startOfLocalDay } from './admin-utils.js';
+import {
+  DEFAULT_USER_PREFERENCES,
+  formatInternationalPhone,
+  galleryExpiryValue,
+  normalizeAdminProfile,
+  normalizeUserPreferences,
+  passwordStrength,
+  serializeForm,
+  settingsSectionFromHash,
+  validateAvatarFile,
+} from './admin-settings.js';
 
 const config = window.ARNAUT_CONFIG || {};
 const supabaseUrl = String(config.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
@@ -121,6 +132,12 @@ const els = {
   storageDetail: $('[data-storage-detail]'),
   storageBar: $('[data-storage-bar]'),
   profileMenu: $('[data-profile-menu]'),
+  mobileProfileMenu: $('[data-mobile-profile-menu]'),
+  mobileAvatarImage: $('[data-mobile-avatar-image]'),
+  mobileAvatarFallback: $('[data-mobile-avatar-fallback]'),
+  profilePopover: $('[data-profile-popover]'),
+  profileEdit: $('[data-profile-edit]'),
+  profileLogout: $('[data-profile-logout]'),
   profileName: $('[data-profile-name]'),
   profileAvatarImage: $('[data-profile-avatar-image]'),
   profileAvatarFallback: $('[data-profile-avatar-fallback]'),
@@ -133,9 +150,36 @@ const els = {
   settingsAvatarImage: $('[data-settings-avatar-image]'),
   settingsAvatarFallback: $('[data-settings-avatar-fallback]'),
   settingsProfileName: $('[data-settings-profile-name]'),
+  bioCount: $('[data-bio-count]'),
+  avatarProgress: $('[data-avatar-progress]'),
+  contactForm: $('[data-contact-form]'),
+  contactMessage: $('[data-contact-message]'),
+  saveContact: $('[data-save-contact]'),
+  emailForm: $('[data-email-form]'),
+  emailMessage: $('[data-email-message]'),
+  emailStatus: $('[data-email-status]'),
+  emailPending: $('[data-email-pending]'),
+  changeEmail: $('[data-change-email]'),
+  preferencesForm: $('[data-preferences-form]'),
+  preferencesMessage: $('[data-preferences-message]'),
+  savePreferences: $('[data-save-preferences]'),
+  customExpiry: $('[data-custom-expiry]'),
+  settingsNav: $$('[data-settings-section]'),
+  settingsPanels: $$('[data-settings-panel]'),
+  settingsForms: $$('[data-settings-form]'),
+  supportLink: $('[data-support-link]'),
+  storageSettings: $('[data-storage-settings]'),
+  storageTotal: $('[data-storage-total]'),
+  storagePercent: $('[data-storage-percent]'),
+  storageSource: $('[data-storage-source]'),
+  storageSettingsBar: $('[data-storage-settings-bar]'),
+  storageBreakdown: $('[data-storage-breakdown]'),
+  storageRefresh: $('[data-storage-refresh]'),
   passwordForm: $('[data-password-form]'),
   passwordMessage: $('[data-password-message]'),
   changePassword: $('[data-change-password]'),
+  passwordStrengthBar: $('[data-password-strength-bar]'),
+  passwordStrengthLabel: $('[data-password-strength-label]'),
   currentPasswordRow: $('[data-current-password-row]'),
   sessionStatus: $('[data-session-status]'),
   sessionEmail: $('[data-session-email]'),
@@ -144,6 +188,7 @@ const els = {
   sessionDevice: $('[data-session-device]'),
   sessionMessage: $('[data-session-message]'),
   signoutOthers: $('[data-signout-others]'),
+  signoutAll: $('[data-signout-all]'),
   settingsLogout: $('[data-settings-logout]'),
   inlineCodeValue: $('[data-inline-code-value]'),
   inlineCodeMessage: $('[data-inline-code-message]'),
@@ -162,8 +207,14 @@ const els = {
   pickerNewGallery: $('[data-picker-new-gallery]'),
   accessManager: $('[data-access-manager]'),
   accessModal: $('[data-access-modal]'),
+  accessSearch: $('[data-access-search]'),
+  accessFilterButtons: $$('[data-access-filter]'),
+  accessSort: $('[data-access-sort]'),
+  accessActiveCount: $('[data-access-active-count]'),
+  accessExpiredCount: $('[data-access-expired-count]'),
+  accessTotal: $('[data-access-total]'),
   accessList: $('[data-access-list]'),
-  closeAccessModal: $('[data-close-access-modal]'),
+  closeAccessModal: $$('[data-close-access-modal]'),
   minimizeDrawer: $('[data-minimize-drawer]'),
   quickSaveDrawer: $('[data-quick-save-drawer]'),
   salesSettings: $('[data-sales-settings]'),
@@ -178,6 +229,39 @@ const els = {
   orderDialog: $('[data-order-dialog]'),
   orderDetail: $('[data-order-detail]'),
   closeOrderDialog: $('[data-close-order-dialog]'),
+  billingPage: $('[data-billing-page]'),
+  billingMetrics: $('[data-billing-metrics]'),
+  billingError: $('[data-billing-error]'),
+  billingErrorMessage: $('[data-billing-error-message]'),
+  billingRefresh: $('[data-billing-refresh]'),
+  billingRetry: $('[data-billing-retry]'),
+  billingDashboardView: $('[data-billing-dashboard-view]'),
+  billingListView: $('[data-billing-list-view]'),
+  billingRecentTable: $('[data-billing-recent-table]'),
+  billingChart: $('[data-billing-chart]'),
+  billingChartRange: $('[data-billing-chart-range]'),
+  billingStripe: $('[data-billing-stripe]'),
+  billingProfile: $('[data-billing-profile]'),
+  billingViewAll: $('[data-billing-view-all]'),
+  billingBack: $('[data-billing-back]'),
+  billingExport: $$('[data-billing-export]'),
+  billingManageStripe: $('[data-billing-manage-stripe]'),
+  billingEditProfile: $('[data-billing-edit-profile]'),
+  billingUpdateProfile: $('[data-billing-update-profile]'),
+  billingSearch: $('[data-billing-search]'),
+  billingStatusFilter: $('[data-billing-status-filter]'),
+  billingDateFrom: $('[data-billing-date-from]'),
+  billingDateTo: $('[data-billing-date-to]'),
+  billingSort: $('[data-billing-sort]'),
+  billingListTable: $('[data-billing-list-table]'),
+  billingPagination: $('[data-billing-pagination]'),
+  billingProfileDialog: $('[data-billing-profile-dialog]'),
+  billingProfileForm: $('[data-billing-profile-form]'),
+  billingProfileMessage: $('[data-billing-profile-message]'),
+  closeBillingProfile: $$('[data-close-billing-profile]'),
+  billingDetailDialog: $('[data-billing-detail-dialog]'),
+  billingDetail: $('[data-billing-detail]'),
+  closeBillingDetail: $('[data-close-billing-detail]'),
 };
 
 const fields = {
@@ -227,10 +311,28 @@ let drawerSaving = false;
 let pendingLoginNotice = '';
 let profileAvatarPath = '';
 let profileAvatarUrl = '';
+let adminProfile = null;
+let userPreferences = { ...DEFAULT_USER_PREFERENCES };
+let settingsSchemaAvailable = true;
+let settingsSection = 'profile';
+let settingsBaselines = new Map();
+let pendingAvatarBlob = null;
+let pendingAvatarPreviewUrl = '';
+let removeAvatarRequested = false;
 let saveAsDraftRequested = false;
 let detailsValidationAttempted = false;
 let orders = [];
+let billingDashboard = null;
+let billingProfile = null;
+let billingListMode = false;
+let billingListPage = 1;
+let billingListCount = 0;
+let billingListRecords = [];
+let billingLoading = false;
+let billingFilters = { search: '', status: '', dateFrom: '', dateTo: '', sort: 'recent' };
 const accessCodeCache = new Map();
+const visibleAccessCodes = new Set();
+let accessFilters = { search: '', status: 'active', sort: 'recent' };
 
 function clearElement(element) {
   if (!element) return;
@@ -276,6 +378,7 @@ function friendlyError(error, fallback = 'Não foi possível concluir a operaç�
 async function withBusy(button, text, task) {
   if (button?.dataset.loading === 'true') return null;
   const previous = button?.textContent;
+  const settingsForm = button?.closest?.('[data-settings-form]');
   if (button) {
     button.disabled = true;
     button.dataset.loading = 'true';
@@ -285,16 +388,18 @@ async function withBusy(button, text, task) {
     return await task();
   } finally {
     if (button) {
-      button.disabled = false;
+      button.disabled = settingsForm ? !updateSettingsSaveState(settingsForm) : false;
       button.dataset.loading = 'false';
       if (previous) button.textContent = previous;
     }
   }
 }
 
-function askConfirm(title, message) {
+function askConfirm(title, message, options = {}) {
   els.confirmTitle.textContent = title;
   els.confirmMessage.textContent = message;
+  els.confirmCancel.textContent = options.cancelLabel || 'Cancelar';
+  els.confirmOk.textContent = options.confirmLabel || 'Confirmar';
   els.confirmModal.showModal();
   return new Promise((resolve) => {
     confirmResolve = resolve;
@@ -304,6 +409,8 @@ function askConfirm(title, message) {
 function resolveConfirm(value) {
   confirmResolve?.(value);
   confirmResolve = null;
+  els.confirmCancel.textContent = 'Cancelar';
+  els.confirmOk.textContent = 'Confirmar';
 }
 
 async function callAdmin(action, payload = {}) {
@@ -349,6 +456,32 @@ async function callAdminOrders(action, payload = {}) {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || 'Operação falhou.');
+  return body;
+}
+
+async function callAdminBilling(action, payload = {}) {
+  if (!supabase || !functionsBase) throw new Error('Supabase não está configurado.');
+  const { data } = await supabase.auth.getSession();
+  session = data.session || session;
+  if (!session?.access_token) throw new Error('Sessão de administração inválida.');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  const response = await fetch(`${functionsBase}/admin-billing`, {
+    method: 'POST',
+    signal: controller.signal,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: config.SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  }).finally(() => clearTimeout(timeout));
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(body.error || 'A operação de faturação falhou.');
+    error.status = response.status;
+    throw error;
+  }
   return body;
 }
 
@@ -407,6 +540,8 @@ function isNetworkError(error) {
 }
 
 function displayNameFor(user = session?.user) {
+  const profileName = String(adminProfile?.full_name || '').trim();
+  if (profileName) return profileName;
   const metadataName = String(user?.user_metadata?.display_name || '').trim();
   if (metadataName) return metadataName;
   const emailName = String(user?.email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
@@ -424,6 +559,7 @@ function setProfileAvatar(url = '') {
   const pairs = [
     [els.profileAvatarImage, els.profileAvatarFallback],
     [els.settingsAvatarImage, els.settingsAvatarFallback],
+    [els.mobileAvatarImage, els.mobileAvatarFallback],
   ];
   pairs.forEach(([image, fallback]) => {
     if (!image || !fallback) return;
@@ -444,22 +580,174 @@ function setProfileAvatar(url = '') {
   });
 }
 
+function setSettingsAvatarPreview(url = '') {
+  const image = els.settingsAvatarImage;
+  const fallback = els.settingsAvatarFallback;
+  if (!image || !fallback) return;
+  fallback.textContent = initialsFor(displayNameFor());
+  if (url) {
+    image.src = url;
+    image.hidden = false;
+    fallback.hidden = true;
+    image.onerror = () => {
+      image.hidden = true;
+      fallback.hidden = false;
+    };
+    return;
+  }
+  image.removeAttribute('src');
+  image.hidden = true;
+  fallback.hidden = false;
+}
+
+function avatarStorage(path = '') {
+  return String(path).startsWith('admin-profiles/')
+    ? { bucket: 'private-galleries', path: String(path) }
+    : { bucket: 'admin-avatars', path: String(path) };
+}
+
+function settingsTableMissing(error) {
+  return error?.code === '42P01' || /admin_profiles|user_preferences|relation .* does not exist/i.test(String(error?.message || ''));
+}
+
+async function loadSettingsData() {
+  const user = session?.user;
+  if (!user) return;
+  const fallbackName = displayNameFor(user);
+  settingsSchemaAvailable = true;
+  const [profileResult, preferencesResult] = await Promise.all([
+    supabase.from('admin_profiles').select('*').eq('user_id', user.id).maybeSingle(),
+    supabase.from('user_preferences').select('*').eq('user_id', user.id).maybeSingle(),
+  ]);
+  const errors = [profileResult.error, preferencesResult.error].filter(Boolean);
+  if (errors.some(settingsTableMissing)) {
+    settingsSchemaAvailable = false;
+    adminProfile = normalizeAdminProfile({
+      full_name: user.user_metadata?.display_name,
+      avatar_path: user.user_metadata?.avatar_path,
+    }, fallbackName);
+    userPreferences = normalizeUserPreferences();
+  } else if (errors.length) {
+    throw errors[0];
+  } else {
+    adminProfile = normalizeAdminProfile(profileResult.data || {
+      full_name: user.user_metadata?.display_name,
+      avatar_path: user.user_metadata?.avatar_path,
+    }, fallbackName);
+    userPreferences = normalizeUserPreferences(preferencesResult.data || {});
+  }
+  populateSettingsForms();
+}
+
+function populateSettingsForms() {
+  if (!session?.user || !adminProfile) return;
+  const profile = els.profileForm?.elements;
+  if (profile) {
+    profile.fullName.value = adminProfile.full_name;
+    profile.roleLabel.value = adminProfile.role_label;
+    profile.bio.value = adminProfile.bio;
+    if (els.bioCount) els.bioCount.textContent = String(adminProfile.bio.length);
+  }
+  const contact = els.contactForm?.elements;
+  if (contact) {
+    contact.email.value = session.user.email || '';
+    contact.phone.value = adminProfile.phone || '';
+    contact.timezone.value = adminProfile.timezone;
+    contact.locale.value = adminProfile.locale;
+  }
+  populateEmailAccountFields();
+  const preferences = els.preferencesForm?.elements;
+  if (preferences) {
+    preferences.dateFormat.value = userPreferences.date_format;
+    const expiry = userPreferences.default_gallery_expiry_days;
+    const preset = [7, 15, 30, 60].includes(expiry) ? String(expiry) : expiry ? 'custom' : 'none';
+    preferences.expiryPreset.value = preset;
+    preferences.customExpiryDays.value = expiry || 30;
+    preferences.currency.value = userPreferences.default_currency;
+    preferences.downloadsEnabled.checked = userPreferences.default_downloads_enabled;
+    preferences.watermarkEnabled.checked = userPreferences.default_watermark_enabled;
+    preferences.salesEnabled.checked = userPreferences.default_sales_enabled;
+    if (els.customExpiry) els.customExpiry.hidden = preset !== 'custom';
+    preferences.customExpiryDays.disabled = preset !== 'custom';
+  }
+  els.passwordForm?.reset();
+  updatePasswordStrength();
+  settingsBaselines = new Map(els.settingsForms.map((form) => [form.dataset.settingsForm, serializeForm(form)]));
+  pendingAvatarBlob = null;
+  removeAvatarRequested = false;
+  revokePendingAvatarPreview();
+  updateAllSettingsSaveStates();
+}
+
+function populateEmailAccountFields() {
+  if (!session?.user) return;
+  const email = els.emailForm?.elements;
+  if (email) {
+    email.currentEmail.value = session.user.email || '';
+    email.newEmail.value = '';
+  }
+  const pendingEmail = String(session.user.new_email || '').trim();
+  if (els.emailPending) {
+    els.emailPending.hidden = !pendingEmail;
+    els.emailPending.textContent = pendingEmail
+      ? `Alteração pendente de confirmação para ${pendingEmail}.`
+      : 'Alteração de email pendente de confirmação.';
+  }
+  if (els.emailStatus) {
+    els.emailStatus.textContent = pendingEmail ? 'Pendente' : 'Confirmado';
+    els.emailStatus.classList.toggle('is-pending', Boolean(pendingEmail));
+    els.emailStatus.classList.toggle('is-success', !pendingEmail);
+  }
+}
+
+function settingsFormIsDirty(form) {
+  if (!form) return false;
+  const key = form.dataset.settingsForm;
+  return serializeForm(form) !== settingsBaselines.get(key);
+}
+
+function settingsHaveUnsavedChanges() {
+  return Boolean(pendingAvatarBlob || removeAvatarRequested || els.settingsForms.some(settingsFormIsDirty));
+}
+
+function updateSettingsSaveState(form) {
+  const dirty = settingsFormIsDirty(form)
+    || (form === els.profileForm && Boolean(pendingAvatarBlob || removeAvatarRequested));
+  const submit = form?.querySelector('[type="submit"]');
+  if (submit) submit.disabled = !dirty;
+  form?.classList.toggle('has-unsaved-changes', dirty);
+  return dirty;
+}
+
+function updateAllSettingsSaveStates() {
+  els.settingsForms.forEach(updateSettingsSaveState);
+}
+
+function markSettingsFormSaved(form) {
+  if (!form) return;
+  settingsBaselines.set(form.dataset.settingsForm, serializeForm(form));
+  updateSettingsSaveState(form);
+}
+
+function revokePendingAvatarPreview() {
+  if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl);
+  pendingAvatarPreviewUrl = '';
+}
+
 async function refreshProfileUI({ refreshAvatar = false } = {}) {
   const user = session?.user;
   if (!user) return;
   const name = displayNameFor(user);
-  const avatarPath = String(user.user_metadata?.avatar_path || '');
-  els.profileName.textContent = name;
-  els.settingsProfileName.textContent = name;
-  els.profileForm.elements.displayName.value = name;
-  els.profileForm.elements.email.value = user.email || '';
-  els.sessionEmail.textContent = user.email || '—';
-  els.sessionLastSignIn.textContent = formatDateTime(user.last_sign_in_at);
-  els.sessionCreatedAt.textContent = formatDateTime(user.created_at);
-  els.sessionDevice.textContent = /Mobi|Android/i.test(navigator.userAgent) ? 'Dispositivo móvel atual' : 'Este navegador';
-  els.sessionStatus.textContent = 'Sessão protegida';
-  els.currentPasswordRow.hidden = recoveryMode;
-  els.passwordForm.elements.currentPassword.required = !recoveryMode;
+  const avatarPath = String(adminProfile?.avatar_path || user.user_metadata?.avatar_path || '');
+  if (els.profileName) els.profileName.textContent = name;
+  if (els.settingsProfileName) els.settingsProfileName.textContent = name;
+  if (els.sessionEmail) els.sessionEmail.textContent = user.email || '—';
+  if (els.sessionLastSignIn) els.sessionLastSignIn.textContent = formatDateTime(user.last_sign_in_at);
+  if (els.sessionCreatedAt) els.sessionCreatedAt.textContent = formatDateTime(user.created_at);
+  if (els.sessionDevice) els.sessionDevice.textContent = currentDeviceLabel();
+  if (els.sessionStatus) els.sessionStatus.textContent = 'Ativa';
+  if (els.currentPasswordRow) els.currentPasswordRow.hidden = recoveryMode;
+  if (els.passwordForm) els.passwordForm.elements.currentPassword.required = !recoveryMode;
 
   if (!avatarPath) {
     profileAvatarPath = '';
@@ -471,7 +759,8 @@ async function refreshProfileUI({ refreshAvatar = false } = {}) {
     setProfileAvatar(profileAvatarUrl);
     return;
   }
-  const { data, error } = await supabase.storage.from('private-galleries').createSignedUrl(avatarPath, 3600);
+  const storage = avatarStorage(avatarPath);
+  const { data, error } = await supabase.storage.from(storage.bucket).createSignedUrl(storage.path, 3600);
   if (error) {
     setProfileAvatar('');
     return;
@@ -479,6 +768,56 @@ async function refreshProfileUI({ refreshAvatar = false } = {}) {
   profileAvatarPath = avatarPath;
   profileAvatarUrl = data.signedUrl;
   setProfileAvatar(profileAvatarUrl);
+}
+
+function currentDeviceLabel() {
+  const agent = navigator.userAgent;
+  const browser = /Edg\//.test(agent) ? 'Edge' : /Firefox\//.test(agent) ? 'Firefox' : /Chrome\//.test(agent) ? 'Chrome' : /Safari\//.test(agent) ? 'Safari' : 'Navegador atual';
+  const platform = navigator.userAgentData?.platform || navigator.platform || '';
+  return [browser, platform].filter(Boolean).join(' · ');
+}
+
+async function persistAdminProfile(changes = {}) {
+  if (!settingsSchemaAvailable) throw new Error('A migration das Definições ainda não foi aplicada no Supabase.');
+  const next = normalizeAdminProfile({ ...adminProfile, ...changes }, displayNameFor());
+  const payload = {
+    user_id: session.user.id,
+    full_name: next.full_name,
+    role_label: next.role_label,
+    bio: next.bio,
+    avatar_path: next.avatar_path,
+    phone: next.phone || null,
+    timezone: next.timezone,
+    locale: next.locale,
+  };
+  const { data, error } = await supabase
+    .from('admin_profiles')
+    .upsert(payload, { onConflict: 'user_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  adminProfile = normalizeAdminProfile(data, next.full_name);
+  return adminProfile;
+}
+
+async function persistUserPreferences(changes = {}) {
+  if (!settingsSchemaAvailable) throw new Error('A migration das Definições ainda não foi aplicada no Supabase.');
+  const next = normalizeUserPreferences({ ...userPreferences, ...changes });
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .upsert({ user_id: session.user.id, ...next }, { onConflict: 'user_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  userPreferences = normalizeUserPreferences(data);
+  return userPreferences;
+}
+
+async function removeStoredAvatar(path) {
+  if (!path) return;
+  const storage = avatarStorage(path);
+  const { error } = await supabase.storage.from(storage.bucket).remove([storage.path]);
+  if (error) throw error;
 }
 
 function clearAdminState() {
@@ -509,6 +848,12 @@ function clearAdminState() {
   setProfileAvatar('');
   profileAvatarPath = '';
   profileAvatarUrl = '';
+  adminProfile = null;
+  userPreferences = { ...DEFAULT_USER_PREFERENCES };
+  settingsBaselines.clear();
+  pendingAvatarBlob = null;
+  removeAvatarRequested = false;
+  revokePendingAvatarPreview();
 }
 
 function imageFromFile(file) {
@@ -528,8 +873,7 @@ function imageFromFile(file) {
 }
 
 async function optimizeAvatar(file) {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Escolha uma imagem JPG, PNG ou WebP.');
-  if (file.size > 12 * 1024 * 1024) throw new Error('A fotografia não pode exceder 12 MB.');
+  await validateAvatarFile(file);
   const source = 'createImageBitmap' in window ? await createImageBitmap(file) : await imageFromFile(file);
   const size = Math.min(source.width, source.height);
   const sourceX = Math.max(0, (source.width - size) / 2);
@@ -545,10 +889,18 @@ async function optimizeAvatar(file) {
 }
 
 function passwordIsStrong(value) {
-  return value.length >= 10
-    && /[a-záàâãéêíóôõúç]/.test(value)
-    && /[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]/.test(value)
-    && /\d/.test(value);
+  return passwordStrength(value).valid;
+}
+
+function updatePasswordStrength() {
+  if (!els.passwordForm || !els.passwordStrengthBar || !els.passwordStrengthLabel) return;
+  const value = els.passwordForm.elements.newPassword.value;
+  const strength = passwordStrength(value);
+  const percent = value ? Math.max(16, Math.round((strength.score / 6) * 100)) : 0;
+  const color = strength.score <= 2 ? '#b7685c' : strength.score <= 4 ? '#b88648' : '#4f8063';
+  els.passwordStrengthBar.parentElement.parentElement.style.setProperty('--password-strength', `${percent}%`);
+  els.passwordStrengthBar.parentElement.parentElement.style.setProperty('--password-color', color);
+  els.passwordStrengthLabel.textContent = value ? strength.label : '—';
 }
 
 function togglePasswordVisibility(button) {
@@ -652,17 +1004,122 @@ function estimateStorage() {
   return { bytes, percent, label: `${percent}%`, detail: storageInfo.approximate ? `${formatBytes(bytes)} estimados` : `${formatBytes(bytes)} usado` };
 }
 
+function renderStorageSettings({ loading = false, error = false } = {}) {
+  if (!els.storageSettings) return;
+  if (loading) {
+    els.storageSettings.dataset.state = 'loading';
+    els.storageTotal.textContent = 'A calcular…';
+    els.storagePercent.textContent = '—';
+    els.storageSource.textContent = 'Estamos a calcular os ficheiros guardados.';
+    els.storageSettingsBar.style.width = '0%';
+    clearElement(els.storageBreakdown);
+    return;
+  }
+  if (error || !storageInfo || !Number.isFinite(Number(storageInfo.bytes))) {
+    els.storageSettings.dataset.state = 'error';
+    els.storageTotal.textContent = 'Dados indisponíveis';
+    els.storagePercent.textContent = '—';
+    els.storageSource.textContent = 'Não foi possível calcular o armazenamento. Tente novamente.';
+    els.storageSettingsBar.style.width = '0%';
+    clearElement(els.storageBreakdown);
+    return;
+  }
+  const bytes = Number(storageInfo.bytes);
+  const quota = Number(storageInfo.quotaBytes || 150 * 1024 * 1024 * 1024);
+  const precisePercent = quota > 0 ? (bytes / quota) * 100 : 0;
+  const percent = Math.min(100, precisePercent);
+  els.storageSettings.dataset.state = 'success';
+  els.storageTotal.textContent = `${formatBytes(bytes)} utilizados de ${formatBytes(quota)}`;
+  els.storagePercent.textContent = `${precisePercent < 1 && bytes > 0 ? '<1' : Math.round(percent)}% utilizado`;
+  els.storageSource.textContent = storageInfo.approximate
+    ? `Valor estimado · ${Number(storageInfo.photoCount || 0).toLocaleString('pt-PT')} fotografias`
+    : `Valor calculado no Storage · ${Number(storageInfo.photoCount || 0).toLocaleString('pt-PT')} fotografias`;
+  els.storageSettingsBar.style.width = `${Math.max(bytes > 0 ? .35 : 0, percent)}%`;
+  clearElement(els.storageBreakdown);
+  const breakdown = storageInfo.breakdown || {};
+  const items = [
+    ['Originais', breakdown.originals],
+    ['Versões web', breakdown.web],
+    ['Miniaturas', breakdown.thumbnails],
+    ['Marca de água', breakdown.watermarked],
+    ['Outros ficheiros', breakdown.other],
+  ];
+  items.forEach(([label, value]) => {
+    const item = document.createElement('div');
+    const title = document.createElement('span');
+    const amount = document.createElement('strong');
+    title.textContent = label;
+    amount.textContent = Number.isFinite(Number(value)) ? formatBytes(Number(value)) : 'Indisponível';
+    item.append(title, amount);
+    els.storageBreakdown.appendChild(item);
+  });
+}
+
 function setView(view) {
   activeView = view;
   els.content.classList.toggle('is-overview-active', view === 'overview');
-  els.pageTitle.textContent = view === 'overview' ? 'Visão geral' : view === 'galleries' ? 'Galerias' : view === 'orders' ? 'Encomendas' : 'Definições';
+  const pageTitles = { overview: 'Visão geral', galleries: 'Galerias', orders: 'Encomendas', billing: 'Faturação', settings: 'Definições' };
+  els.pageTitle.textContent = pageTitles[view] || 'Administração';
   els.viewPanels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.viewPanel === view));
   els.nav.forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
   if (view === 'overview') renderDashboard();
   if (view === 'galleries') renderGalleries();
   if (view === 'orders') loadOrders();
-  if (view === 'settings') refreshProfileUI();
+  if (view === 'billing') {
+    setBillingMode(billingListMode, { updateHash: true });
+    if (billingListMode) loadBillingList();
+    else loadBillingDashboard();
+  }
+  if (view === 'settings') {
+    refreshProfileUI();
+    setSettingsSection(settingsSection, { updateHash: true });
+  } else if (location.hash.startsWith('#definicoes/')) {
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+  }
+  if (view !== 'billing' && location.hash.startsWith('#faturacao')) history.replaceState(null, '', `${location.pathname}${location.search}`);
   closeMobileSidebar();
+}
+
+function setSettingsSection(section, { updateHash = true } = {}) {
+  settingsSection = els.settingsPanels.some((panel) => panel.dataset.settingsPanel === section) ? section : 'profile';
+  els.settingsNav.forEach((button) => {
+    const active = button.dataset.settingsSection === settingsSection;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  els.settingsPanels.forEach((panel) => {
+    const active = panel.dataset.settingsPanel === settingsSection;
+    panel.hidden = !active;
+    panel.classList.toggle('is-active', active);
+  });
+  if (updateHash) history.replaceState(null, '', `${location.pathname}${location.search}#definicoes/${settingsSection}`);
+  if (settingsSection === 'storage') renderStorageSettings();
+}
+
+async function confirmDiscardSettings() {
+  if (!settingsHaveUnsavedChanges()) return true;
+  const discard = await askConfirm(
+    'Alterações não guardadas',
+    'Pretende sair sem guardar?',
+    { confirmLabel: 'Descartar alterações', cancelLabel: 'Continuar a editar' },
+  );
+  if (!discard) return false;
+  populateSettingsForms();
+  await refreshProfileUI({ refreshAvatar: true });
+  return true;
+}
+
+async function requestSettingsSection(section) {
+  if (section === settingsSection) return;
+  if (!await confirmDiscardSettings()) return;
+  setSettingsSection(section);
+}
+
+async function requestView(view) {
+  if (activeView === 'settings' && view !== 'settings' && !await confirmDiscardSettings()) return;
+  if (view === 'billing') billingListMode = false;
+  setView(view);
 }
 
 function skeletonDashboard() {
@@ -974,121 +1431,207 @@ function openUploadPicker() {
   setTimeout(() => els.uploadPickerSearch.focus(), 60);
 }
 
+function accessGroupStatus(album) {
+  return statusOf(album) === 'expired' ? 'expired' : 'active';
+}
+
+function maskAccessCode(code = '') {
+  const raw = String(code || '').trim();
+  if (!raw) return '•••• •••• ••••';
+  const suffix = raw.replace(/\s+/g, '').slice(-4).toUpperCase();
+  return `•••• •••• •••• ${suffix}`;
+}
+
+function accessAlbums() {
+  const query = accessFilters.search.trim().toLowerCase();
+  return albums
+    .filter((album) => statusOf(album) !== 'archived')
+    .filter((album) => accessGroupStatus(album) === accessFilters.status)
+    .filter((album) => {
+      if (!query) return true;
+      const cachedCode = accessCodeCache.get(album.id) || '';
+      const haystack = [album.title, album.event_type, album.location, album.access_code_masked, cachedCode]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => {
+      if (accessFilters.sort === 'oldest') {
+        return new Date(a.updated_at || a.created_at || 0) - new Date(b.updated_at || b.created_at || 0);
+      }
+      if (accessFilters.sort === 'title-asc') return String(a.title || '').localeCompare(String(b.title || ''), 'pt');
+      if (accessFilters.sort === 'title-desc') return String(b.title || '').localeCompare(String(a.title || ''), 'pt');
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+    });
+}
+
+async function loadAccessCode(album, { makeVisible = true } = {}) {
+  let code = accessCodeCache.get(album.id);
+  if (!code) {
+    const data = await callAdmin('get-code', { albumId: album.id });
+    code = data.accessCode;
+    accessCodeCache.set(album.id, code);
+  }
+  if (makeVisible) visibleAccessCodes.add(album.id);
+  return code;
+}
+
+async function toggleAccessCode(album, button) {
+  if (visibleAccessCodes.has(album.id) && accessCodeCache.has(album.id)) {
+    visibleAccessCodes.delete(album.id);
+    renderAccessList();
+    return;
+  }
+  await withBusy(button, 'A obter...', async () => {
+    try {
+      await loadAccessCode(album);
+      renderAccessList();
+      toast('Código carregado.');
+    } catch (error) {
+      if (handleExpiredAdminSession(error)) return;
+      toast(friendlyError(error, 'Não foi possível obter o código.'), 'error');
+    }
+  });
+}
+
 function renderAccessList() {
   clearElement(els.accessList);
-  const items = albums.filter((album) => statusOf(album) !== 'archived')
-    .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
-  if (!items.length) {
+  const allItems = albums.filter((album) => statusOf(album) !== 'archived');
+  const activeCount = allItems.filter((album) => accessGroupStatus(album) === 'active').length;
+  const expiredCount = allItems.filter((album) => accessGroupStatus(album) === 'expired').length;
+  if (els.accessActiveCount) els.accessActiveCount.textContent = String(activeCount);
+  if (els.accessExpiredCount) els.accessExpiredCount.textContent = String(expiredCount);
+  if (els.accessTotal) els.accessTotal.textContent = `${allItems.length} ${allItems.length === 1 ? 'código' : 'códigos'} no total`;
+
+  els.accessFilterButtons.forEach((button) => {
+    const active = button.dataset.accessFilter === accessFilters.status;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
+  const items = accessAlbums();
+  if (!allItems.length) {
     renderEmpty(els.accessList, 'Ainda não existem galerias com acessos para gerir.');
+    return;
+  }
+  if (!items.length) {
+    renderEmpty(els.accessList, 'Nenhum código encontrado.');
     return;
   }
 
   const fragment = document.createDocumentFragment();
   items.forEach((album) => {
     const status = statusOf(album);
+    const visible = visibleAccessCodes.has(album.id) && accessCodeCache.has(album.id);
     const cachedCode = accessCodeCache.get(album.id);
-    const row = document.createElement('article');
-    row.className = 'admin-access-row';
-    row.innerHTML = `
-      <div class="admin-access-main">
-        <strong>${escapeText(album.title || 'Sem nome')}</strong>
-        <small>${escapeText(album.event_type || 'Evento')} · ${escapeText(formatDate(album.event_date))}</small>
+    const codeLabel = visible ? cachedCode : maskAccessCode(cachedCode || album.access_code_masked || '');
+    const card = document.createElement('article');
+    card.className = 'admin-access-card';
+
+    const cover = coverNode(album);
+    cover.classList.add('admin-access-cover');
+
+    const details = document.createElement('div');
+    details.className = 'admin-access-details';
+    details.innerHTML = `
+      <div class="admin-access-title-row">
+        <div><strong>${escapeText(album.title || 'Sem nome')}</strong><small>${escapeText(album.event_type || 'Evento')} · ${escapeText(formatDate(album.event_date))}</small></div>
+        <span class="admin-access-status is-${escapeText(accessGroupStatus(album))}">${escapeText(statusLabel(status))}</span>
       </div>
-      <span class="admin-access-status">${statusLabel(status)}</span>
-      <code>${escapeText(cachedCode || album.access_code_masked || 'Sem código')}</code>
-      <small>Sessões ativas: ${Number(album.active_session_count || 0)}</small>
-      <small>Última utilização: ${escapeText(formatDateTime(album.last_session_at))}</small>
-      <small>${escapeText(cachedCode ? 'Código carregado nesta sessão' : 'Mostrar para verificar disponibilidade')}</small>
-      <small>Sessões: geridas no servidor</small>
-      <small>Expiração: ${escapeText(formatExpirationStatus(album.expires_at))}</small>
+      <dl class="admin-access-meta">
+        <div><dt>Sessões ativas</dt><dd>${Number(album.active_session_count || 0)}</dd></div>
+        <div><dt>Última utilização</dt><dd>${escapeText(formatDateTime(album.last_session_at))}</dd></div>
+        <div><dt>Expiração</dt><dd>${escapeText(formatExpirationStatus(album.expires_at))}</dd></div>
+      </dl>
     `;
+
+    const codeBlock = document.createElement('div');
+    codeBlock.className = 'admin-access-code';
+    const codeToggle = actionButton(visible ? 'Ocultar' : 'Ver', () => toggleAccessCode(album, codeToggle));
+    codeToggle.setAttribute('aria-label', visible ? 'Ocultar código' : 'Mostrar código');
+    codeBlock.innerHTML = `<span aria-hidden="true">🔒</span><code>${escapeText(codeLabel || 'Sem código')}</code>`;
+    codeBlock.append(codeToggle);
 
     const actions = document.createElement('div');
     actions.className = 'admin-access-actions';
 
-    const show = actionButton('Mostrar', async () => {
-      await withBusy(show, 'A obter...', async () => {
-        try {
-          const data = await callAdmin('get-code', { albumId: album.id });
-          accessCodeCache.set(album.id, data.accessCode);
-          renderAccessList();
-          toast('Código carregado.');
-        } catch (error) {
-          if (handleExpiredAdminSession(error)) return;
-          toast(friendlyError(error, 'Não foi possível obter o código.'), 'error');
-        }
-      });
-    });
+    const show = actionButton(visible ? 'Ocultar' : 'Mostrar', () => toggleAccessCode(album, show));
 
     const copy = actionButton('Copiar', async () => {
       await withBusy(copy, 'A copiar...', async () => {
-        let code = accessCodeCache.get(album.id);
-        if (!code) {
-          const data = await callAdmin('get-code', { albumId: album.id });
-          code = data.accessCode;
-          accessCodeCache.set(album.id, code);
+        try {
+          const code = await loadAccessCode(album, { makeVisible: false });
+          await navigator.clipboard.writeText(code);
           renderAccessList();
+          toast('Código copiado.');
+        } catch (error) {
+          if (handleExpiredAdminSession(error)) return;
+          toast(friendlyError(error, 'Não foi possível copiar o código.'), 'error');
         }
-        await navigator.clipboard.writeText(code);
-        toast('Código copiado.');
-      }).catch((error) => {
-        if (handleExpiredAdminSession(error)) return;
-        toast(friendlyError(error, 'Não foi possível copiar o código.'), 'error');
       });
     });
 
     const instructions = actionButton('Instruções', async () => {
       await withBusy(instructions, 'A copiar...', async () => {
-        let code = accessCodeCache.get(album.id);
-        if (!code) {
-          const data = await callAdmin('get-code', { albumId: album.id });
-          code = data.accessCode;
-          accessCodeCache.set(album.id, code);
+        try {
+          const code = await loadAccessCode(album, { makeVisible: false });
+          await navigator.clipboard.writeText(guestInstructions(album, code));
           renderAccessList();
+          toast('Instruções copiadas.');
+        } catch (error) {
+          if (handleExpiredAdminSession(error)) return;
+          toast(friendlyError(error, 'Não foi possível copiar as instruções.'), 'error');
         }
-        await navigator.clipboard.writeText(guestInstructions(album, code));
-        toast('Instruções copiadas.');
-      }).catch((error) => {
-        if (handleExpiredAdminSession(error)) return;
-        toast(friendlyError(error, 'Não foi possível copiar as instruções.'), 'error');
       });
     });
 
     const regenerate = actionButton('Novo código', async () => {
       if (!await askConfirm('Gerar novo código', 'O código antigo deixa de funcionar e todas as sessões serão terminadas.')) return;
       await withBusy(regenerate, 'A gerar...', async () => {
-        const data = await callAdmin('regenerate-code', { albumId: album.id });
-        accessCodeCache.set(album.id, data.accessCode);
-        await loadAlbums();
-        renderAccessList();
-        toast('Novo código gerado.');
-      }).catch((error) => {
-        if (handleExpiredAdminSession(error)) return;
-        toast(friendlyError(error, 'Não foi possível gerar novo código.'), 'error');
+        try {
+          const data = await callAdmin('regenerate-code', { albumId: album.id });
+          accessCodeCache.set(album.id, data.accessCode);
+          visibleAccessCodes.add(album.id);
+          await loadAlbums();
+          renderAccessList();
+          toast('Novo código gerado.');
+        } catch (error) {
+          if (handleExpiredAdminSession(error)) return;
+          toast(friendlyError(error, 'Não foi possível gerar novo código.'), 'error');
+        }
       });
     });
 
     const sessions = actionButton('Terminar sessões', async () => {
       if (!await askConfirm('Terminar sessões', 'Os convidados terão de introduzir novamente o código.')) return;
       await withBusy(sessions, 'A terminar...', async () => {
-        await callAdmin('end-sessions', { albumId: album.id });
-        toast('Sessões terminadas.');
-      }).catch((error) => {
-        if (handleExpiredAdminSession(error)) return;
-        toast(friendlyError(error, 'Não foi possível terminar sessões.'), 'error');
+        try {
+          await callAdmin('end-sessions', { albumId: album.id });
+          await loadAlbums();
+          renderAccessList();
+          toast('Sessões terminadas.');
+        } catch (error) {
+          if (handleExpiredAdminSession(error)) return;
+          toast(friendlyError(error, 'Não foi possível terminar sessões.'), 'error');
+        }
       });
     });
+    sessions.classList.add('is-danger');
 
     actions.append(show, copy, instructions, regenerate, sessions);
-    row.append(actions);
-    fragment.appendChild(row);
+    card.append(cover, details, codeBlock, actions);
+    fragment.appendChild(card);
   });
   els.accessList.appendChild(fragment);
 }
 
 function openAccessManager() {
+  accessFilters = { search: '', status: 'active', sort: 'recent' };
+  if (els.accessSearch) els.accessSearch.value = '';
+  if (els.accessSort) els.accessSort.value = 'recent';
   renderAccessList();
   els.accessModal.showModal();
+  setTimeout(() => els.accessSearch?.focus({ preventScroll: true }), 60);
 }
 
 function filteredAlbums() {
@@ -1377,16 +1920,17 @@ function resetForm() {
   detailsValidationAttempted = false;
   fields.id.value = '';
   fields.isActive.checked = true;
-  fields.downloadsEnabled.checked = true;
-  fields.watermarkEnabled.checked = true;
+  fields.downloadsEnabled.checked = userPreferences.default_downloads_enabled !== false;
+  fields.watermarkEnabled.checked = userPreferences.default_watermark_enabled !== false;
   fields.watermarkOriginalDownloads.checked = false;
-  fields.salesEnabled.checked = false;
+  fields.salesEnabled.checked = userPreferences.default_sales_enabled === true;
   fields.photoPrice.value = '6.99';
-  fields.currency.value = 'EUR';
+  fields.currency.value = userPreferences.default_currency || 'EUR';
   fields.downloadExpiryDays.value = '7';
   fields.salesSupportEmail.value = '';
   fields.refundPolicyText.value = '';
-  setNoExpiration(true);
+  fields.expiresAt.value = galleryExpiryValue(userPreferences.default_gallery_expiry_days);
+  setNoExpiration(!fields.expiresAt.value);
   updatePublishChoice();
   updateDownloadOptions();
   updateSalesOptions();
@@ -2086,14 +2630,17 @@ async function deleteAlbum() {
 async function loadAlbums() {
   const requestVersion = ++albumLoadVersion;
   if (!albums.length && activeView === 'overview') skeletonDashboard();
+  if (activeView === 'settings' && settingsSection === 'storage') renderStorageSettings({ loading: true });
   try {
     const data = await callAdmin('list');
     if (requestVersion !== albumLoadVersion) return;
     albums = data.albums || [];
     storageInfo = data.storage || null;
     renderAll();
+    renderStorageSettings();
   } catch (error) {
     if (requestVersion !== albumLoadVersion) return;
+    renderStorageSettings({ error: true });
     toast(friendlyError(error, 'Não foi possível carregar as galerias.'), 'error');
   }
 }
@@ -2188,6 +2735,368 @@ async function openOrderDetail(orderId) {
   }
 }
 
+const billingStatusLabels = {
+  paid: 'Pago', pending: 'Pendente', failed: 'Falhado', expired: 'Expirado',
+  refunded: 'Reembolsado', partially_refunded: 'Reembolso parcial',
+};
+
+function billingMoney(cents, currency = 'EUR') {
+  return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: String(currency || 'EUR').toUpperCase() })
+    .format(Number(cents || 0) / 100);
+}
+
+function billingMonthLabel(key, long = false) {
+  const [year, month] = String(key || '').split('-').map(Number);
+  if (!year || !month) return '';
+  return new Intl.DateTimeFormat('pt-PT', { month: long ? 'long' : 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function setBillingMode(showList, { updateHash = true } = {}) {
+  billingListMode = Boolean(showList);
+  if (els.billingDashboardView) els.billingDashboardView.hidden = billingListMode;
+  if (els.billingListView) els.billingListView.hidden = !billingListMode;
+  if (updateHash && activeView === 'billing') {
+    history.replaceState(null, '', `${location.pathname}${location.search}${billingListMode ? '#faturacao/faturas' : '#faturacao'}`);
+  }
+}
+
+function skeletonBillingDashboard() {
+  if (els.billingMetrics) {
+    els.billingMetrics.innerHTML = '<article class="admin-billing-metric is-skeleton"></article>'.repeat(4);
+  }
+  if (els.billingRecentTable) els.billingRecentTable.innerHTML = '<div class="admin-billing-table-skeleton"></div>';
+  if (els.billingChart) els.billingChart.innerHTML = '<div class="admin-billing-chart-skeleton"></div>';
+  if (els.billingStripe) els.billingStripe.innerHTML = '<div class="admin-billing-card-skeleton"></div>';
+  if (els.billingProfile) els.billingProfile.innerHTML = '<div class="admin-billing-card-skeleton"></div>';
+}
+
+function billingMetric(icon, label, value, detail, tone = '', trend = '') {
+  const article = document.createElement('article');
+  article.className = `admin-billing-metric${tone ? ` is-${tone}` : ''}`;
+  article.innerHTML = `<span class="admin-billing-metric__icon" aria-hidden="true">${escapeText(icon)}</span><div><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong><small class="${escapeText(trend)}">${escapeText(detail)}</small></div>`;
+  return article;
+}
+
+function renderBillingMetrics(summary, currency) {
+  if (!els.billingMetrics) return;
+  clearElement(els.billingMetrics);
+  const comparison = summary.comparisonPercent;
+  const comparisonText = comparison == null ? 'Sem dados comparáveis no mês anterior' : `${comparison > 0 ? '+' : ''}${comparison}% vs mês anterior`;
+  const comparisonTone = comparison == null ? '' : comparison >= 0 ? 'is-positive' : 'is-negative';
+  appendChildren(els.billingMetrics, [
+    billingMetric('€', 'Faturado este mês', billingMoney(summary.currentMonthCents, currency), comparisonText, '', comparisonTone),
+    billingMetric('✓', 'Pagamentos recebidos', billingMoney(summary.receivedCents, currency), `${Number(summary.receivedPayments || 0)} pagamentos confirmados`, 'success'),
+    billingMetric('#', 'Faturas emitidas', String(summary.invoiceCount || 0), summary.invoicesConfigured ? 'Este período' : 'Emissão fiscal não configurada'),
+    billingMetric('!', 'Pagamentos pendentes', billingMoney(summary.pendingCents, currency), `${Number(summary.pendingCount || 0)} pagamentos pendentes`, 'warning'),
+  ]);
+}
+
+function billingTable(records, { emptyMessage = 'Ainda não existem registos de faturação.' } = {}) {
+  if (!records.length) {
+    const empty = document.createElement('div');
+    empty.className = 'admin-billing-empty';
+    empty.innerHTML = `<div><strong>${escapeText(emptyMessage)}</strong><p>Os pagamentos aparecerão aqui quando forem criados.</p></div>`;
+    return empty;
+  }
+  const table = document.createElement('table');
+  table.className = 'admin-billing-table';
+  table.innerHTML = '<thead><tr><th>Referência</th><th>Cliente</th><th>Data</th><th>Galeria</th><th>Total</th><th>Estado</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  records.forEach((record) => {
+    const row = document.createElement('tr');
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+    row.setAttribute('aria-label', `Abrir ${record.reference}`);
+    row.innerHTML = `
+      <td data-label="Referência"><strong>${escapeText(record.reference || '—')}</strong><small>Documento interno</small></td>
+      <td data-label="Cliente">${escapeText(record.customerEmail || 'Cliente não identificado')}</td>
+      <td data-label="Data">${escapeText(formatDateTime(record.paidAt || record.createdAt))}</td>
+      <td data-label="Galeria">${escapeText(record.album?.title || '—')}</td>
+      <td data-label="Total"><strong>${escapeText(billingMoney(record.totalCents, record.currency))}</strong></td>
+      <td data-label="Estado"><span class="admin-billing-status is-${escapeText(record.status)}">${escapeText(billingStatusLabels[record.status] || record.status)}</span></td>`;
+    const open = () => openBillingDetail(record.id);
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function renderBillingRecent(records) {
+  if (!els.billingRecentTable) return;
+  clearElement(els.billingRecentTable);
+  els.billingRecentTable.appendChild(billingTable(records));
+}
+
+function renderBillingStripe(stripeState) {
+  if (!els.billingStripe) return;
+  const stateLabel = !stripeState.configured ? 'Não configurada' : stripeState.mode === 'test' ? 'Ligada · Modo de teste' : 'Ligada · Produção';
+  els.billingStripe.innerHTML = `
+    <div class="admin-billing-stripe__identity"><span class="admin-billing-stripe__logo" aria-hidden="true">S</span><div><strong>Stripe</strong><small>Pagamentos online</small></div></div>
+    <dl><div><dt>Estado</dt><dd><span class="admin-billing-status ${stripeState.configured ? 'is-paid' : 'is-failed'}">${escapeText(stateLabel)}</span></dd></div><div><dt>Moeda</dt><dd>${escapeText(stripeState.currency || 'EUR')}</dd></div></dl>
+    <p class="admin-billing-stripe__note">Os pagamentos são processados de forma segura através da Stripe. As chaves privadas nunca são apresentadas no painel.</p>`;
+}
+
+function renderBillingProfile(profile, schemaAvailable = true) {
+  if (!els.billingProfile) return;
+  billingProfile = profile || null;
+  const hasData = profile && ['business_name', 'tax_id', 'billing_email', 'address_line1', 'address_line2', 'postal_code', 'city', 'country']
+    .some((key) => String(profile[key] || '').trim());
+  els.billingEditProfile.disabled = !schemaAvailable;
+  if (!hasData) {
+    els.billingProfile.innerHTML = `<div class="admin-billing-profile__empty"><strong>Dados fiscais ainda não configurados.</strong><p>${schemaAvailable ? 'Adicione os dados usados pela administradora.' : 'A migration do perfil fiscal ainda não foi aplicada.'}</p><button type="button" data-billing-add-profile ${schemaAvailable ? '' : 'disabled'}>Adicionar dados</button></div>`;
+    els.billingProfile.querySelector('[data-billing-add-profile]')?.addEventListener('click', openBillingProfileDialog);
+    return;
+  }
+  const address = [profile.address_line1, profile.address_line2, profile.postal_code, profile.city, profile.country].filter(Boolean).join(', ');
+  els.billingProfile.innerHTML = `<dl>
+    <div><dt>Nome / Empresa</dt><dd>${escapeText(profile.business_name || '—')}</dd></div>
+    <div><dt>NIF</dt><dd>${escapeText(profile.tax_id || '—')}</dd></div>
+    <div><dt>Email</dt><dd>${escapeText(profile.billing_email || '—')}</dd></div>
+    <div><dt>Morada</dt><dd>${escapeText(address || '—')}</dd></div>
+  </dl>`;
+}
+
+function renderBillingChart(summary, currency) {
+  if (!els.billingChart) return;
+  clearElement(els.billingChart);
+  const series = summary.series || [];
+  const hasData = series.some((point) => Number(point.totalCents) > 0);
+  if (!hasData) {
+    const empty = document.createElement('div');
+    empty.className = 'admin-billing-empty';
+    empty.innerHTML = '<div><strong>Ainda não existem dados suficientes.</strong><p>O gráfico usa exclusivamente pagamentos confirmados.</p></div>';
+    els.billingChart.appendChild(empty);
+    return;
+  }
+  const width = 900;
+  const height = 260;
+  const padding = { top: 20, right: 22, bottom: 40, left: 54 };
+  const max = Math.max(...series.map((point) => Number(point.totalCents || 0)), 100);
+  const xStep = series.length > 1 ? (width - padding.left - padding.right) / (series.length - 1) : 0;
+  const points = series.map((point, index) => ({
+    ...point,
+    x: series.length === 1 ? width / 2 : padding.left + index * xStep,
+    y: padding.top + (1 - Number(point.totalCents || 0) / max) * (height - padding.top - padding.bottom),
+  }));
+  const line = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const area = `${padding.left},${height - padding.bottom} ${line} ${points.at(-1).x},${height - padding.bottom}`;
+  const gridLines = [0, .25, .5, .75, 1].map((ratio) => {
+    const y = padding.top + ratio * (height - padding.top - padding.bottom);
+    const value = max * (1 - ratio);
+    return `<line class="admin-billing-chart-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"/><text class="admin-billing-chart-label" x="0" y="${y + 4}">${escapeText(billingMoney(value, currency).replace(/,00\s?€/, ' €'))}</text>`;
+  }).join('');
+  const labels = points.map((point) => `<text class="admin-billing-chart-label" text-anchor="middle" x="${point.x}" y="${height - 12}">${escapeText(billingMonthLabel(point.month))}</text>`).join('');
+  const circles = points.map((point, index) => `<circle class="admin-billing-chart-point" tabindex="0" role="img" aria-label="${escapeText(`${billingMonthLabel(point.month, true)}: ${billingMoney(point.totalCents, currency)}, ${point.payments} pagamentos`)}" data-chart-point="${index}" cx="${point.x}" cy="${point.y}" r="5"/>`).join('');
+  els.billingChart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" aria-label="Resumo de pagamentos confirmados" role="img"><defs><linearGradient id="billingChartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a87553" stop-opacity=".24"/><stop offset="100%" stop-color="#a87553" stop-opacity=".02"/></linearGradient></defs>${gridLines}<polygon class="admin-billing-chart-area" points="${area}"/><polyline class="admin-billing-chart-line" points="${line}"/>${circles}${labels}</svg>`;
+  const hideTooltip = () => els.billingChart.querySelector('.admin-billing-chart-tooltip')?.remove();
+  els.billingChart.querySelectorAll('[data-chart-point]').forEach((circle) => {
+    const showTooltip = () => {
+      hideTooltip();
+      const point = points[Number(circle.dataset.chartPoint)];
+      const tooltip = document.createElement('div');
+      tooltip.className = 'admin-billing-chart-tooltip';
+      tooltip.style.left = `${(point.x / width) * 100}%`;
+      tooltip.style.top = `${(point.y / height) * 100}%`;
+      tooltip.innerHTML = `<span>${escapeText(billingMonthLabel(point.month, true))}</span><strong>${escapeText(billingMoney(point.totalCents, currency))}</strong><small>${Number(point.payments)} pagamentos</small>`;
+      els.billingChart.appendChild(tooltip);
+    };
+    circle.addEventListener('mouseenter', showTooltip);
+    circle.addEventListener('focus', showTooltip);
+    circle.addEventListener('mouseleave', hideTooltip);
+    circle.addEventListener('blur', hideTooltip);
+  });
+}
+
+function renderBillingDashboard() {
+  if (!billingDashboard) return;
+  const currency = billingDashboard.stripe?.currency || 'EUR';
+  renderBillingMetrics(billingDashboard.summary, currency);
+  renderBillingRecent(billingDashboard.recent || []);
+  renderBillingChart(billingDashboard.summary, currency);
+  renderBillingStripe(billingDashboard.stripe || { configured: false, mode: 'unconfigured', currency });
+  renderBillingProfile(billingDashboard.profile, billingDashboard.profileSchemaAvailable !== false);
+}
+
+async function loadBillingDashboard({ force = false } = {}) {
+  if (!els.billingPage || billingLoading) return;
+  const months = Number(els.billingChartRange?.value || 6);
+  if (!force && billingDashboard?.months === months) {
+    renderBillingDashboard();
+    return;
+  }
+  billingLoading = true;
+  els.billingError.hidden = true;
+  skeletonBillingDashboard();
+  try {
+    billingDashboard = await callAdminBilling('dashboard', { months });
+    billingDashboard.months = months;
+    renderBillingDashboard();
+  } catch (error) {
+    if (handleExpiredAdminSession(error)) return;
+    els.billingError.hidden = false;
+    els.billingErrorMessage.textContent = friendlyError(error, 'Verifique a ligação e tente novamente.');
+  } finally {
+    billingLoading = false;
+  }
+}
+
+function billingFilterPayload() {
+  return { ...billingFilters };
+}
+
+async function loadBillingList() {
+  if (!els.billingListTable) return;
+  els.billingListTable.innerHTML = '<div class="admin-billing-table-skeleton"></div>';
+  els.billingPagination.innerHTML = '';
+  try {
+    const data = await callAdminBilling('list', { filters: billingFilterPayload(), page: billingListPage, pageSize: 10 });
+    billingListRecords = data.records || [];
+    billingListCount = Number(data.count || 0);
+    clearElement(els.billingListTable);
+    els.billingListTable.appendChild(billingTable(billingListRecords));
+    renderBillingPagination();
+  } catch (error) {
+    if (handleExpiredAdminSession(error)) return;
+    els.billingListTable.innerHTML = `<div class="admin-billing-empty"><div><strong>Não foi possível carregar os registos.</strong><p>${escapeText(friendlyError(error))}</p></div></div>`;
+  }
+}
+
+function renderBillingPagination() {
+  if (!els.billingPagination) return;
+  clearElement(els.billingPagination);
+  const totalPages = Math.max(1, Math.ceil(billingListCount / 10));
+  const first = billingListCount ? (billingListPage - 1) * 10 + 1 : 0;
+  const last = Math.min(billingListCount, billingListPage * 10);
+  const label = document.createElement('small');
+  label.textContent = `A mostrar ${first} a ${last} de ${billingListCount}`;
+  const controls = document.createElement('div');
+  controls.className = 'admin-billing-pagination-buttons';
+  const addButton = (labelText, page, disabled = false, active = false) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = labelText; button.disabled = disabled; button.classList.toggle('is-active', active);
+    button.addEventListener('click', () => { billingListPage = page; loadBillingList(); });
+    controls.appendChild(button);
+  };
+  addButton('‹', Math.max(1, billingListPage - 1), billingListPage === 1);
+  const start = Math.max(1, Math.min(billingListPage - 1, totalPages - 2));
+  for (let page = start; page <= Math.min(totalPages, start + 2); page += 1) addButton(String(page), page, false, page === billingListPage);
+  addButton('›', Math.min(totalPages, billingListPage + 1), billingListPage === totalPages);
+  els.billingPagination.append(label, controls);
+}
+
+function openBillingProfileDialog() {
+  if (!els.billingProfileDialog || els.billingEditProfile?.disabled) return;
+  const form = els.billingProfileForm;
+  const profile = billingProfile || {};
+  form.elements.businessName.value = profile.business_name || '';
+  form.elements.taxId.value = profile.tax_id || '';
+  form.elements.billingEmail.value = profile.billing_email || '';
+  form.elements.addressLine1.value = profile.address_line1 || '';
+  form.elements.addressLine2.value = profile.address_line2 || '';
+  form.elements.postalCode.value = profile.postal_code || '';
+  form.elements.city.value = profile.city || '';
+  form.elements.country.value = profile.country || '';
+  setInlineMessage(els.billingProfileMessage, '');
+  els.billingProfileDialog.showModal();
+  form.elements.businessName.focus();
+}
+
+async function saveBillingProfile(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const button = form.querySelector('[type="submit"]');
+  const payload = Object.fromEntries(new FormData(form).entries());
+  await withBusy(button, 'A guardar…', async () => {
+    try {
+      const data = await callAdminBilling('save-profile', { profile: payload });
+      billingProfile = data.profile;
+      if (billingDashboard) billingDashboard.profile = data.profile;
+      renderBillingProfile(data.profile, true);
+      els.billingProfileDialog.close();
+      toast('Dados fiscais atualizados.');
+    } catch (error) {
+      setInlineMessage(els.billingProfileMessage, friendlyError(error, error.message || 'Não foi possível guardar os dados fiscais.'), 'error');
+    }
+  });
+}
+
+function csvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+async function exportBilling() {
+  try {
+    const data = await callAdminBilling('export', { filters: billingListMode ? billingFilterPayload() : {} });
+    const rows = data.records || [];
+    const statusText = (status) => billingStatusLabels[status] || status;
+    const lines = [
+      ['Referência interna', 'Cliente', 'Email', 'Data', 'Subtotal', 'Desconto', 'Total', 'Reembolsado', 'Moeda', 'Estado', 'Galeria', 'Fotografias'],
+      ...rows.map((record) => [record.reference, record.customerEmail || 'Cliente não identificado', record.customerEmail || '', record.paidAt || record.createdAt, (record.subtotalCents / 100).toFixed(2).replace('.', ','), (record.discountCents / 100).toFixed(2).replace('.', ','), (record.totalCents / 100).toFixed(2).replace('.', ','), (record.refundedCents / 100).toFixed(2).replace('.', ','), record.currency, statusText(record.status), record.album?.title || '', record.itemCount]),
+    ];
+    const csv = `\uFEFF${lines.map((row) => row.map(csvCell).join(';')).join('\r\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `fotografia-arnaut-faturacao-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
+    toast(`${rows.length} registos exportados.`);
+  } catch (error) {
+    toast(friendlyError(error, 'Não foi possível exportar a faturação.'), 'error');
+  }
+}
+
+async function openBillingDetail(orderId) {
+  if (!els.billingDetailDialog) return;
+  els.billingDetail.innerHTML = '<div class="admin-billing-detail-skeleton"></div>';
+  els.billingDetailDialog.showModal();
+  try {
+    const { record } = await callAdminBilling('detail', { orderId });
+    const items = (record.items || []).map((item) => `<li><span>${escapeText(item.filename)}</span><strong>${escapeText(billingMoney(item.unitPriceCents, record.currency))}</strong></li>`).join('');
+    els.billingDetail.innerHTML = `
+      <header class="admin-billing-detail-head"><div><span>Referência interna</span><h2 id="billing-detail-title">${escapeText(record.reference)}</h2><p>${escapeText(record.album?.title || 'Sem galeria associada')}</p></div></header>
+      <div class="admin-billing-detail-body"><dl class="admin-billing-detail-grid">
+        <div><dt>Cliente</dt><dd>${escapeText(record.customerEmail || 'Cliente não identificado')}</dd></div>
+        <div><dt>Estado</dt><dd><span class="admin-billing-status is-${escapeText(record.status)}">${escapeText(billingStatusLabels[record.status] || record.status)}</span></dd></div>
+        <div><dt>Data</dt><dd>${escapeText(formatDateTime(record.paidAt || record.createdAt))}</dd></div>
+        <div><dt>Método</dt><dd>${escapeText(record.paymentMethod || 'Não disponível')}</dd></div>
+        <div><dt>Subtotal</dt><dd>${escapeText(billingMoney(record.subtotalCents, record.currency))}</dd></div>
+        <div><dt>Desconto</dt><dd>${escapeText(billingMoney(record.discountCents, record.currency))}</dd></div>
+        <div><dt>Total</dt><dd>${escapeText(billingMoney(record.totalCents, record.currency))}</dd></div>
+        <div><dt>Reembolsado</dt><dd>${escapeText(billingMoney(record.refundedCents, record.currency))}</dd></div>
+        <div><dt>PaymentIntent</dt><dd>${escapeText(record.paymentIntentId || '—')}</dd></div>
+        <div><dt>Downloads até</dt><dd>${escapeText(formatDateTime(record.expiresAt))}</dd></div>
+      </dl><section class="admin-billing-detail-items"><h3>Fotografias compradas (${Number(record.itemCount || 0)})</h3><ul>${items || '<li><span>Sem fotografias associadas.</span></li>'}</ul></section></div>
+      <footer class="admin-billing-detail-actions"><button type="button" data-billing-resend>Reenviar email</button>${record.canRefund ? '<button type="button" class="is-danger" data-billing-refund>Reembolsar pagamento</button>' : ''}</footer>`;
+    els.billingDetail.querySelector('[data-billing-resend]')?.addEventListener('click', async (event) => {
+      await withBusy(event.currentTarget, 'A enviar…', async () => {
+        try { await callAdminOrders('resend-email', { orderId }); toast('Email reenviado.'); }
+        catch (error) { toast(friendlyError(error, 'Não foi possível reenviar o email.'), 'error'); }
+      });
+    });
+    els.billingDetail.querySelector('[data-billing-refund]')?.addEventListener('click', async (event) => {
+      const remaining = Math.max(0, Number(record.totalCents) - Number(record.refundedCents || 0));
+      const confirmed = await askConfirm('Reembolsar pagamento?', `Valor: ${billingMoney(remaining, record.currency)}. A ação será processada através da Stripe.`, { confirmLabel: 'Confirmar reembolso' });
+      if (!confirmed) return;
+      await withBusy(event.currentTarget, 'A processar…', async () => {
+        try {
+          await callAdminBilling('refund', { orderId });
+          els.billingDetailDialog.close();
+          billingDashboard = null;
+          await loadBillingDashboard({ force: true });
+          if (billingListMode) await loadBillingList();
+          toast('Reembolso enviado à Stripe. O estado será atualizado pelo webhook.');
+        } catch (error) { toast(friendlyError(error, error.message || 'Não foi possível iniciar o reembolso.'), 'error'); }
+      });
+    });
+  } catch (error) {
+    els.billingDetail.innerHTML = `<div class="admin-billing-empty"><div><strong>Não foi possível abrir o registo.</strong><p>${escapeText(friendlyError(error))}</p></div></div>`;
+  }
+}
+
 async function showApp(activeSession, { reload = false } = {}) {
   if (!activeSession?.user) {
     showLogin();
@@ -2197,7 +3106,27 @@ async function showApp(activeSession, { reload = false } = {}) {
   session = activeSession;
   authenticatedUserId = activeSession.user.id;
   setAuthUiState('authenticated');
+  if (location.hash.startsWith('#definicoes/')) {
+    activeView = 'settings';
+    settingsSection = settingsSectionFromHash(location.hash);
+  } else if (location.hash.startsWith('#faturacao')) {
+    activeView = 'billing';
+    billingListMode = location.hash === '#faturacao/faturas';
+  }
   els.content.classList.toggle('is-overview-active', activeView === 'overview');
+  if (previousUserId !== authenticatedUserId || !adminProfile) {
+    try {
+      await loadSettingsData();
+    } catch (error) {
+      adminProfile = normalizeAdminProfile({
+        full_name: activeSession.user.user_metadata?.display_name,
+        avatar_path: activeSession.user.user_metadata?.avatar_path,
+      }, displayNameFor(activeSession.user));
+      userPreferences = normalizeUserPreferences();
+      populateSettingsForms();
+      toast(friendlyError(error, 'Não foi possível carregar as definições.'), 'error');
+    }
+  }
   await refreshProfileUI({ refreshAvatar: previousUserId !== authenticatedUserId });
   if (reload || previousUserId !== authenticatedUserId || !albums.length) {
     appLoadPromise ||= loadAlbums().finally(() => { appLoadPromise = null; });
@@ -2205,6 +3134,7 @@ async function showApp(activeSession, { reload = false } = {}) {
   } else {
     renderAll();
   }
+  setView(activeView);
 }
 
 function showLogin(notice = '') {
@@ -2297,6 +3227,7 @@ els.loginForm.addEventListener('submit', async (event) => {
 });
 
 async function logoutCurrentSession(button = els.logout) {
+  if (settingsHaveUnsavedChanges() && !await confirmDiscardSettings()) return;
   await withBusy(button, 'A sair…', async () => {
     const { error } = await supabase?.auth.signOut({ scope: 'local' }) || {};
     if (error && isNetworkError(error)) {
@@ -2309,7 +3240,7 @@ async function logoutCurrentSession(button = els.logout) {
   });
 }
 
-els.logout.addEventListener('click', () => logoutCurrentSession(els.logout));
+els.logout?.addEventListener('click', () => logoutCurrentSession(els.logout));
 els.settingsLogout?.addEventListener('click', () => logoutCurrentSession(els.settingsLogout));
 els.authRetry?.addEventListener('click', verifyAuthentication);
 els.passwordToggles.forEach((button) => button.addEventListener('click', () => togglePasswordVisibility(button)));
@@ -2339,23 +3270,57 @@ els.forgotPassword?.addEventListener('click', async () => {
 
 els.profileForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const displayName = els.profileForm.elements.displayName.value.trim();
-  if (displayName.length < 2) {
-    setInlineMessage(els.profileMessage, 'Indique um nome válido.', 'error');
-    return;
-  }
+  const fullName = els.profileForm.elements.fullName.value.trim();
+  const bio = els.profileForm.elements.bio.value.trim();
+  if (fullName.length < 2) return setInlineMessage(els.profileMessage, 'Indique um nome válido.', 'error');
+  if (bio.length > 280) return setInlineMessage(els.profileMessage, 'O texto Sobre não pode exceder 280 caracteres.', 'error');
   await withBusy(els.saveProfile, 'A guardar…', async () => {
-    const { data, error } = await supabase.auth.updateUser({
-      data: { ...session.user.user_metadata, display_name: displayName },
-    });
-    if (error) {
-      setInlineMessage(els.profileMessage, 'Não foi possível guardar o perfil.', 'error');
-      return;
+    const previousAvatarPath = adminProfile?.avatar_path || session.user.user_metadata?.avatar_path || null;
+    let uploadedPath = '';
+    try {
+      let nextAvatarPath = removeAvatarRequested ? null : previousAvatarPath;
+      if (pendingAvatarBlob) {
+        uploadedPath = `avatars/${session.user.id}/${crypto.randomUUID()}.webp`;
+        if (els.avatarProgress) {
+          els.avatarProgress.hidden = false;
+          els.avatarProgress.style.setProperty('--avatar-progress', '68%');
+          els.avatarProgress.querySelector('span').textContent = 'A enviar fotografia…';
+        }
+        const { error: uploadError } = await supabase.storage.from('admin-avatars').upload(uploadedPath, pendingAvatarBlob, {
+          contentType: 'image/webp',
+          cacheControl: '3600',
+          upsert: false,
+        });
+        if (uploadError) throw uploadError;
+        nextAvatarPath = uploadedPath;
+      }
+      await persistAdminProfile({ full_name: fullName, bio, avatar_path: nextAvatarPath });
+      const nextMetadata = { ...session.user.user_metadata, display_name: fullName };
+      if (nextAvatarPath) nextMetadata.avatar_path = nextAvatarPath;
+      else delete nextMetadata.avatar_path;
+      const { data, error: metadataError } = await supabase.auth.updateUser({ data: nextMetadata });
+      if (metadataError) throw metadataError;
+      session = { ...session, user: data.user };
+      if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) {
+        await removeStoredAvatar(previousAvatarPath).catch(() => {});
+      }
+      pendingAvatarBlob = null;
+      removeAvatarRequested = false;
+      revokePendingAvatarPreview();
+      if (els.avatarProgress) els.avatarProgress.hidden = true;
+      await refreshProfileUI({ refreshAvatar: true });
+      els.profileForm.elements.fullName.value = adminProfile.full_name;
+      els.profileForm.elements.roleLabel.value = adminProfile.role_label;
+      els.profileForm.elements.bio.value = adminProfile.bio;
+      if (els.bioCount) els.bioCount.textContent = String(adminProfile.bio.length);
+      markSettingsFormSaved(els.profileForm);
+      setInlineMessage(els.profileMessage, 'Perfil atualizado.', 'success');
+      toast(uploadedPath ? 'Fotografia de perfil atualizada.' : 'Perfil atualizado.');
+    } catch (error) {
+      if (uploadedPath) await supabase.storage.from('admin-avatars').remove([uploadedPath]).catch(() => {});
+      if (els.avatarProgress) els.avatarProgress.hidden = true;
+      setInlineMessage(els.profileMessage, friendlyError(error, error.message || 'Não foi possível guardar o perfil.'), 'error');
     }
-    session = { ...session, user: data.user };
-    await refreshProfileUI();
-    setInlineMessage(els.profileMessage, 'Perfil atualizado.', 'success');
-    toast('Perfil atualizado.');
   });
 });
 
@@ -2365,50 +3330,118 @@ els.avatarUpload?.addEventListener('change', async () => {
   els.avatarUpload.value = '';
   if (!file || !session?.user) return;
   await withBusy(els.selectAvatar, 'A preparar…', async () => {
+    if (els.avatarProgress) {
+      els.avatarProgress.hidden = false;
+      els.avatarProgress.style.setProperty('--avatar-progress', '28%');
+      els.avatarProgress.querySelector('span').textContent = 'A validar fotografia…';
+    }
     try {
       const blob = await optimizeAvatar(file);
-      const path = `admin-profiles/${session.user.id}/avatar.webp`;
-      const { error: uploadError } = await supabase.storage.from('private-galleries').upload(path, blob, {
-        contentType: 'image/webp',
-        cacheControl: '3600',
-        upsert: true,
-      });
-      if (uploadError) throw uploadError;
-      const { data, error: updateError } = await supabase.auth.updateUser({
-        data: { ...session.user.user_metadata, avatar_path: path },
-      });
-      if (updateError) throw updateError;
-      session = { ...session, user: data.user };
-      await refreshProfileUI({ refreshAvatar: true });
-      setInlineMessage(els.profileMessage, 'Fotografia de perfil atualizada.', 'success');
-      toast('Fotografia atualizada.');
+      revokePendingAvatarPreview();
+      pendingAvatarBlob = blob;
+      removeAvatarRequested = false;
+      pendingAvatarPreviewUrl = URL.createObjectURL(blob);
+      setSettingsAvatarPreview(pendingAvatarPreviewUrl);
+      if (els.avatarProgress) {
+        els.avatarProgress.style.setProperty('--avatar-progress', '100%');
+        els.avatarProgress.querySelector('span').textContent = 'Pré-visualização pronta para guardar.';
+      }
+      updateSettingsSaveState(els.profileForm);
+      setInlineMessage(els.profileMessage, 'Pré-visualização pronta. Guarde as alterações.', 'success');
     } catch (error) {
-      setInlineMessage(els.profileMessage, error.message || 'Não foi possível alterar a fotografia.', 'error');
+      if (els.avatarProgress) els.avatarProgress.hidden = true;
+      setInlineMessage(els.profileMessage, error.message || 'Não foi possível preparar a fotografia.', 'error');
     }
   });
 });
 
 els.removeAvatar?.addEventListener('click', async () => {
-  if (!session?.user?.user_metadata?.avatar_path) return;
-  const confirmed = await askConfirm('Remover fotografia?', 'O perfil voltará a mostrar as iniciais do nome.');
+  if (!adminProfile?.avatar_path && !pendingAvatarBlob && !session?.user?.user_metadata?.avatar_path) return;
+  const confirmed = await askConfirm('Remover fotografia?', 'A fotografia será removida depois de guardar o perfil.', { confirmLabel: 'Remover fotografia' });
   if (!confirmed) return;
-  await withBusy(els.removeAvatar, 'A remover…', async () => {
-    const path = session.user.user_metadata.avatar_path;
-    const { error: storageError } = await supabase.storage.from('private-galleries').remove([path]);
-    if (storageError) {
-      setInlineMessage(els.profileMessage, 'Não foi possível remover a fotografia.', 'error');
-      return;
+  pendingAvatarBlob = null;
+  revokePendingAvatarPreview();
+  removeAvatarRequested = true;
+  setSettingsAvatarPreview('');
+  if (els.avatarProgress) els.avatarProgress.hidden = true;
+  updateSettingsSaveState(els.profileForm);
+  setInlineMessage(els.profileMessage, 'A fotografia será removida ao guardar.', 'success');
+});
+
+els.contactForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const phone = formatInternationalPhone(els.contactForm.elements.phone.value);
+  els.contactForm.elements.phone.value = phone;
+  await withBusy(els.saveContact, 'A guardar…', async () => {
+    try {
+      await persistAdminProfile({
+        phone,
+        timezone: els.contactForm.elements.timezone.value,
+        locale: els.contactForm.elements.locale.value,
+      });
+      markSettingsFormSaved(els.contactForm);
+      setInlineMessage(els.contactMessage, 'Informações de contacto atualizadas.', 'success');
+      toast('Informações de contacto atualizadas.');
+    } catch (error) {
+      setInlineMessage(els.contactMessage, friendlyError(error, error.message || 'Não foi possível guardar as informações.'), 'error');
     }
-    const nextMetadata = { ...session.user.user_metadata };
-    delete nextMetadata.avatar_path;
-    const { data, error } = await supabase.auth.updateUser({ data: nextMetadata });
+  });
+});
+
+els.emailForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const newEmail = els.emailForm.elements.newEmail.value.trim().toLowerCase();
+  if (!newEmail || !els.emailForm.elements.newEmail.checkValidity()) {
+    setInlineMessage(els.emailMessage, 'Indique um novo email válido.', 'error');
+    return;
+  }
+  if (newEmail === String(session.user.email || '').toLowerCase()) {
+    setInlineMessage(els.emailMessage, 'O novo email deve ser diferente do atual.', 'error');
+    return;
+  }
+  await withBusy(els.changeEmail, 'A enviar…', async () => {
+    const redirectTo = new URL('admin.html', location.href).href.split('#')[0];
+    const { data, error } = await supabase.auth.updateUser({ email: newEmail }, { emailRedirectTo: redirectTo });
     if (error) {
-      setInlineMessage(els.profileMessage, 'A fotografia foi removida, mas o perfil não foi atualizado.', 'error');
+      setInlineMessage(els.emailMessage, friendlyError(error, 'Não foi possível iniciar a alteração do email.'), 'error');
       return;
     }
     session = { ...session, user: data.user };
-    await refreshProfileUI({ refreshAvatar: true });
-    setInlineMessage(els.profileMessage, 'Fotografia removida.', 'success');
+    populateEmailAccountFields();
+    markSettingsFormSaved(els.emailForm);
+    setInlineMessage(els.emailMessage, 'Confirmação enviada para o novo email.', 'success');
+    toast('Confirmação enviada para o novo email.');
+  });
+});
+
+els.preferencesForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = els.preferencesForm.elements;
+  const expiry = form.expiryPreset.value === 'none'
+    ? null
+    : form.expiryPreset.value === 'custom'
+      ? Number(form.customExpiryDays.value)
+      : Number(form.expiryPreset.value);
+  if (expiry !== null && (!Number.isInteger(expiry) || expiry < 1 || expiry > 365)) {
+    setInlineMessage(els.preferencesMessage, 'A duração deve estar entre 1 e 365 dias.', 'error');
+    return;
+  }
+  await withBusy(els.savePreferences, 'A guardar…', async () => {
+    try {
+      await persistUserPreferences({
+        date_format: form.dateFormat.value,
+        default_gallery_expiry_days: expiry,
+        default_downloads_enabled: form.downloadsEnabled.checked,
+        default_watermark_enabled: form.watermarkEnabled.checked,
+        default_sales_enabled: form.salesEnabled.checked,
+        default_currency: form.currency.value,
+      });
+      markSettingsFormSaved(els.preferencesForm);
+      setInlineMessage(els.preferencesMessage, 'Preferências guardadas.', 'success');
+      toast('Preferências guardadas.');
+    } catch (error) {
+      setInlineMessage(els.preferencesMessage, friendlyError(error, error.message || 'Não foi possível guardar as preferências.'), 'error');
+    }
   });
 });
 
@@ -2455,7 +3488,11 @@ els.passwordForm?.addEventListener('submit', async (event) => {
 });
 
 els.signoutOthers?.addEventListener('click', async () => {
-  const confirmed = await askConfirm('Terminar outras sessões?', 'Os outros dispositivos terão de iniciar sessão novamente. Esta sessão continuará ativa.');
+  const confirmed = await askConfirm(
+    'Terminar outras sessões?',
+    'As outras sessões deixarão de ter acesso à administração. Esta sessão continuará ativa.',
+    { confirmLabel: 'Terminar sessões' },
+  );
   if (!confirmed) return;
   await withBusy(els.signoutOthers, 'A terminar…', async () => {
     const { error } = await supabase.auth.signOut({ scope: 'others' });
@@ -2468,8 +3505,71 @@ els.signoutOthers?.addEventListener('click', async () => {
   });
 });
 
-els.nav.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
-$$('[data-new-gallery]').forEach((button) => button.addEventListener('click', () => openDrawer()));
+els.signoutAll?.addEventListener('click', async () => {
+  if (settingsHaveUnsavedChanges() && !await confirmDiscardSettings()) return;
+  const confirmed = await askConfirm(
+    'Terminar todas as sessões?',
+    'Todos os dispositivos, incluindo este, terão de iniciar sessão novamente.',
+    { confirmLabel: 'Terminar todas' },
+  );
+  if (!confirmed) return;
+  await withBusy(els.signoutAll, 'A terminar…', async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    if (error) {
+      setInlineMessage(els.sessionMessage, 'Não foi possível terminar todas as sessões.', 'error');
+      return;
+    }
+    clearAdminState();
+    history.replaceState(null, '', location.pathname);
+    showLogin('Todas as sessões foram terminadas.');
+  });
+});
+
+els.settingsForms.forEach((form) => {
+  const update = () => {
+    updateSettingsSaveState(form);
+    if (form === els.profileForm && els.bioCount) {
+      els.bioCount.textContent = String(form.elements.bio.value.length);
+    }
+    if (form === els.passwordForm) updatePasswordStrength();
+  };
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+});
+
+els.preferencesForm?.elements.expiryPreset.addEventListener('change', () => {
+  const custom = els.preferencesForm.elements.expiryPreset.value === 'custom';
+  els.customExpiry.hidden = !custom;
+  els.preferencesForm.elements.customExpiryDays.disabled = !custom;
+  if (custom) els.preferencesForm.elements.customExpiryDays.focus({ preventScroll: true });
+  updateSettingsSaveState(els.preferencesForm);
+});
+
+els.storageRefresh?.addEventListener('click', () => withBusy(els.storageRefresh, 'A calcular…', loadAlbums));
+
+if (els.supportLink && config.ADMIN_EMAIL) {
+  els.supportLink.href = `mailto:${String(config.ADMIN_EMAIL).trim()}?subject=${encodeURIComponent('Apoio — painel Fotografia Arnaut')}`;
+}
+
+els.settingsNav.forEach((button, index) => {
+  button.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    let target = index;
+    if (event.key === 'Home') target = 0;
+    else if (event.key === 'End') target = els.settingsNav.length - 1;
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') target = (index + 1) % els.settingsNav.length;
+    else target = (index - 1 + els.settingsNav.length) % els.settingsNav.length;
+    els.settingsNav[target].focus();
+  });
+});
+
+els.nav.forEach((button) => button.addEventListener('click', () => requestView(button.dataset.view)));
+els.settingsNav.forEach((button) => button.addEventListener('click', () => requestSettingsSection(button.dataset.settingsSection)));
+$$('[data-new-gallery]').forEach((button) => button.addEventListener('click', async () => {
+  if (activeView === 'settings' && !await confirmDiscardSettings()) return;
+  openDrawer();
+}));
 $('[data-filter-expiring]').addEventListener('click', () => {
   filters.status = 'expiring';
   els.statusFilter.value = 'expiring';
@@ -2501,13 +3601,69 @@ els.pickerNewGallery?.addEventListener('click', () => {
   els.uploadPickerModal.close();
   openDrawer(null, 1);
 });
-els.closeAccessModal?.addEventListener('click', () => els.accessModal.close());
+els.closeAccessModal?.forEach((button) => button.addEventListener('click', () => els.accessModal.close()));
 els.accessModal?.addEventListener('click', (event) => {
   if (event.target === els.accessModal) els.accessModal.close();
 });
-els.profileMenu?.addEventListener('click', () => {
-  setView('settings');
-  toast('Definições abertas.', 'neutral');
+els.accessSearch?.addEventListener('input', debounce(() => {
+  accessFilters.search = els.accessSearch.value;
+  renderAccessList();
+}));
+els.accessFilterButtons?.forEach((button) => {
+  button.addEventListener('click', () => {
+    accessFilters.status = button.dataset.accessFilter || 'active';
+    renderAccessList();
+  });
+});
+els.accessSort?.addEventListener('change', () => {
+  accessFilters.sort = els.accessSort.value || 'recent';
+  renderAccessList();
+});
+function closeProfilePopover() {
+  if (!els.profilePopover) return;
+  els.profilePopover.hidden = true;
+  els.profileMenu?.setAttribute('aria-expanded', 'false');
+  els.mobileProfileMenu?.setAttribute('aria-expanded', 'false');
+}
+
+function toggleProfilePopover(anchor) {
+  if (!els.profilePopover || !anchor) return;
+  const willOpen = els.profilePopover.hidden;
+  closeProfilePopover();
+  if (!willOpen) return;
+  const rect = anchor.getBoundingClientRect();
+  els.profilePopover.hidden = false;
+  const width = 180;
+  const left = Math.max(12, Math.min(innerWidth - width - 12, rect.right - width));
+  const top = rect.bottom + 8 + els.profilePopover.offsetHeight <= innerHeight
+    ? rect.bottom + 8
+    : Math.max(12, rect.top - els.profilePopover.offsetHeight - 8);
+  els.profilePopover.style.left = `${left}px`;
+  els.profilePopover.style.top = `${top}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  els.profilePopover.querySelector('button')?.focus({ preventScroll: true });
+}
+
+els.profileMenu?.setAttribute('aria-expanded', 'false');
+els.profileMenu?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  toggleProfilePopover(els.profileMenu);
+});
+els.mobileProfileMenu?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  toggleProfilePopover(els.mobileProfileMenu);
+});
+els.profileEdit?.addEventListener('click', async () => {
+  closeProfilePopover();
+  await requestView('settings');
+  await requestSettingsSection('profile');
+});
+els.profileLogout?.addEventListener('click', () => {
+  closeProfilePopover();
+  logoutCurrentSession(els.profileLogout);
+});
+document.addEventListener('click', (event) => {
+  if (!els.profilePopover?.hidden && !els.profilePopover.contains(event.target)) closeProfilePopover();
 });
 els.toggleSidebar.addEventListener('click', () => {
   if (matchMedia('(max-width: 820px)').matches) openMobileSidebar();
@@ -2603,6 +3759,32 @@ els.ordersRefresh?.addEventListener('click', loadOrders);
 els.orderEmailFilter?.addEventListener('input', debounce(loadOrders));
 els.closeOrderDialog?.addEventListener('click', () => els.orderDialog.close());
 els.orderDialog?.addEventListener('click', (event) => { if (event.target === els.orderDialog) els.orderDialog.close(); });
+els.billingRefresh?.addEventListener('click', () => loadBillingDashboard({ force: true }));
+els.billingRetry?.addEventListener('click', () => loadBillingDashboard({ force: true }));
+els.billingChartRange?.addEventListener('change', () => loadBillingDashboard({ force: true }));
+els.billingViewAll?.addEventListener('click', () => { setBillingMode(true); billingListPage = 1; loadBillingList(); });
+els.billingBack?.addEventListener('click', () => { setBillingMode(false); loadBillingDashboard(); });
+els.billingExport?.forEach((button) => button.addEventListener('click', () => withBusy(button, 'A exportar…', exportBilling)));
+els.billingEditProfile?.addEventListener('click', openBillingProfileDialog);
+els.billingUpdateProfile?.addEventListener('click', openBillingProfileDialog);
+els.billingManageStripe?.addEventListener('click', () => { setView('settings'); setSettingsSection('billing'); });
+els.billingProfileForm?.addEventListener('submit', saveBillingProfile);
+els.closeBillingProfile?.forEach((button) => button.addEventListener('click', () => els.billingProfileDialog.close()));
+els.billingProfileDialog?.addEventListener('click', (event) => { if (event.target === els.billingProfileDialog) els.billingProfileDialog.close(); });
+els.closeBillingDetail?.addEventListener('click', () => els.billingDetailDialog.close());
+els.billingDetailDialog?.addEventListener('click', (event) => { if (event.target === els.billingDetailDialog) els.billingDetailDialog.close(); });
+els.billingSearch?.addEventListener('input', debounce(() => { billingFilters.search = els.billingSearch.value; billingListPage = 1; loadBillingList(); }, 250));
+[els.billingStatusFilter, els.billingDateFrom, els.billingDateTo, els.billingSort].forEach((element) => element?.addEventListener('change', () => {
+  billingFilters = {
+    search: els.billingSearch.value,
+    status: els.billingStatusFilter.value,
+    dateFrom: els.billingDateFrom.value,
+    dateTo: els.billingDateTo.value,
+    sort: els.billingSort.value,
+  };
+  billingListPage = 1;
+  loadBillingList();
+}));
 els.uploadInput.addEventListener('change', () => {
   addPendingFiles([...els.uploadInput.files]);
   els.uploadInput.value = '';
@@ -2696,7 +3878,7 @@ document.addEventListener('click', async (event) => {
 window.addEventListener('resize', positionGalleryActionsMenu);
 window.addEventListener('scroll', positionGalleryActionsMenu, true);
 window.addEventListener('beforeunload', (event) => {
-  if (!drawerDirty) return;
+  if (!drawerDirty && !settingsHaveUnsavedChanges()) return;
   event.preventDefault();
   event.returnValue = '';
 });
@@ -2721,6 +3903,7 @@ if (!supabase) {
       if (event === 'PASSWORD_RECOVERY') {
         recoveryMode = true;
         await showApp(nextSession);
+        settingsSection = 'account';
         setView('settings');
         setInlineMessage(els.passwordMessage, 'Defina agora uma nova palavra-passe para recuperar a conta.', 'success');
         els.passwordForm.elements.newPassword.focus({ preventScroll: true });

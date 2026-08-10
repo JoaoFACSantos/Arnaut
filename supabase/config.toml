@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.admin-orders]
 verify_jwt = false
+
+[functions.admin-billing]
+verify_jwt = false

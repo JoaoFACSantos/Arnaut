@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "node --check admin.js && node --check admin-utils.js && node --check gallery.js && node --check script.js && node --check scripts/process-watermarks.mjs",
-    "typecheck": "node node_modules/typescript/lib/tsc.js --noEmit --allowJs --checkJs false --module esnext --target es2022 admin.js admin-utils.js gallery.js script.js",
+    "lint": "node --check admin.js && node --check admin-settings.js && node --check admin-utils.js && node --check gallery.js && node --check script.js && node --check scripts/process-watermarks.mjs && node --check supabase/functions/_shared/billing.js",
+    "typecheck": "node node_modules/typescript/lib/tsc.js --noEmit --allowJs --checkJs false --module esnext --target es2022 admin.js admin-settings.js admin-utils.js gallery.js script.js",
     "build": "node -e \"console.log('Static site: no build step required')\"",
-    "test": "node --test tests/security.test.mjs tests/admin-utils.test.mjs tests/commerce.test.mjs",
+    "test": "node --test tests/security.test.mjs tests/admin-utils.test.mjs tests/admin-settings.test.mjs tests/admin-billing.test.mjs tests/commerce.test.mjs",
     "process:watermarks": "node scripts/process-watermarks.mjs"
   },
   "devDependencies": {

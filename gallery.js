@@ -68,6 +68,7 @@ let activeFilter = 'all';
 let selected = new Set();
 let favorites = new Set();
 let receiptPollTimer = 0;
+const mobileCartMedia = window.matchMedia('(max-width: 980px)');
 
 const deviceKey = 'arnaut_gallery_device';
 const sessionKey = (publicId) => `arnaut_gallery_session_${publicId}`;
@@ -442,7 +443,12 @@ function renderCart() {
   cartSubtotal.textContent = money(total, album.sales.currency);
   cartDialogTotal.textContent = money(total, album.sales.currency);
   cartPolicy.textContent = album.sales.refundPolicyText || 'Os ficheiros digitais são disponibilizados após a confirmação do pagamento.';
-  checkoutButton.disabled = !items.length;
+  checkoutButton.disabled = !items.length || !cartTerms.checked;
+}
+
+function syncCartScrollLock() {
+  const shouldLock = !cartDialog.hidden && mobileCartMedia.matches;
+  document.body.classList.toggle('client-cart-open', shouldLock);
 }
 
 function openCart() {
@@ -451,8 +457,8 @@ function openCart() {
   cartDialog.hidden = false;
   cartBackdrop.hidden = false;
   galleryBody.classList.add('is-cart-open');
-  document.body.classList.add('client-cart-open');
-  $('[data-close-cart]').focus();
+  syncCartScrollLock();
+  if (mobileCartMedia.matches) $('[data-close-cart]').focus({ preventScroll: true });
 }
 
 function closeCart() {
@@ -646,7 +652,9 @@ $('[data-clear-cart]').addEventListener('click', () => {
   updateCommerceUi();
   toast('Carrinho limpo.');
 });
+cartTerms.addEventListener('change', renderCart);
 checkoutButton.addEventListener('click', startCheckout);
+mobileCartMedia.addEventListener?.('change', syncCartScrollLock);
 $('[data-order-back]').addEventListener('click', () => {
   clearTimeout(receiptPollTimer);
   window.location.assign('galeria.html');
