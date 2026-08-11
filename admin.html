@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
-    <meta name="theme-color" content="#f7f2ec" />
+    <meta name="theme-color" content="#f7f3ee" />
     <title>Administração — Fotografia Arnaut</title>
     <link rel="icon" type="image/png" href="assets/logo-arnaut.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,11 +13,11 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260803-admin-nav-icons-14" />
-    <link rel="stylesheet" href="admin-settings.css?v=20260804-settings-1" />
-    <link rel="stylesheet" href="admin-billing.css?v=20260810-billing-1" />
+    <link rel="stylesheet" href="styles.css?v=20260811-brand-palette-4" />
+    <link rel="stylesheet" href="admin-settings.css?v=20260811-brand-palette-4" />
+    <link rel="stylesheet" href="admin-billing.css?v=20260811-brand-palette-4" />
     <script src="config.js"></script>
-    <script type="module" src="admin.js?v=20260810-billing-1"></script>
+    <script type="module" src="admin.js?v=20260810-billing-2"></script>
   </head>
   <body class="admin-v2">
     <section class="admin-auth-gate" data-auth-gate aria-live="polite">
@@ -313,9 +313,6 @@
                     <button type="button" data-settings-section="security" role="tab" aria-selected="false">
                       <img src="assets/icon-cadeado.svg" alt="" aria-hidden="true" /><span><b>Segurança</b><small>Sessões e acessos</small></span>
                     </button>
-                    <button type="button" data-settings-section="billing" role="tab" aria-selected="false">
-                      <img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /><span><b>Faturação</b><small>Estado e pagamentos</small></span>
-                    </button>
                   </div>
                   <a class="admin-settings-help" data-support-link href="mailto:fotografiaarnaut@gmail.com">
                     <span aria-hidden="true">?</span><span><b>Precisa de ajuda?</b><small>Contactar suporte</small></span><i aria-hidden="true">›</i>
@@ -458,11 +455,6 @@
                     </article>
                   </section>
 
-                  <section class="admin-settings-section" data-settings-panel="billing" role="tabpanel" hidden>
-                    <article class="admin-panel admin-settings-card admin-empty-feature">
-                      <span class="admin-empty-feature__icon" aria-hidden="true">€</span><div><h3>Faturação e pagamentos</h3><p>A configuração privada da Stripe é gerida através das variáveis seguras do Supabase. Nenhuma chave é guardada no navegador.</p><small>Consulte a página de Faturação para acompanhar vendas, pagamentos, reembolsos e dados fiscais.</small><button type="button" data-view="billing">Abrir Faturação</button></div>
-                    </article>
-                  </section>
                 </div>
               </div>
             </div>

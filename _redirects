@@ -1,2 +1,6 @@
 /admin          /admin.html  200
 /admin/         /admin.html  200
+/termos         /termos/    301
+/privacidade    /privacidade/ 301
+/termos.html    /termos/    301
+/privacidade.html /privacidade/ 301

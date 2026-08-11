@@ -3767,7 +3767,9 @@ els.billingBack?.addEventListener('click', () => { setBillingMode(false); loadBi
 els.billingExport?.forEach((button) => button.addEventListener('click', () => withBusy(button, 'A exportar…', exportBilling)));
 els.billingEditProfile?.addEventListener('click', openBillingProfileDialog);
 els.billingUpdateProfile?.addEventListener('click', openBillingProfileDialog);
-els.billingManageStripe?.addEventListener('click', () => { setView('settings'); setSettingsSection('billing'); });
+els.billingManageStripe?.addEventListener('click', () => {
+  showToast('A configuração privada da Stripe é gerida nas variáveis seguras do Supabase.');
+});
 els.billingProfileForm?.addEventListener('submit', saveBillingProfile);
 els.closeBillingProfile?.forEach((button) => button.addEventListener('click', () => els.billingProfileDialog.close()));
 els.billingProfileDialog?.addEventListener('click', (event) => { if (event.target === els.billingProfileDialog) els.billingProfileDialog.close(); });

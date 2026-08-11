@@ -1,5 +1,8 @@
 document.body.classList.add('is-loading');
 
+const currentYear = document.querySelector('[data-current-year]');
+if (currentYear) currentYear.textContent = String(new Date().getFullYear());
+
 const loader = document.querySelector('.loader');
 const loaderCount = document.querySelector('.loader__count');
 const loaderLine = document.querySelector('.loader__line span');
@@ -128,7 +131,6 @@ const portraitTrigger = document.querySelector('[data-portrait-open]');
 const portraitLightbox = document.querySelector('[data-portrait-lightbox]');
 const portraitClose = document.querySelector('[data-portrait-close]');
 const lightboxImage = portraitLightbox?.querySelector('[data-lightbox-image]');
-const lightboxCaption = portraitLightbox?.querySelector('[data-lightbox-caption]');
 const lightboxCounter = portraitLightbox?.querySelector('[data-lightbox-counter]');
 const lightboxPrevious = portraitLightbox?.querySelector('[data-lightbox-prev]');
 const lightboxNext = portraitLightbox?.querySelector('[data-lightbox-next]');
@@ -158,7 +160,6 @@ const lightboxGalleries = {
 let activeLightboxTrigger = portraitTrigger;
 let activeLightboxItems = [];
 let activeLightboxIndex = 0;
-let activeLightboxLabel = '';
 
 const renderLightboxItem = () => {
   const item = activeLightboxItems[activeLightboxIndex];
@@ -166,7 +167,6 @@ const renderLightboxItem = () => {
 
   lightboxImage.src = item.src;
   lightboxImage.alt = item.alt || 'Fotografia ampliada';
-  if (lightboxCaption) lightboxCaption.textContent = activeLightboxLabel;
   if (lightboxCounter) {
     lightboxCounter.textContent = activeLightboxItems.length > 1
       ? `${activeLightboxIndex + 1} / ${activeLightboxItems.length}`
@@ -182,11 +182,6 @@ const openPortraitLightbox = (trigger = portraitTrigger) => {
   if (!portraitLightbox || portraitLightbox.open || !trigger) return;
 
   const sourceImage = trigger.querySelector('img');
-  const project = trigger.closest('.project');
-  const projectTitle = project?.querySelector('.project__meta h3')?.textContent?.trim();
-  const projectSubtitle = project?.querySelector('.project__meta div p')?.textContent?.trim();
-  const projectLocation = project?.querySelector('.project__meta > p')?.textContent?.trim();
-  const heroCaption = trigger.querySelector('figcaption')?.textContent?.replace(/\s+/g, ' ')?.trim();
   const gallery = lightboxGalleries[trigger.dataset.lightboxGallery];
 
   activeLightboxItems = gallery || (sourceImage
@@ -196,12 +191,6 @@ const openPortraitLightbox = (trigger = portraitTrigger) => {
     Math.max(Number.parseInt(trigger.dataset.lightboxStart || '0', 10) || 0, 0),
     Math.max(activeLightboxItems.length - 1, 0),
   );
-  activeLightboxLabel = project
-    ? [projectTitle, projectSubtitle, projectLocation].filter(Boolean).join(' · ')
-    : trigger === portraitTrigger
-      ? 'Beatriz Arnaut · Fotógrafa'
-      : heroCaption || 'Fotografia Arnaut';
-
   activeLightboxTrigger = trigger;
   renderLightboxItem();
   cursor?.classList.remove('is-view');

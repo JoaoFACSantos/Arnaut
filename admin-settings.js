@@ -25,7 +25,6 @@ export const SETTINGS_SECTIONS = Object.freeze([
   'notifications',
   'storage',
   'security',
-  'billing',
 ]);
 
 export function normalizeAdminProfile(profile = {}, fallbackName = '') {
