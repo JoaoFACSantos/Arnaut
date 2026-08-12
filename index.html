@@ -17,6 +17,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260811-footer-3" />
+    <script src="config.js"></script>
+    <script type="module" src="portfolio-public.js?v=20260812-portfolio-1"></script>
   </head>
   <body>
     <div class="loader" aria-hidden="true">
@@ -136,61 +138,8 @@
           <p class="section-heading__note">Uma seleção de pessoas e lugares.</p>
         </header>
 
-        <div class="filters reveal" role="group" aria-label="Filtrar portefólio">
-          <button class="filter is-active" type="button" data-filter="all">Todos <sup>08</sup></button>
-          <button class="filter" type="button" data-filter="pessoas">Pessoas <sup>04</sup></button>
-          <button class="filter" type="button" data-filter="lugares">Lugares <sup>04</sup></button>
-        </div>
-
-        <div class="projects projects--portfolio" aria-live="polite">
-          <article class="project project--portfolio-card reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="assets/portfolio/casal-01.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="0" aria-label="Ampliar fotografia Uma vida inteira">
-              <img src="assets/portfolio/casal-01.webp" alt="Casal a sorrir junto a uma parede de pedra" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="lugares">
-            <a class="project__image image-hover" href="assets/portfolio/sintra-02.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="1" aria-label="Ampliar fotografia Pedra e Luz">
-              <img src="assets/portfolio/sintra-02.webp" alt="Arquitetura histórica e árvores em Sintra" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="assets/portfolio/nazare-01.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="0" aria-label="Ampliar fotografia Dias de vento">
-              <img src="assets/portfolio/nazare-01.webp" alt="Retrato de mulher na praia ao fim da tarde" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="lugares">
-            <a class="project__image image-hover" href="assets/portfolio/sintra-01.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="0" aria-label="Ampliar fotografia Pedra e Luz">
-              <img src="assets/portfolio/sintra-01.webp" alt="Fachada histórica enquadrada por árvores em Sintra" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="assets/portfolio/casal-03.webp" data-image-lightbox data-lightbox-gallery="casal" data-lightbox-start="2" aria-label="Ampliar fotografia Uma vida inteira">
-              <img src="assets/portfolio/casal-03.webp" alt="Casal abraçado num jardim" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="lugares">
-            <a class="project__image image-hover" href="assets/portfolio/sintra-03.webp" data-image-lightbox data-lightbox-gallery="sintra" data-lightbox-start="2" aria-label="Ampliar fotografia Pedra e Luz">
-              <img src="assets/portfolio/sintra-03.webp" alt="Detalhe de arcos neomanuelinos em Sintra" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="lugares">
-            <a class="project__image image-hover" href="assets/portfolio/nazare-03.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="2" aria-label="Ampliar fotografia Dias de vento">
-              <img src="assets/portfolio/nazare-03.webp" alt="Vista da praia da Nazaré com papagaios no céu" loading="lazy" />
-            </a>
-          </article>
-
-          <article class="project project--portfolio-card reveal" data-category="pessoas">
-            <a class="project__image image-hover" href="assets/portfolio/nazare-04.webp" data-image-lightbox data-lightbox-gallery="nazare" data-lightbox-start="3" aria-label="Ampliar fotografia Dias de vento">
-              <img src="assets/portfolio/nazare-04.webp" alt="Casal sentado na praia sob papagaios coloridos" loading="lazy" />
-            </a>
-          </article>
-        </div>
+        <div class="filters reveal" data-public-portfolio-filters role="group" aria-label="Filtrar portefólio"><button class="filter is-active" type="button" disabled>A carregar…</button></div>
+        <div class="projects projects--portfolio" data-public-portfolio aria-live="polite" aria-busy="true"></div>
       </section>
 
       <section class="services" id="servicos" aria-labelledby="services-title">

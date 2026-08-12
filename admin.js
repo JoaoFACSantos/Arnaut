@@ -11,6 +11,7 @@ import {
   settingsSectionFromHash,
   validateAvatarFile,
 } from './admin-settings.js';
+import { clampFocalPoint, reorderPortfolioItems, validatePortfolioFileContent } from './portfolio-utils.js';
 
 const config = window.ARNAUT_CONFIG || {};
 const supabaseUrl = String(config.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
@@ -65,6 +66,43 @@ const els = {
   content: $('.admin-content'),
   nav: $$('[data-view]'),
   viewPanels: $$('[data-view-panel]'),
+  portfolioPage: $('[data-portfolio-page]'),
+  portfolioGrid: $('[data-portfolio-grid]'),
+  portfolioStatus: $('[data-portfolio-status]'),
+  portfolioFilters: $('[data-portfolio-filters]'),
+  portfolioTotal: $('[data-portfolio-total]'),
+  portfolioLimit: $('[data-portfolio-limit]'),
+  portfolioAdd: $('[data-portfolio-add]'),
+  portfolioAddDialog: $('[data-portfolio-add-dialog]'),
+  portfolioAddClose: $('[data-portfolio-add-close]'),
+  portfolioAddCancel: $('[data-portfolio-add-cancel]'),
+  portfolioSourceTabs: $$('[data-portfolio-source]'),
+  portfolioUploadPanel: $('[data-portfolio-upload-panel]'),
+  portfolioGalleryPanel: $('[data-portfolio-gallery-panel]'),
+  portfolioSelectFiles: $('[data-portfolio-select-files]'),
+  portfolioFileInput: $('[data-portfolio-file-input]'),
+  portfolioUploadQueue: $('[data-portfolio-upload-queue]'),
+  portfolioGallerySelect: $('[data-portfolio-gallery-select]'),
+  portfolioGalleryPhotos: $('[data-portfolio-gallery-photos]'),
+  portfolioAddCategory: $('[data-portfolio-add-category]'),
+  portfolioAddPublished: $('[data-portfolio-add-published]'),
+  portfolioAddSubmit: $('[data-portfolio-add-submit]'),
+  portfolioAddMessage: $('[data-portfolio-add-message]'),
+  portfolioEditDialog: $('[data-portfolio-edit-dialog]'),
+  portfolioEditClose: $('[data-portfolio-edit-close]'),
+  portfolioEditCancel: $('[data-portfolio-edit-cancel]'),
+  portfolioEditSave: $('[data-portfolio-edit-save]'),
+  portfolioEditImage: $('[data-portfolio-edit-image]'),
+  portfolioEditCategory: $('[data-portfolio-edit-category]'),
+  portfolioEditAlt: $('[data-portfolio-edit-alt]'),
+  portfolioEditPublished: $('[data-portfolio-edit-published]'),
+  portfolioFocal: $('[data-portfolio-focal]'),
+  portfolioFocalMarker: $('[data-portfolio-focal-marker]'),
+  portfolioFocalX: $('[data-portfolio-focal-x]'),
+  portfolioFocalY: $('[data-portfolio-focal-y]'),
+  portfolioEditMessage: $('[data-portfolio-edit-message]'),
+  portfolioMenu: $('[data-portfolio-menu]'),
+  portfolioReplaceInput: $('[data-portfolio-replace-input]'),
   statGrid: $('[data-stat-grid]'),
   recentList: $('[data-recent-list]'),
   expiringList: $('[data-expiring-list]'),
@@ -333,6 +371,16 @@ let billingFilters = { search: '', status: '', dateFrom: '', dateTo: '', sort: '
 const accessCodeCache = new Map();
 const visibleAccessCodes = new Set();
 let accessFilters = { search: '', status: 'active', sort: 'recent' };
+let portfolioPhotos = [];
+let portfolioCategories = [];
+let portfolioFilter = 'all';
+let portfolioLoaded = false;
+let portfolioLoading = false;
+let portfolioPendingFiles = [];
+let portfolioGallerySelections = new Map();
+let portfolioEditingPhoto = null;
+let portfolioReplacingPhoto = null;
+let portfolioDragId = '';
 
 function clearElement(element) {
   if (!element) return;
@@ -483,6 +531,332 @@ async function callAdminBilling(action, payload = {}) {
     throw error;
   }
   return body;
+}
+
+async function callAdminPortfolio(action, payload = {}) {
+  if (!supabase || !functionsBase) throw new Error('Supabase não está configurado.');
+  const { data } = await supabase.auth.getSession();
+  session = data.session || session;
+  if (!session?.access_token) throw new Error('Sessão de administração inválida.');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const response = await fetch(`${functionsBase}/admin-portfolio`, {
+    method: 'POST', signal: controller.signal,
+    headers: { 'Content-Type': 'application/json', apikey: config.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action, ...payload }),
+  }).finally(() => clearTimeout(timeout));
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(body.error || 'A operação do Portefólio falhou.');
+    error.status = response.status;
+    throw error;
+  }
+  return body;
+}
+
+function portfolioAssetUrl(photo, thumbnail = true) {
+  const value = thumbnail ? photo.thumbnail_url || photo.web_url : photo.web_url || photo.thumbnail_url;
+  if (!value) return '';
+  return /^https?:/i.test(value) ? value : new URL(value, document.baseURI).href;
+}
+
+function renderPortfolioSkeleton() {
+  clearElement(els.portfolioGrid);
+  for (let index = 0; index < 8; index += 1) {
+    const item = document.createElement('div');
+    item.className = 'portfolio-skeleton';
+    els.portfolioGrid.appendChild(item);
+  }
+}
+
+function renderPortfolioFilters() {
+  clearElement(els.portfolioFilters);
+  const filters = [{ slug: 'all', label: 'Todas', count: portfolioPhotos.length }, ...portfolioCategories.map((category) => ({
+    slug: category.slug, label: category.label, count: portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === category.slug).length,
+  }))];
+  filters.forEach((filter) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = portfolioFilter === filter.slug ? 'is-active' : '';
+    button.innerHTML = `${escapeText(filter.label)} <b>${filter.count}</b>`;
+    button.addEventListener('click', () => { portfolioFilter = filter.slug; renderPortfolio(); });
+    els.portfolioFilters.appendChild(button);
+  });
+}
+
+function closePortfolioMenu() {
+  els.portfolioMenu.hidden = true;
+  clearElement(els.portfolioMenu);
+}
+
+function openPortfolioEditor(photo) {
+  portfolioEditingPhoto = photo;
+  fillPortfolioCategorySelect(els.portfolioEditCategory, photo.category_id);
+  els.portfolioEditAlt.value = photo.alt_text || '';
+  els.portfolioEditPublished.checked = Boolean(photo.is_published);
+  els.portfolioFocalX.value = photo.focal_x ?? 50;
+  els.portfolioFocalY.value = photo.focal_y ?? 50;
+  els.portfolioEditImage.src = portfolioAssetUrl(photo, false);
+  els.portfolioEditImage.alt = photo.alt_text || 'Pré-visualização da fotografia';
+  updatePortfolioFocalMarker();
+  els.portfolioEditMessage.textContent = '';
+  els.portfolioEditDialog.showModal();
+}
+
+function portfolioMenuAction(label, action, danger = false) {
+  const button = document.createElement('button');
+  button.type = 'button'; button.role = 'menuitem'; button.textContent = label;
+  if (danger) button.className = 'is-danger';
+  button.addEventListener('click', async () => { closePortfolioMenu(); await action(); });
+  return button;
+}
+
+function openPortfolioMenu(photo, anchor) {
+  clearElement(els.portfolioMenu);
+  els.portfolioMenu.append(
+    portfolioMenuAction('Editar', () => openPortfolioEditor(photo)),
+    portfolioMenuAction(photo.is_published ? 'Ocultar' : 'Publicar', async () => {
+      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: !photo.is_published } });
+      toast(photo.is_published ? 'Fotografia ocultada.' : 'Fotografia publicada.'); await loadPortfolio({ force: true });
+    }),
+    portfolioMenuAction('Substituir fotografia', () => { portfolioReplacingPhoto = photo; els.portfolioReplaceInput.click(); }),
+    portfolioMenuAction('Mover para cima', () => movePortfolioPhoto(photo.id, -1)),
+    portfolioMenuAction('Mover para baixo', () => movePortfolioPhoto(photo.id, 1)),
+    portfolioMenuAction('Eliminar', async () => {
+      const confirmed = await askConfirm('Eliminar fotografia?', 'Esta fotografia deixará de aparecer no portefólio. O original de uma galeria privada não será eliminado.', { confirmLabel: 'Eliminar' });
+      if (!confirmed) return;
+      await callAdminPortfolio('delete', { photoId: photo.id }); toast('Fotografia removida.'); await loadPortfolio({ force: true });
+    }, true),
+  );
+  const rect = anchor.getBoundingClientRect();
+  els.portfolioMenu.style.left = `${Math.min(window.innerWidth - 225, Math.max(10, rect.right - 210))}px`;
+  els.portfolioMenu.style.top = `${Math.min(window.innerHeight - 285, rect.bottom + 6)}px`;
+  els.portfolioMenu.hidden = false;
+}
+
+function renderPortfolio() {
+  renderPortfolioFilters();
+  clearElement(els.portfolioGrid);
+  els.portfolioStatus.className = 'admin-portfolio__status';
+  els.portfolioStatus.innerHTML = '';
+  const visible = portfolioFilter === 'all' ? portfolioPhotos : portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === portfolioFilter);
+  if (!portfolioPhotos.length) {
+    els.portfolioStatus.classList.add('is-empty');
+    els.portfolioStatus.innerHTML = '<div><h3>O seu Portefólio ainda está vazio</h3><p>Adicione fotografias para começar a construir o seu Trabalho recente.</p><button class="admin-primary" type="button">＋ Adicionar fotografias</button></div>';
+    els.portfolioStatus.querySelector('button').addEventListener('click', openPortfolioAddDialog);
+  }
+  visible.forEach((photo) => {
+    const position = portfolioPhotos.findIndex((item) => item.id === photo.id) + 1;
+    const card = document.createElement('article');
+    card.className = 'portfolio-card'; card.draggable = true; card.dataset.photoId = photo.id;
+    card.style.setProperty('--focal-x', `${photo.focal_x ?? 50}%`); card.style.setProperty('--focal-y', `${photo.focal_y ?? 50}%`);
+    const imageUrl = portfolioAssetUrl(photo);
+    card.innerHTML = `<span class="portfolio-card__position">${String(position).padStart(2, '0')}</span><button class="portfolio-card__menu" type="button" aria-label="Ações da fotografia" aria-haspopup="menu">•••</button><div class="portfolio-card__image"><img src="${escapeText(imageUrl)}" alt="${escapeText(photo.alt_text || '')}" loading="lazy"></div><div class="portfolio-card__meta"><span>${escapeText(photo.portfolio_categories?.label || '')}</span><i class="portfolio-status-dot${photo.is_published ? ' is-published' : ''}" aria-hidden="true"></i><span>${photo.is_published ? 'Publicada' : 'Oculta'}</span><b title="Arrastar para reordenar" aria-hidden="true">⠿</b></div>`;
+    card.querySelector('.portfolio-card__menu').addEventListener('click', (event) => openPortfolioMenu(photo, event.currentTarget));
+    card.addEventListener('dragstart', () => { portfolioDragId = photo.id; card.classList.add('is-dragging'); });
+    card.addEventListener('dragend', () => { portfolioDragId = ''; card.classList.remove('is-dragging'); document.querySelectorAll('.is-drag-over').forEach((item) => item.classList.remove('is-drag-over')); });
+    card.addEventListener('dragover', (event) => { event.preventDefault(); if (portfolioDragId && portfolioDragId !== photo.id) card.classList.add('is-drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('is-drag-over'));
+    card.addEventListener('drop', async (event) => { event.preventDefault(); card.classList.remove('is-drag-over'); if (!portfolioDragId) return; portfolioPhotos = reorderPortfolioItems(portfolioPhotos, portfolioDragId, photo.id); renderPortfolio(); await persistPortfolioOrder(); });
+    els.portfolioGrid.appendChild(card);
+  });
+  const published = portfolioPhotos.filter((photo) => photo.is_published).length;
+  els.portfolioTotal.textContent = `${portfolioPhotos.length} fotografias no total · ${published} publicadas`;
+}
+
+async function loadPortfolio({ force = false } = {}) {
+  if (portfolioLoading || (portfolioLoaded && !force)) return;
+  portfolioLoading = true; renderPortfolioSkeleton();
+  try {
+    const result = await callAdminPortfolio('list');
+    portfolioPhotos = result.photos || []; portfolioCategories = result.categories || []; portfolioLoaded = true;
+    els.portfolioLimit.value = String(result.maxRecent || 8); renderPortfolio();
+  } catch (error) {
+    clearElement(els.portfolioGrid); els.portfolioStatus.className = 'admin-portfolio__status is-error';
+    els.portfolioStatus.innerHTML = '<div><h3>Não foi possível carregar o Portefólio.</h3><button type="button">Tentar novamente</button></div>';
+    els.portfolioStatus.querySelector('button').addEventListener('click', () => loadPortfolio({ force: true }));
+  } finally { portfolioLoading = false; }
+}
+
+async function persistPortfolioOrder() {
+  try { await callAdminPortfolio('reorder', { items: portfolioPhotos.map(({ id }) => ({ id })) }); toast('Ordem atualizada.'); }
+  catch (error) { toast('Não foi possível guardar a nova ordem.', 'error'); await loadPortfolio({ force: true }); }
+}
+
+async function movePortfolioPhoto(id, direction) {
+  const index = portfolioPhotos.findIndex((photo) => photo.id === id); const target = index + direction;
+  if (index < 0 || target < 0 || target >= portfolioPhotos.length) return;
+  portfolioPhotos = reorderPortfolioItems(portfolioPhotos, id, portfolioPhotos[target].id); renderPortfolio(); await persistPortfolioOrder();
+}
+
+function fillPortfolioCategorySelect(select, selected = '') {
+  clearElement(select);
+  portfolioCategories.forEach((category) => { const option = document.createElement('option'); option.value = category.id; option.textContent = category.label; option.selected = category.id === selected; select.appendChild(option); });
+}
+
+function imageElementFromBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const image = new Image(); const url = URL.createObjectURL(blob);
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a fotografia.')); };
+    image.src = url;
+  });
+}
+
+async function optimizePortfolioAsset(blob, maxSize, quality, crop = false) {
+  const image = 'createImageBitmap' in window ? await createImageBitmap(blob) : await imageElementFromBlob(blob);
+  const ratio = crop ? Math.max(maxSize / image.width, maxSize / image.height) : Math.min(1, maxSize / Math.max(image.width, image.height));
+  const width = crop ? maxSize : Math.max(1, Math.round(image.width * ratio));
+  const height = crop ? maxSize : Math.max(1, Math.round(image.height * ratio));
+  const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+  const context = canvas.getContext('2d', { alpha: false });
+  if (crop) {
+    const scaledWidth = image.width * ratio; const scaledHeight = image.height * ratio;
+    context.drawImage(image, (width - scaledWidth) / 2, (height - scaledHeight) / 2, scaledWidth, scaledHeight);
+  } else context.drawImage(image, 0, 0, width, height);
+  image.close?.();
+  const output = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Não foi possível otimizar a fotografia.')), 'image/webp', quality));
+  return { blob: output, width, height };
+}
+
+async function uploadPortfolioSource(source, { published, categoryId }) {
+  const response = await fetch(source.url);
+  if (!response.ok) throw new Error('Não foi possível ler a fotografia selecionada.');
+  const input = await response.blob();
+  const web = await optimizePortfolioAsset(input, 2200, .84, false);
+  const thumb = await optimizePortfolioAsset(input, 500, .82, true);
+  const result = await callAdminPortfolio('create-record', { source: {
+    categoryId, sourcePhotoId: source.sourcePhotoId, sourceGalleryId: source.sourceGalleryId,
+    altText: source.altText || '', isPublished: published, width: web.width, height: web.height, sizeBytes: input.size,
+  } });
+  const paths = result.photo;
+  const uploaded = [];
+  try {
+    for (const [path, asset] of [[paths.web_path, web.blob], [paths.thumbnail_path, thumb.blob]]) {
+      const { error } = await supabase.storage.from('public-portfolio').upload(path, asset, { contentType: 'image/webp', upsert: false });
+      if (error) throw error; uploaded.push(path);
+    }
+  } catch (error) {
+    if (uploaded.length) await supabase.storage.from('public-portfolio').remove(uploaded);
+    await callAdminPortfolio('delete', { photoId: paths.id }).catch(() => {});
+    throw error;
+  }
+}
+
+function resetPortfolioAddDialog() {
+  portfolioPendingFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+  portfolioPendingFiles = []; portfolioGallerySelections.clear();
+  clearElement(els.portfolioUploadQueue); clearElement(els.portfolioGalleryPhotos);
+  els.portfolioGallerySelect.value = ''; els.portfolioAddPublished.checked = false;
+  els.portfolioAddMessage.textContent = ''; updatePortfolioAddButton();
+}
+
+async function openPortfolioAddDialog() {
+  fillPortfolioCategorySelect(els.portfolioAddCategory);
+  resetPortfolioAddDialog(); setPortfolioSource('computer');
+  els.portfolioAddDialog.showModal();
+  try {
+    const result = await callAdminPortfolio('albums'); clearElement(els.portfolioGallerySelect);
+    const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Selecione uma galeria'; els.portfolioGallerySelect.appendChild(placeholder);
+    (result.albums || []).forEach((album) => { const option = document.createElement('option'); option.value = album.id; option.textContent = album.title; els.portfolioGallerySelect.appendChild(option); });
+  } catch (error) { els.portfolioAddMessage.textContent = 'Não foi possível carregar as galerias existentes.'; }
+}
+
+function setPortfolioSource(source) {
+  els.portfolioSourceTabs.forEach((button) => { const active = button.dataset.portfolioSource === source; button.classList.toggle('is-active', active); button.setAttribute('aria-selected', String(active)); });
+  els.portfolioUploadPanel.hidden = source !== 'computer'; els.portfolioGalleryPanel.hidden = source !== 'gallery'; updatePortfolioAddButton();
+}
+
+function updatePortfolioAddButton() {
+  const count = els.portfolioGalleryPanel.hidden ? portfolioPendingFiles.length : portfolioGallerySelections.size;
+  els.portfolioAddSubmit.disabled = count === 0;
+  els.portfolioAddSubmit.textContent = `${els.portfolioAddPublished.checked ? 'Publicar' : 'Adicionar como oculta'}${count ? ` (${count})` : ''}`;
+}
+
+async function addPortfolioFiles(files) {
+  for (const file of [...files]) {
+    const validation = await validatePortfolioFileContent(file);
+    if (!validation.valid) { toast(`${file.name}: ${validation.error}`, 'error'); return; }
+    portfolioPendingFiles.push({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), status: 'Pronta' });
+  }
+  renderPortfolioUploadQueue(); updatePortfolioAddButton();
+}
+
+function renderPortfolioUploadQueue() {
+  clearElement(els.portfolioUploadQueue);
+  portfolioPendingFiles.forEach((item) => {
+    const row = document.createElement('div'); row.className = 'portfolio-upload-item';
+    row.innerHTML = `<img src="${item.previewUrl}" alt=""><div><strong>${escapeText(item.file.name)}</strong><small>${escapeText(item.status)}</small></div><button type="button" aria-label="Remover">×</button>`;
+    row.querySelector('button').addEventListener('click', () => { URL.revokeObjectURL(item.previewUrl); portfolioPendingFiles = portfolioPendingFiles.filter((file) => file.id !== item.id); renderPortfolioUploadQueue(); updatePortfolioAddButton(); });
+    els.portfolioUploadQueue.appendChild(row);
+  });
+}
+
+async function loadPortfolioGalleryPhotos(albumId) {
+  portfolioGallerySelections.clear(); clearElement(els.portfolioGalleryPhotos);
+  if (!albumId) { updatePortfolioAddButton(); return; }
+  els.portfolioGalleryPhotos.innerHTML = '<p>A carregar fotografias…</p>';
+  try {
+    const result = await callAdminPortfolio('album-photos', { albumId }); clearElement(els.portfolioGalleryPhotos);
+    (result.photos || []).forEach((photo) => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'portfolio-gallery-photo'; button.setAttribute('aria-pressed', 'false');
+      button.innerHTML = `<img src="${escapeText(photo.preview_url || '')}" alt="${escapeText(photo.caption || '')}" loading="lazy">`;
+      button.addEventListener('click', () => { const selected = !portfolioGallerySelections.has(photo.id); if (selected) portfolioGallerySelections.set(photo.id, photo); else portfolioGallerySelections.delete(photo.id); button.classList.toggle('is-selected', selected); button.setAttribute('aria-pressed', String(selected)); updatePortfolioAddButton(); });
+      els.portfolioGalleryPhotos.appendChild(button);
+    });
+  } catch (error) { els.portfolioGalleryPhotos.innerHTML = '<p>Não foi possível carregar as fotografias.</p>'; }
+  updatePortfolioAddButton();
+}
+
+async function runConcurrent(items, task, concurrency = 4) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) { const index = next; next += 1; await task(items[index], index); }
+  });
+  await Promise.all(workers);
+}
+
+async function submitPortfolioAdd() {
+  const published = els.portfolioAddPublished.checked; const categoryId = els.portfolioAddCategory.value;
+  const sources = els.portfolioGalleryPanel.hidden
+    ? portfolioPendingFiles.map((item) => ({ item, url: item.previewUrl, altText: '' }))
+    : [...portfolioGallerySelections.values()].map((photo) => ({ photo, url: photo.source_url, altText: photo.caption || '', sourcePhotoId: photo.id, sourceGalleryId: photo.album_id }));
+  if (!sources.length || !categoryId) return;
+  els.portfolioAddSubmit.disabled = true; els.portfolioAddMessage.textContent = `A preparar 0 de ${sources.length}…`;
+  let completed = 0; const failed = [];
+  await runConcurrent(sources, async (source) => {
+    try { await uploadPortfolioSource(source, { published, categoryId }); if (source.item) source.item.status = 'Concluída'; }
+    catch (error) { failed.push(source); if (source.item) source.item.status = 'Falhou · tente novamente'; }
+    completed += 1; els.portfolioAddMessage.textContent = `A preparar ${completed} de ${sources.length}…`; renderPortfolioUploadQueue();
+  }, 4);
+  if (failed.length) {
+    if (els.portfolioGalleryPanel.hidden) {
+      const failedIds = new Set(failed.map((source) => source.item?.id));
+      portfolioPendingFiles.forEach((item) => { if (!failedIds.has(item.id)) URL.revokeObjectURL(item.previewUrl); });
+      portfolioPendingFiles = portfolioPendingFiles.filter((item) => failedIds.has(item.id));
+    } else {
+      portfolioGallerySelections = new Map(failed.map((source) => [source.sourcePhotoId, source.photo]));
+    }
+    els.portfolioAddMessage.textContent = `${failed.length} fotografia(s) falharam. Pode tentar novamente.`; toast('Alguns uploads falharam.', 'error'); renderPortfolioUploadQueue(); updatePortfolioAddButton(); return;
+  }
+  els.portfolioAddDialog.close(); resetPortfolioAddDialog(); toast('Fotografias adicionadas.'); await loadPortfolio({ force: true });
+}
+
+function updatePortfolioFocalMarker() {
+  els.portfolioFocalMarker.style.left = `${clampFocalPoint(els.portfolioFocalX.value)}%`;
+  els.portfolioFocalMarker.style.top = `${clampFocalPoint(els.portfolioFocalY.value)}%`;
+}
+
+async function replacePortfolioPhoto(file) {
+  const validation = validatePortfolioFile(file); if (!validation.valid) { toast(validation.error, 'error'); return; }
+  const web = await optimizePortfolioAsset(file, 2200, .84, false); const thumb = await optimizePortfolioAsset(file, 500, .82, true);
+  const prepared = await callAdminPortfolio('prepare-replace', { photoId: portfolioReplacingPhoto.id });
+  const paths = [prepared.web_path, prepared.thumbnail_path];
+  for (const [path, asset] of [[paths[0], web.blob], [paths[1], thumb.blob]]) {
+    const { error } = await supabase.storage.from('public-portfolio').upload(path, asset, { contentType: 'image/webp', upsert: true }); if (error) throw error;
+  }
+  await callAdminPortfolio('finalize-replace', { photoId: portfolioReplacingPhoto.id, width: web.width, height: web.height, sizeBytes: file.size });
+  toast('Fotografia substituída.'); await loadPortfolio({ force: true });
 }
 
 function albumUrl() {
@@ -830,6 +1204,12 @@ function clearAdminState() {
   accessCodeCache.clear();
   lastShownCode = '';
   createdAlbumForModal = null;
+  portfolioPhotos = [];
+  portfolioCategories = [];
+  portfolioLoaded = false;
+  portfolioFilter = 'all';
+  portfolioReplacingPhoto = null;
+  resetPortfolioAddDialog();
   closeGalleryActionsMenu();
   closeDrawer();
   resetForm();
@@ -1058,7 +1438,7 @@ function renderStorageSettings({ loading = false, error = false } = {}) {
 function setView(view) {
   activeView = view;
   els.content.classList.toggle('is-overview-active', view === 'overview');
-  const pageTitles = { overview: 'Visão geral', galleries: 'Galerias', orders: 'Encomendas', billing: 'Faturação', settings: 'Definições' };
+  const pageTitles = { overview: 'Visão geral', galleries: 'Galerias', orders: 'Encomendas', billing: 'Faturação', portfolio: 'Portefólio', settings: 'Definições' };
   els.pageTitle.textContent = pageTitles[view] || 'Administração';
   els.viewPanels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.viewPanel === view));
   els.nav.forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
@@ -1070,6 +1450,10 @@ function setView(view) {
     if (billingListMode) loadBillingList();
     else loadBillingDashboard();
   }
+  if (view === 'portfolio') {
+    history.replaceState(null, '', `${location.pathname}${location.search}#portfolio`);
+    loadPortfolio();
+  }
   if (view === 'settings') {
     refreshProfileUI();
     setSettingsSection(settingsSection, { updateHash: true });
@@ -1077,6 +1461,7 @@ function setView(view) {
     history.replaceState(null, '', `${location.pathname}${location.search}`);
   }
   if (view !== 'billing' && location.hash.startsWith('#faturacao')) history.replaceState(null, '', `${location.pathname}${location.search}`);
+  if (view !== 'portfolio' && location.hash === '#portfolio') history.replaceState(null, '', `${location.pathname}${location.search}`);
   closeMobileSidebar();
 }
 
@@ -3112,6 +3497,8 @@ async function showApp(activeSession, { reload = false } = {}) {
   } else if (location.hash.startsWith('#faturacao')) {
     activeView = 'billing';
     billingListMode = location.hash === '#faturacao/faturas';
+  } else if (location.hash === '#portfolio') {
+    activeView = 'portfolio';
   }
   els.content.classList.toggle('is-overview-active', activeView === 'overview');
   if (previousUserId !== authenticatedUserId || !adminProfile) {
@@ -3565,6 +3952,43 @@ els.settingsNav.forEach((button, index) => {
 });
 
 els.nav.forEach((button) => button.addEventListener('click', () => requestView(button.dataset.view)));
+els.portfolioAdd?.addEventListener('click', openPortfolioAddDialog);
+els.portfolioAddClose?.addEventListener('click', () => els.portfolioAddDialog.close());
+els.portfolioAddCancel?.addEventListener('click', () => els.portfolioAddDialog.close());
+els.portfolioSourceTabs.forEach((button) => button.addEventListener('click', () => setPortfolioSource(button.dataset.portfolioSource)));
+els.portfolioSelectFiles?.addEventListener('click', () => els.portfolioFileInput.click());
+els.portfolioFileInput?.addEventListener('change', async () => { await addPortfolioFiles(els.portfolioFileInput.files); els.portfolioFileInput.value = ''; });
+els.portfolioGallerySelect?.addEventListener('change', () => loadPortfolioGalleryPhotos(els.portfolioGallerySelect.value));
+els.portfolioAddPublished?.addEventListener('change', updatePortfolioAddButton);
+els.portfolioAddSubmit?.addEventListener('click', () => submitPortfolioAdd().catch((error) => { els.portfolioAddMessage.textContent = friendlyError(error); toast('Não foi possível adicionar as fotografias.', 'error'); updatePortfolioAddButton(); }));
+els.portfolioLimit?.addEventListener('change', async () => {
+  try { await callAdminPortfolio('setting', { maxRecent: Number(els.portfolioLimit.value) }); toast('Limite de Trabalho recente atualizado.'); }
+  catch (error) { toast('Não foi possível guardar o limite.', 'error'); }
+});
+els.portfolioEditClose?.addEventListener('click', () => els.portfolioEditDialog.close());
+els.portfolioEditCancel?.addEventListener('click', () => els.portfolioEditDialog.close());
+els.portfolioFocal?.addEventListener('click', (event) => {
+  const rect = els.portfolioFocal.getBoundingClientRect();
+  els.portfolioFocalX.value = String(clampFocalPoint(((event.clientX - rect.left) / rect.width) * 100));
+  els.portfolioFocalY.value = String(clampFocalPoint(((event.clientY - rect.top) / rect.height) * 100)); updatePortfolioFocalMarker();
+});
+els.portfolioEditSave?.addEventListener('click', async () => {
+  if (!portfolioEditingPhoto) return;
+  els.portfolioEditSave.disabled = true; els.portfolioEditMessage.textContent = '';
+  try {
+    await callAdminPortfolio('save', { photo: { id: portfolioEditingPhoto.id, categoryId: els.portfolioEditCategory.value, altText: els.portfolioEditAlt.value.trim(), focalX: els.portfolioFocalX.value, focalY: els.portfolioFocalY.value, isPublished: els.portfolioEditPublished.checked } });
+    els.portfolioEditDialog.close(); toast('Alterações guardadas.'); await loadPortfolio({ force: true });
+  } catch (error) { els.portfolioEditMessage.textContent = friendlyError(error); }
+  finally { els.portfolioEditSave.disabled = false; }
+});
+els.portfolioReplaceInput?.addEventListener('change', async () => {
+  const file = els.portfolioReplaceInput.files?.[0]; els.portfolioReplaceInput.value = '';
+  if (!file || !portfolioReplacingPhoto) return;
+  try { await replacePortfolioPhoto(file); } catch (error) { toast('Não foi possível substituir a fotografia.', 'error'); }
+  finally { portfolioReplacingPhoto = null; }
+});
+els.portfolioAddDialog?.addEventListener('close', resetPortfolioAddDialog);
+document.addEventListener('click', (event) => { if (!els.portfolioMenu.hidden && !els.portfolioMenu.contains(event.target) && !event.target.closest('.portfolio-card__menu')) closePortfolioMenu(); });
 els.settingsNav.forEach((button) => button.addEventListener('click', () => requestSettingsSection(button.dataset.settingsSection)));
 $$('[data-new-gallery]').forEach((button) => button.addEventListener('click', async () => {
   if (activeView === 'settings' && !await confirmDiscardSettings()) return;

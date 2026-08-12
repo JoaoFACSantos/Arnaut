@@ -80,21 +80,6 @@ const revealObserver = new IntersectionObserver(
 
 document.querySelectorAll('.reveal, .reveal-text').forEach((element) => revealObserver.observe(element));
 
-const filterButtons = document.querySelectorAll('.filter');
-const projects = document.querySelectorAll('.project');
-
-filterButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const filter = button.dataset.filter;
-    filterButtons.forEach((item) => item.classList.toggle('is-active', item === button));
-    document.querySelector('.projects').classList.toggle('is-filtered', filter !== 'all');
-
-    projects.forEach((project) => {
-      const visible = filter === 'all' || project.dataset.category === filter;
-      project.classList.toggle('is-hidden', !visible);
-    });
-  });
-});
 
 document.querySelectorAll('.service button').forEach((button) => {
   button.addEventListener('click', () => {
@@ -134,29 +119,8 @@ const lightboxImage = portraitLightbox?.querySelector('[data-lightbox-image]');
 const lightboxCounter = portraitLightbox?.querySelector('[data-lightbox-counter]');
 const lightboxPrevious = portraitLightbox?.querySelector('[data-lightbox-prev]');
 const lightboxNext = portraitLightbox?.querySelector('[data-lightbox-next]');
-const projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
-const lightboxGalleries = {
-  casal: [
-    { src: 'assets/portfolio/casal-01.webp', alt: 'Casal a sorrir junto a uma parede de pedra' },
-    { src: 'assets/portfolio/casal-02.webp', alt: 'Retrato de homem num jardim' },
-    { src: 'assets/portfolio/casal-03.webp', alt: 'Casal abraçado num jardim' },
-    { src: 'assets/portfolio/casal-04.webp', alt: 'Retrato de mulher num jardim' },
-    { src: 'assets/portfolio/casal-05.webp', alt: 'Casal junto a uma árvore num jardim' },
-  ],
-  sintra: [
-    { src: 'assets/portfolio/sintra-01.webp', alt: 'Fachada histórica enquadrada por árvores em Sintra' },
-    { src: 'assets/portfolio/sintra-02.webp', alt: 'Arquitetura histórica e árvores em Sintra' },
-    { src: 'assets/portfolio/sintra-03.webp', alt: 'Detalhe de arcos neomanuelinos em Sintra' },
-    { src: 'assets/portfolio/sintra-04.webp', alt: 'Pórtico histórico coberto por vegetação em Sintra' },
-  ],
-  nazare: [
-    { src: 'assets/portfolio/nazare-01.webp', alt: 'Retrato de mulher na praia ao fim da tarde' },
-    { src: 'assets/portfolio/nazare-02.webp', alt: 'Retrato de mulher na Nazaré com papagaios no céu' },
-    { src: 'assets/portfolio/nazare-03.webp', alt: 'Vista da praia da Nazaré com papagaios no céu' },
-    { src: 'assets/portfolio/nazare-04.webp', alt: 'Casal sentado na praia sob papagaios coloridos' },
-    { src: 'assets/portfolio/nazare-05.webp', alt: 'Casa histórica junto à costa da Nazaré' },
-  ],
-};
+let projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
+const lightboxGalleries = {};
 let activeLightboxTrigger = portraitTrigger;
 let activeLightboxItems = [];
 let activeLightboxIndex = 0;
@@ -216,7 +180,8 @@ portraitTrigger?.addEventListener('keydown', (event) => {
     openPortraitLightbox(portraitTrigger);
   }
 });
-projectImageTriggers.forEach((trigger) => {
+const bindProjectLightboxes = () => document.querySelectorAll('[data-image-lightbox]:not([data-lightbox-bound])').forEach((trigger) => {
+  trigger.dataset.lightboxBound = 'true';
   trigger.addEventListener('click', (event) => {
     event.preventDefault();
     openPortraitLightbox(trigger);
@@ -227,6 +192,15 @@ projectImageTriggers.forEach((trigger) => {
       openPortraitLightbox(trigger);
     }
   });
+});
+bindProjectLightboxes();
+window.addEventListener('portfolio:rendered', () => {
+  projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
+  document.querySelectorAll('.image-hover').forEach((element) => {
+    element.addEventListener('pointerenter', () => cursor.classList.add('is-view'));
+    element.addEventListener('pointerleave', () => cursor.classList.remove('is-view'));
+  });
+  bindProjectLightboxes();
 });
 lightboxPrevious?.addEventListener('click', () => moveLightbox(-1));
 lightboxNext?.addEventListener('click', () => moveLightbox(1));

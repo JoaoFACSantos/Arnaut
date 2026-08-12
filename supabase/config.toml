@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.admin-billing]
 verify_jwt = false
+
+[functions.admin-portfolio]
+verify_jwt = false

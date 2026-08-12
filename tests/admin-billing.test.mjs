@@ -35,7 +35,7 @@ test('places Billing immediately above Settings in the main sidebar', async () =
   const html = await readFile(new URL('../admin.html', import.meta.url), 'utf8');
   const sidebar = html.match(/<nav class="admin-side__nav"[\s\S]*?<\/nav>/)?.[0] || '';
   const labels = [...sidebar.matchAll(/<em>([^<]+)<\/em>/g)].map((match) => match[1]);
-  assert.deepEqual(labels, ['Visão geral', 'Galerias', 'Encomendas', 'Nova galeria', 'Faturação', 'Definições']);
+  assert.deepEqual(labels, ['Visão geral', 'Galerias', 'Encomendas', 'Nova galeria', 'Faturação', 'Portefólio', 'Definições']);
 });
 
 test('does not ship the sample billing identities from the visual mockup', async () => {
@@ -48,4 +48,3 @@ test('does not ship the sample billing identities from the visual mockup', async
     assert.equal(source.includes(sample), false, `mock value found: ${sample}`);
   }
 });
-

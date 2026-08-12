@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="styles.css?v=20260811-brand-palette-4" />
     <link rel="stylesheet" href="admin-settings.css?v=20260811-brand-palette-4" />
     <link rel="stylesheet" href="admin-billing.css?v=20260811-brand-palette-4" />
+    <link rel="stylesheet" href="admin-portfolio.css?v=20260812-portfolio-1" />
     <script src="config.js"></script>
     <script type="module" src="admin.js?v=20260810-billing-2"></script>
   </head>
@@ -86,6 +87,7 @@
           <button type="button" data-view="orders" title="Encomendas"><span><img src="icons/icon_encomendas.svg" alt="" aria-hidden="true" /></span><em>Encomendas</em></button>
           <button type="button" data-new-gallery title="Nova galeria"><span><img src="icons/icon_nova_galeria.svg" alt="" aria-hidden="true" /></span><em>Nova galeria</em></button>
           <button type="button" data-view="billing" title="Faturação"><span><i class="admin-billing-nav-icon" aria-hidden="true"></i></span><em>Faturação</em></button>
+          <button type="button" data-view="portfolio" title="Portefólio"><span><img src="icons/icon_portfolio.svg" alt="" aria-hidden="true" /></span><em>Portefólio</em></button>
           <button type="button" data-view="settings" title="Definições"><span><img src="icons/icon_definicoes.svg" alt="" aria-hidden="true" /></span><em>Definições</em></button>
         </nav>
         <div class="admin-storage-card">
@@ -281,6 +283,20 @@
                 </div>
                 <div class="admin-billing-card admin-billing-full-table"><div class="admin-billing-table-wrap" data-billing-list-table></div><footer data-billing-pagination></footer></div>
               </section>
+            </div>
+          </section>
+
+          <section class="admin-view" data-view-panel="portfolio">
+            <div class="admin-portfolio" data-portfolio-page>
+              <header class="admin-portfolio__heading">
+                <div><h2>Trabalho recente</h2><p>Gerir as fotografias apresentadas na secção “Trabalho recente” do site.</p></div>
+                <div><a data-portfolio-preview href="index.html#trabalho" target="_blank" rel="noopener">Pré-visualizar site <span aria-hidden="true">↗</span></a><button class="admin-primary" type="button" data-portfolio-add>＋ Adicionar fotografias</button></div>
+              </header>
+              <div class="admin-portfolio__toolbar"><div data-portfolio-filters role="group" aria-label="Filtrar Portefólio"></div><label>Máximo no site <select data-portfolio-limit aria-label="Máximo apresentado em Trabalho recente"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option></select></label></div>
+              <p class="admin-portfolio__hint"><span aria-hidden="true">ⓘ</span> Arraste as fotografias para alterar a ordem em que aparecem no site.</p>
+              <div class="admin-portfolio__status" data-portfolio-status aria-live="polite"></div>
+              <div class="admin-portfolio__grid" data-portfolio-grid></div>
+              <footer class="admin-portfolio__footer"><span>💡 Utilize fotografias de alta qualidade e representativas do seu trabalho.</span><strong data-portfolio-total></strong></footer>
             </div>
           </section>
 
@@ -748,6 +764,25 @@
         <button type="button" data-close-access-modal>Fechar</button>
       </footer>
     </dialog>
+
+    <dialog class="portfolio-dialog portfolio-add-dialog" data-portfolio-add-dialog aria-labelledby="portfolio-add-title">
+      <form method="dialog"><header><div><span>Portefólio</span><h2 id="portfolio-add-title">Adicionar fotografias</h2><p>Carregue novas fotografias ou escolha imagens de uma galeria existente.</p></div><button type="button" data-portfolio-add-close aria-label="Fechar">×</button></header>
+        <div class="portfolio-source-tabs" role="tablist"><button type="button" class="is-active" data-portfolio-source="computer" role="tab" aria-selected="true">Carregar do computador</button><button type="button" data-portfolio-source="gallery" role="tab" aria-selected="false">Escolher de uma galeria</button></div>
+        <section data-portfolio-upload-panel><button class="portfolio-dropzone" type="button" data-portfolio-select-files><span aria-hidden="true">⇧</span><strong>Selecionar fotografias</strong><small>JPEG, PNG ou WebP · máximo 30 MB</small></button><input type="file" data-portfolio-file-input accept="image/jpeg,image/png,image/webp" multiple hidden /><div class="portfolio-upload-queue" data-portfolio-upload-queue></div></section>
+        <section data-portfolio-gallery-panel hidden><label class="portfolio-gallery-select"><span>Galeria existente</span><select data-portfolio-gallery-select><option value="">Selecione uma galeria</option></select></label><div class="portfolio-gallery-photos" data-portfolio-gallery-photos></div></section>
+        <footer><label>Categoria <select data-portfolio-add-category></select></label><label class="portfolio-publish-choice"><input type="checkbox" data-portfolio-add-published /> Publicar imediatamente</label><p data-portfolio-add-message aria-live="polite"></p><button type="button" data-portfolio-add-cancel>Cancelar</button><button class="admin-primary" type="button" data-portfolio-add-submit>Adicionar como oculta</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="portfolio-dialog portfolio-edit-dialog" data-portfolio-edit-dialog aria-labelledby="portfolio-edit-title">
+      <form method="dialog"><header><div><span>Fotografia</span><h2 id="portfolio-edit-title">Editar fotografia</h2><p>Defina a categoria, acessibilidade e enquadramento.</p></div><button type="button" data-portfolio-edit-close aria-label="Fechar">×</button></header>
+        <div class="portfolio-edit-layout"><button class="portfolio-focal-editor" type="button" data-portfolio-focal aria-label="Definir ponto principal da fotografia"><img data-portfolio-edit-image alt="" /><i data-portfolio-focal-marker></i><small>Clique no ponto principal da fotografia</small></button><div><label><span>Categoria</span><select data-portfolio-edit-category></select></label><label><span>Texto alternativo</span><textarea data-portfolio-edit-alt maxlength="280" rows="5" placeholder="Descreva apenas o conteúdo real da fotografia."></textarea></label><label class="portfolio-publish-choice"><input type="checkbox" data-portfolio-edit-published /> Publicada no site</label><input type="hidden" data-portfolio-focal-x value="50" /><input type="hidden" data-portfolio-focal-y value="50" /></div></div>
+        <footer><p data-portfolio-edit-message aria-live="polite"></p><button type="button" data-portfolio-edit-cancel>Cancelar</button><button class="admin-primary" type="button" data-portfolio-edit-save>Guardar alterações</button></footer>
+      </form>
+    </dialog>
+
+    <input type="file" data-portfolio-replace-input accept="image/jpeg,image/png,image/webp" hidden />
+    <div class="portfolio-card-menu" data-portfolio-menu role="menu" hidden></div>
 
     <div class="admin-toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
   </body>
