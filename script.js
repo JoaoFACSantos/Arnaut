@@ -119,11 +119,41 @@ const lightboxImage = portraitLightbox?.querySelector('[data-lightbox-image]');
 const lightboxCounter = portraitLightbox?.querySelector('[data-lightbox-counter]');
 const lightboxPrevious = portraitLightbox?.querySelector('[data-lightbox-prev]');
 const lightboxNext = portraitLightbox?.querySelector('[data-lightbox-next]');
+const lightboxThumbs = portraitLightbox?.querySelector('[data-lightbox-thumbs]');
 let projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
 const lightboxGalleries = {};
 let activeLightboxTrigger = portraitTrigger;
 let activeLightboxItems = [];
 let activeLightboxIndex = 0;
+let lightboxTouchStartX = 0;
+
+const renderLightboxThumbs = () => {
+  if (!lightboxThumbs) return;
+  lightboxThumbs.replaceChildren();
+  lightboxThumbs.hidden = activeLightboxItems.length < 2;
+  if (activeLightboxItems.length < 2) return;
+  const radius = window.matchMedia('(max-width: 700px)').matches ? 2 : 4;
+  const indices = [];
+  for (let offset = -radius; offset <= radius; offset += 1) {
+    const index = (activeLightboxIndex + offset + activeLightboxItems.length) % activeLightboxItems.length;
+    if (!indices.includes(index)) indices.push(index);
+  }
+  indices.forEach((index) => {
+    const item = activeLightboxItems[index];
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'listitem');
+    button.setAttribute('aria-label', `Ver fotografia ${index + 1}`);
+    button.setAttribute('aria-current', index === activeLightboxIndex ? 'true' : 'false');
+    const image = document.createElement('img');
+    image.src = item.thumbSrc || item.src;
+    image.alt = '';
+    image.loading = 'lazy';
+    button.appendChild(image);
+    button.addEventListener('click', () => { activeLightboxIndex = index; renderLightboxItem(); });
+    lightboxThumbs.appendChild(button);
+  });
+};
 
 const renderLightboxItem = () => {
   const item = activeLightboxItems[activeLightboxIndex];
@@ -140,6 +170,13 @@ const renderLightboxItem = () => {
   const hasSeveralImages = activeLightboxItems.length > 1;
   if (lightboxPrevious) lightboxPrevious.hidden = !hasSeveralImages;
   if (lightboxNext) lightboxNext.hidden = !hasSeveralImages;
+  renderLightboxThumbs();
+  if (hasSeveralImages) {
+    [-1, 1].forEach((offset) => {
+      const neighbour = activeLightboxItems[(activeLightboxIndex + offset + activeLightboxItems.length) % activeLightboxItems.length];
+      if (neighbour?.src) new Image().src = neighbour.src;
+    });
+  }
 };
 
 const openPortraitLightbox = (trigger = portraitTrigger) => {
@@ -194,8 +231,15 @@ const bindProjectLightboxes = () => document.querySelectorAll('[data-image-light
   });
 });
 bindProjectLightboxes();
-window.addEventListener('portfolio:rendered', () => {
+window.addEventListener('portfolio:rendered', (event) => {
+  const renderedPhotos = event.detail?.photos || [];
+  lightboxGalleries.portfolio = renderedPhotos.map((photo) => ({
+    src: photo.web_url || photo.image_url || photo.url || '',
+    thumbSrc: photo.thumbnail_url || photo.thumb_url || '',
+    alt: photo.alt_text || 'Fotografia do portefólio',
+  })).filter((item) => item.src);
   projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
+  projectImageTriggers.forEach((trigger) => { if (!trigger.dataset.lightboxGallery) trigger.dataset.lightboxGallery = 'portfolio'; });
   document.querySelectorAll('.image-hover').forEach((element) => {
     element.addEventListener('pointerenter', () => cursor.classList.add('is-view'));
     element.addEventListener('pointerleave', () => cursor.classList.remove('is-view'));
@@ -212,9 +256,92 @@ portraitLightbox?.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') moveLightbox(-1);
   if (event.key === 'ArrowRight') moveLightbox(1);
 });
+portraitLightbox?.addEventListener('touchstart', (event) => {
+  lightboxTouchStartX = event.changedTouches[0]?.clientX || 0;
+}, { passive: true });
+portraitLightbox?.addEventListener('touchend', (event) => {
+  const distance = (event.changedTouches[0]?.clientX || 0) - lightboxTouchStartX;
+  if (Math.abs(distance) >= 54) moveLightbox(distance > 0 ? -1 : 1);
+}, { passive: true });
 portraitLightbox?.addEventListener('close', () => {
   document.body.classList.remove('portrait-lightbox-open');
   activeLightboxTrigger?.focus({ preventScroll: true });
+});
+
+document.querySelectorAll('[data-faq-list] button[aria-controls]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const answer = document.getElementById(button.getAttribute('aria-controls'));
+    const willOpen = button.getAttribute('aria-expanded') !== 'true';
+    document.querySelectorAll('[data-faq-list] button[aria-controls]').forEach((item) => {
+      item.setAttribute('aria-expanded', 'false');
+      const itemAnswer = document.getElementById(item.getAttribute('aria-controls'));
+      if (itemAnswer) itemAnswer.hidden = true;
+    });
+    button.setAttribute('aria-expanded', String(willOpen));
+    if (answer) answer.hidden = !willOpen;
+  });
+});
+
+const publicContactForm = document.querySelector('[data-contact-form]');
+const contactStatus = publicContactForm?.querySelector('[data-contact-status]');
+const contactEmail = 'fotografiaarnaut@gmail.com';
+
+const contactError = (name, text = '') => {
+  const field = publicContactForm?.elements[name];
+  const output = publicContactForm?.querySelector(`[data-error-for="${name}"]`);
+  if (field) field.setAttribute('aria-invalid', String(Boolean(text)));
+  if (output) output.textContent = text;
+};
+
+const validatePublicContact = (values) => {
+  const errors = {};
+  if (values.name.trim().length < 2) errors.name = 'Indique o seu nome.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) errors.email = 'Indique um email válido.';
+  if (!values.sessionType) errors.sessionType = 'Selecione o tipo de sessão.';
+  if (values.message.trim().length < 10) errors.message = 'Escreva uma mensagem com pelo menos 10 caracteres.';
+  if (values.preferredDate) {
+    const chosen = new Date(`${values.preferredDate}T12:00:00`);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (chosen < today) errors.preferredDate = 'Escolha uma data futura.';
+  }
+  return errors;
+};
+
+publicContactForm?.addEventListener('input', (event) => {
+  if (event.target?.name) contactError(event.target.name);
+  if (contactStatus) contactStatus.textContent = '';
+});
+
+publicContactForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const data = new FormData(publicContactForm);
+  const values = Object.fromEntries(data.entries());
+  if (String(values.website || '').trim()) return;
+  ['name', 'email', 'phone', 'sessionType', 'preferredDate', 'location', 'message'].forEach((name) => contactError(name));
+  const errors = validatePublicContact(values);
+  Object.entries(errors).forEach(([name, text]) => contactError(name, text));
+  if (Object.keys(errors).length) {
+    contactStatus.textContent = 'Revise os campos assinalados.';
+    contactStatus.dataset.type = 'error';
+    publicContactForm.querySelector('[aria-invalid="true"]')?.focus();
+    return;
+  }
+
+  const lines = [
+    `Nome: ${values.name}`,
+    `Email: ${values.email}`,
+    values.phone ? `Telefone: ${values.phone}` : '',
+    `Tipo de sessão: ${values.sessionType}`,
+    values.preferredDate ? `Data pretendida: ${values.preferredDate}` : '',
+    values.location ? `Local: ${values.location}` : '',
+    '',
+    values.message,
+  ].filter((line) => line !== '');
+  contactStatus.textContent = 'A abrir o seu programa de email para confirmar o envio.';
+  contactStatus.dataset.type = 'success';
+  const subject = encodeURIComponent(`Pedido de informação — ${values.sessionType}`);
+  const body = encodeURIComponent(lines.join('\n'));
+  window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
 });
 
 const heroImage = document.querySelector('.hero__image-wrap img');

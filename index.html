@@ -8,19 +8,28 @@
       content="Fotografia Arnaut — fotografia documental, casamentos, retratos, famílias e histórias de marca por Beatriz Arnaut, em Pombal, Leiria e por todo o país."
     />
     <meta name="theme-color" content="#f7f3ee" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:title" content="Fotografia Arnaut — Beatriz Arnaut" />
+    <meta property="og:description" content="Fotografia documental por Beatriz Arnaut, em Pombal, Leiria." />
+    <meta property="og:image" content="assets/portfolio/sintra-02.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>Fotografia Arnaut — Beatriz Arnaut</title>
     <link rel="icon" type="image/png" href="assets/logo-arnaut.png" />
+    <link rel="apple-touch-icon" href="assets/logo-arnaut.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260811-footer-3" />
+    <link rel="stylesheet" href="styles.css?v=20260818-evolution-1" />
     <script src="config.js"></script>
-    <script type="module" src="portfolio-public.js?v=20260812-portfolio-1"></script>
+    <script src="site-meta.js" defer></script>
+    <script type="module" src="portfolio-public.js?v=20260818-evolution-1"></script>
   </head>
-  <body>
+  <body data-page="home">
     <div class="loader" aria-hidden="true">
       <img class="loader__logo" src="assets/logo-arnaut.png" alt="" />
       <div class="loader__line"><span></span></div>
@@ -164,8 +173,7 @@
                 Narrativas completas e honestas, da manhã lenta à pista cheia. Presença
                 discreta, direção apenas quando é precisa e todas as pequenas coisas no meio.
               </p>
-              <ul><li>Cobertura desde 8 horas</li><li>Galeria online privada</li><li>Álbuns fine art opcionais</li></ul>
-              <a href="#contacto">Pedir guia de casamentos ↗</a>
+              <a href="#contacto">Pedir informações ↗</a>
             </div>
           </article>
 
@@ -180,8 +188,7 @@
                 Para guardar uma fase, celebrar quem são agora ou ter finalmente uma
                 fotografia onde todos cabem — sem poses rígidas nem sorrisos pedidos.
               </p>
-              <ul><li>Sessão até 90 minutos</li><li>Escolha conjunta de localização</li><li>Galeria de alta resolução</li></ul>
-              <a href="#contacto">Marcar uma sessão ↗</a>
+              <a href="#contacto">Pedir informações ↗</a>
             </div>
           </article>
 
@@ -196,8 +203,7 @@
                 Imagens com matéria e intenção para marcas humanas, artistas e projetos
                 independentes. Do conceito à produção, com uma linguagem visual coerente.
               </p>
-              <ul><li>Direção criativa</li><li>Moodboard e shot list</li><li>Licença digital incluída</li></ul>
-              <a href="#contacto">Falar sobre o projeto ↗</a>
+              <a href="#contacto">Pedir informações ↗</a>
             </div>
           </article>
         </div>
@@ -224,50 +230,56 @@
             </p>
             <p>
               A Fotografia Arnaut nasce desse olhar: simples, emocional e cuidado. Trabalho
-              a partir de Pombal, Leiria, e desloco-me por todo o país para contar histórias
-              que merecem ficar.
+              a partir de Pombal, Leiria, para contar histórias que merecem ficar.
             </p>
-            <a class="text-link" href="#contacto">Conhecer o meu processo <span>↗</span></a>
-          </div>
-          <div class="about__facts reveal">
-            <div><strong>04</strong><span>anos a contar<br />histórias</span></div>
-            <div><strong>140+</strong><span>sessões<br />entregues</span></div>
-            <div><strong>∞</strong><span>cafés antes<br />do nascer do sol</span></div>
+            <a class="text-link" href="#contacto">Falar comigo <span>↗</span></a>
           </div>
         </div>
       </section>
 
-      <section class="testimonial section-pad" aria-label="Testemunho">
-        <div class="testimonial__top reveal">
-          <p class="section-index">Palavras bonitas / 01</p>
-          <div class="testimonial__nav">
-            <button type="button" aria-label="Testemunho anterior"></button>
-            <button type="button" aria-label="Testemunho seguinte"></button>
-          </div>
-        </div>
-        <blockquote class="reveal-text">
-          “A Beatriz não fotografou apenas o nosso dia. Fotografou aquilo que nós não vimos —
-          e, de alguma forma, aquilo que <em>sentimos.</em>”
-        </blockquote>
-        <div class="testimonial__author reveal">
-          <span>— Marta &amp; Tomás</span>
-          <span>Casamento, Comporta</span>
+      <section class="faq section-pad" id="faq" aria-labelledby="faq-title">
+        <header class="faq__heading reveal">
+          <p class="section-index">05 / Informação útil</p>
+          <h2 id="faq-title">Perguntas<br /><em>frequentes.</em></h2>
+          <p>Respostas breves às dúvidas mais comuns. Para informações específicas, fala comigo.</p>
+        </header>
+        <div class="faq__list" data-faq-list>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-1"><span>Como recebo as fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-1" hidden><p>As fotografias são disponibilizadas através de uma galeria privada, acessível com o código enviado pela fotógrafa.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-2"><span>As galerias têm prazo de validade?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-2" hidden><p>Quando existe um prazo, a data de expiração é apresentada na galeria ou comunicada diretamente.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-3"><span>Posso descarregar em alta resolução?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-3" hidden><p>Os downloads dependem das opções definidas para cada galeria. Quando estão disponíveis, a própria galeria apresenta essa indicação.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-4"><span>Como funciona a compra de fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-4" hidden><p>Nas galerias com venda ativa, seleciona as fotografias, revê o carrinho e conclui o pagamento seguro. Os ficheiros ficam disponíveis após a confirmação.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-5"><span>Como posso pedir informações ou reservar?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-5" hidden><p>Envia o formulário abaixo com os dados essenciais. A disponibilidade e os próximos passos são confirmados diretamente.</p></div></article>
         </div>
       </section>
 
       <section class="contact section-pad" id="contacto" aria-labelledby="contact-title">
         <div class="contact__backdrop" aria-hidden="true"></div>
         <div class="contact__inner">
-          <p class="section-index reveal">05 / Vamos falar</p>
+          <p class="section-index reveal">06 / Vamos falar</p>
           <h2 id="contact-title" class="reveal">
             Há uma história<br />à espera de ser<br /><em>guardada?</em>
           </h2>
           <p class="contact__note reveal">
-            Conta-me o que tens em mente, onde e quando.<br />Respondo sempre em 48 horas.
+            Conta-me o que tens em mente, onde e quando.<br />Responderei assim que possível.
           </p>
-          <a class="contact__mail reveal" href="mailto:fotografiaarnaut@gmail.com?subject=Olá%20Beatriz,%20vamos%20criar">
-            <span>fotografiaarnaut@gmail.com</span><i>↗</i>
-          </a>
+          <div class="contact__details reveal">
+            <span>Pombal, Leiria</span>
+            <a href="mailto:fotografiaarnaut@gmail.com">fotografiaarnaut@gmail.com</a>
+            <a href="https://www.instagram.com/fotografiarnaut/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+          </div>
+          <form class="contact-form reveal" data-contact-form novalidate>
+            <div class="contact-form__grid">
+              <label><span>Nome *</span><input name="name" type="text" autocomplete="name" maxlength="120" required /><small data-error-for="name"></small></label>
+              <label><span>Email *</span><input name="email" type="email" autocomplete="email" maxlength="200" required /><small data-error-for="email"></small></label>
+              <label><span>Telefone <em>opcional</em></span><input name="phone" type="tel" autocomplete="tel" maxlength="40" /><small data-error-for="phone"></small></label>
+              <label><span>Tipo de sessão *</span><select name="sessionType" required><option value="">Selecionar</option><option>Casamento</option><option>Retrato</option><option>Família</option><option>Marca ou editorial</option><option>Evento</option><option>Outro</option></select><small data-error-for="sessionType"></small></label>
+              <label><span>Data pretendida</span><input name="preferredDate" type="date" /><small data-error-for="preferredDate"></small></label>
+              <label><span>Local</span><input name="location" type="text" maxlength="160" /><small data-error-for="location"></small></label>
+              <label class="contact-form__message"><span>Mensagem *</span><textarea name="message" rows="5" maxlength="2000" required></textarea><small data-error-for="message"></small></label>
+              <label class="contact-form__website" aria-hidden="true"><span>Website</span><input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+            </div>
+            <div class="contact-form__footer"><p data-contact-status role="status" aria-live="polite"></p><button type="submit">Enviar pedido <span aria-hidden="true">↗</span></button></div>
+          </form>
         </div>
       </section>
     </main>
@@ -309,9 +321,10 @@
         </figure>
         <button type="button" class="portrait-lightbox__nav portrait-lightbox__nav--prev" data-lightbox-prev aria-label="Fotografia anterior"></button>
         <button type="button" class="portrait-lightbox__nav portrait-lightbox__nav--next" data-lightbox-next aria-label="Fotografia seguinte"></button>
+        <div class="portrait-lightbox__thumbs" data-lightbox-thumbs role="list" aria-label="Fotografias do portefólio"></div>
       </div>
     </dialog>
 
-    <script src="script.js?v=20260811-footer-1"></script>
+    <script src="script.js?v=20260818-evolution-1"></script>
   </body>
 </html>

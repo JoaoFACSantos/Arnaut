@@ -40,10 +40,12 @@ Deno.serve(async (request) => {
       const photo = body.photo || {};
       const { error } = await supabase.from('portfolio_photos').update({
         category_id: photo.categoryId,
+        internal_title: String(photo.internalTitle || '').trim().slice(0, 120) || null,
         alt_text: String(photo.altText || '').slice(0, 280),
         focal_x: Math.min(100, Math.max(0, Number(photo.focalX ?? 50))),
         focal_y: Math.min(100, Math.max(0, Number(photo.focalY ?? 50))),
         is_published: Boolean(photo.isPublished),
+        is_featured: Boolean(photo.isFeatured),
       }).eq('id', photo.id);
       if (error) throw error;
       return json({ ok: true });
@@ -63,6 +65,7 @@ Deno.serve(async (request) => {
       const { data, error } = await supabase.from('portfolio_photos').insert({
         id, category_id: source.categoryId, source_photo_id: source.sourcePhotoId || null, source_gallery_id: source.sourceGalleryId || null,
         web_path: `portfolio/${id}/web.webp`, thumbnail_path: `portfolio/${id}/thumb.webp`, alt_text: String(source.altText || '').slice(0, 280),
+        internal_title: String(source.internalTitle || '').trim().slice(0, 120) || null, is_featured: Boolean(source.isFeatured),
         is_published: Boolean(source.isPublished), sort_order: Number(last?.sort_order || 0) + 10, width: Number(source.width) || null,
         height: Number(source.height) || null, size_bytes: Number(source.sizeBytes) || null, created_by: admin.user.id,
       }).select('id, web_path, thumbnail_path').single();

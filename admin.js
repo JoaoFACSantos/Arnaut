@@ -63,6 +63,16 @@ const els = {
   sidebarBackdrop: $('[data-sidebar-backdrop]'),
   toggleSidebar: $('[data-toggle-sidebar]'),
   pageTitle: $('[data-page-title]'),
+  notificationsToggle: $('[data-notifications-toggle]'),
+  notificationsCount: $('[data-notifications-count]'),
+  notificationsPanel: $('[data-notifications-panel]'),
+  notificationsList: $('[data-notifications-list]'),
+  notificationsReadAll: $('[data-notifications-read-all]'),
+  globalSearchTrigger: $('[data-global-search-trigger]'),
+  globalSearchDialog: $('[data-global-search-dialog]'),
+  globalSearchInput: $('[data-global-search-input]'),
+  globalSearchResults: $('[data-global-search-results]'),
+  globalSearchClose: $('[data-global-search-close]'),
   content: $('.admin-content'),
   nav: $$('[data-view]'),
   viewPanels: $$('[data-view-panel]'),
@@ -70,6 +80,9 @@ const els = {
   portfolioGrid: $('[data-portfolio-grid]'),
   portfolioStatus: $('[data-portfolio-status]'),
   portfolioFilters: $('[data-portfolio-filters]'),
+  portfolioSearch: $('[data-portfolio-search]'),
+  portfolioState: $('[data-portfolio-state]'),
+  portfolioFeatured: $('[data-portfolio-featured]'),
   portfolioTotal: $('[data-portfolio-total]'),
   portfolioLimit: $('[data-portfolio-limit]'),
   portfolioAdd: $('[data-portfolio-add]'),
@@ -95,7 +108,9 @@ const els = {
   portfolioEditImage: $('[data-portfolio-edit-image]'),
   portfolioEditCategory: $('[data-portfolio-edit-category]'),
   portfolioEditAlt: $('[data-portfolio-edit-alt]'),
+  portfolioEditTitle: $('[data-portfolio-edit-title]'),
   portfolioEditPublished: $('[data-portfolio-edit-published]'),
+  portfolioEditFeatured: $('[data-portfolio-edit-featured]'),
   portfolioFocal: $('[data-portfolio-focal]'),
   portfolioFocalMarker: $('[data-portfolio-focal-marker]'),
   portfolioFocalX: $('[data-portfolio-focal-x]'),
@@ -344,6 +359,10 @@ let albumLoadVersion = 0;
 let authenticatedUserId = '';
 let appLoadPromise = null;
 let recoveryMode = false;
+let adminNotifications = [];
+let notificationsRefreshTimer = 0;
+let globalSearchOrders = [];
+let globalSearchOrdersLoaded = false;
 let drawerDirty = false;
 let drawerSaving = false;
 let pendingLoginNotice = '';
@@ -374,6 +393,9 @@ let accessFilters = { search: '', status: 'active', sort: 'recent' };
 let portfolioPhotos = [];
 let portfolioCategories = [];
 let portfolioFilter = 'all';
+let portfolioSearch = '';
+let portfolioState = 'all';
+let portfolioFeatured = 'all';
 let portfolioLoaded = false;
 let portfolioLoading = false;
 let portfolioPendingFiles = [];
@@ -592,8 +614,10 @@ function closePortfolioMenu() {
 function openPortfolioEditor(photo) {
   portfolioEditingPhoto = photo;
   fillPortfolioCategorySelect(els.portfolioEditCategory, photo.category_id);
+  els.portfolioEditTitle.value = photo.internal_title || '';
   els.portfolioEditAlt.value = photo.alt_text || '';
   els.portfolioEditPublished.checked = Boolean(photo.is_published);
+  els.portfolioEditFeatured.checked = Boolean(photo.is_featured);
   els.portfolioFocalX.value = photo.focal_x ?? 50;
   els.portfolioFocalY.value = photo.focal_y ?? 50;
   els.portfolioEditImage.src = portfolioAssetUrl(photo, false);
@@ -616,8 +640,12 @@ function openPortfolioMenu(photo, anchor) {
   els.portfolioMenu.append(
     portfolioMenuAction('Editar', () => openPortfolioEditor(photo)),
     portfolioMenuAction(photo.is_published ? 'Ocultar' : 'Publicar', async () => {
-      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: !photo.is_published } });
+      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, internalTitle: photo.internal_title, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: !photo.is_published, isFeatured: photo.is_featured } });
       toast(photo.is_published ? 'Fotografia ocultada.' : 'Fotografia publicada.'); await loadPortfolio({ force: true });
+    }),
+    portfolioMenuAction(photo.is_featured ? 'Remover destaque' : 'Marcar como destaque', async () => {
+      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, internalTitle: photo.internal_title, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: photo.is_published, isFeatured: !photo.is_featured } });
+      await loadPortfolio({ force: true });
     }),
     portfolioMenuAction('Substituir fotografia', () => { portfolioReplacingPhoto = photo; els.portfolioReplaceInput.click(); }),
     portfolioMenuAction('Mover para cima', () => movePortfolioPhoto(photo.id, -1)),
@@ -639,7 +667,16 @@ function renderPortfolio() {
   clearElement(els.portfolioGrid);
   els.portfolioStatus.className = 'admin-portfolio__status';
   els.portfolioStatus.innerHTML = '';
-  const visible = portfolioFilter === 'all' ? portfolioPhotos : portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === portfolioFilter);
+  const query = portfolioSearch.trim().toLocaleLowerCase('pt');
+  const visible = portfolioPhotos.filter((photo) => {
+    if (portfolioFilter !== 'all' && photo.portfolio_categories?.slug !== portfolioFilter) return false;
+    if (portfolioState === 'published' && !photo.is_published) return false;
+    if (portfolioState === 'hidden' && photo.is_published) return false;
+    if (portfolioFeatured === 'featured' && !photo.is_featured) return false;
+    if (portfolioFeatured === 'regular' && photo.is_featured) return false;
+    if (query && ![photo.internal_title, photo.alt_text, photo.portfolio_categories?.label].some((value) => String(value || '').toLocaleLowerCase('pt').includes(query))) return false;
+    return true;
+  });
   if (!portfolioPhotos.length) {
     els.portfolioStatus.classList.add('is-empty');
     els.portfolioStatus.innerHTML = '<div><h3>O seu Portefólio ainda está vazio</h3><p>Adicione fotografias para começar a construir o seu Trabalho recente.</p><button class="admin-primary" type="button">＋ Adicionar fotografias</button></div>';
@@ -651,7 +688,7 @@ function renderPortfolio() {
     card.className = 'portfolio-card'; card.draggable = true; card.dataset.photoId = photo.id;
     card.style.setProperty('--focal-x', `${photo.focal_x ?? 50}%`); card.style.setProperty('--focal-y', `${photo.focal_y ?? 50}%`);
     const imageUrl = portfolioAssetUrl(photo);
-    card.innerHTML = `<span class="portfolio-card__position">${String(position).padStart(2, '0')}</span><button class="portfolio-card__menu" type="button" aria-label="Ações da fotografia" aria-haspopup="menu">•••</button><div class="portfolio-card__image"><img src="${escapeText(imageUrl)}" alt="${escapeText(photo.alt_text || '')}" loading="lazy"></div><div class="portfolio-card__meta"><span>${escapeText(photo.portfolio_categories?.label || '')}</span><i class="portfolio-status-dot${photo.is_published ? ' is-published' : ''}" aria-hidden="true"></i><span>${photo.is_published ? 'Publicada' : 'Oculta'}</span><b title="Arrastar para reordenar" aria-hidden="true">⠿</b></div>`;
+    card.innerHTML = `<span class="portfolio-card__position">${String(position).padStart(2, '0')}</span>${photo.is_featured ? '<span class="portfolio-card__featured">Destaque</span>' : ''}<button class="portfolio-card__menu" type="button" aria-label="Ações da fotografia" aria-haspopup="menu">•••</button><div class="portfolio-card__image"><img src="${escapeText(imageUrl)}" alt="${escapeText(photo.alt_text || '')}" loading="lazy"></div><div class="portfolio-card__meta"><span title="${escapeText(photo.internal_title || '')}">${escapeText(photo.internal_title || photo.portfolio_categories?.label || '')}</span><i class="portfolio-status-dot${photo.is_published ? ' is-published' : ''}" aria-hidden="true"></i><span>${photo.is_published ? 'Publicada' : 'Oculta'}</span><b class="portfolio-card__drag" title="Arrastar para reordenar" aria-label="Arrastar para reordenar"><i></i><i></i><i></i><i></i><i></i><i></i></b></div>`;
     card.querySelector('.portfolio-card__menu').addEventListener('click', (event) => openPortfolioMenu(photo, event.currentTarget));
     card.addEventListener('dragstart', () => { portfolioDragId = photo.id; card.classList.add('is-dragging'); });
     card.addEventListener('dragend', () => { portfolioDragId = ''; card.classList.remove('is-dragging'); document.querySelectorAll('.is-drag-over').forEach((item) => item.classList.remove('is-drag-over')); });
@@ -662,6 +699,10 @@ function renderPortfolio() {
   });
   const published = portfolioPhotos.filter((photo) => photo.is_published).length;
   els.portfolioTotal.textContent = `${portfolioPhotos.length} fotografias no total · ${published} publicadas`;
+  if (portfolioPhotos.length && !visible.length) {
+    els.portfolioStatus.classList.add('is-empty');
+    els.portfolioStatus.innerHTML = '<div><h3>Sem resultados</h3><p>Altere a pesquisa ou os filtros aplicados.</p></div>';
+  }
 }
 
 async function loadPortfolio({ force = false } = {}) {
@@ -679,8 +720,24 @@ async function loadPortfolio({ force = false } = {}) {
 }
 
 async function persistPortfolioOrder() {
-  try { await callAdminPortfolio('reorder', { items: portfolioPhotos.map(({ id }) => ({ id })) }); toast('Ordem atualizada.'); }
-  catch (error) { toast('Não foi possível guardar a nova ordem.', 'error'); await loadPortfolio({ force: true }); }
+  els.portfolioStatus.className = 'admin-portfolio__status is-saving';
+  els.portfolioStatus.textContent = 'A guardar…';
+  try {
+    await callAdminPortfolio('reorder', { items: portfolioPhotos.map(({ id }) => ({ id })) });
+    els.portfolioStatus.className = 'admin-portfolio__status is-saved';
+    els.portfolioStatus.textContent = 'Guardado';
+    clearTimeout(persistPortfolioOrder.timer);
+    persistPortfolioOrder.timer = setTimeout(() => {
+      if (els.portfolioStatus.classList.contains('is-saved')) {
+        els.portfolioStatus.className = 'admin-portfolio__status';
+        els.portfolioStatus.textContent = '';
+      }
+    }, 2200);
+  } catch (error) {
+    els.portfolioStatus.className = 'admin-portfolio__status is-error-inline';
+    els.portfolioStatus.innerHTML = 'Não foi possível guardar. <button type="button">Tentar novamente</button>';
+    els.portfolioStatus.querySelector('button').addEventListener('click', persistPortfolioOrder, { once: true });
+  }
 }
 
 async function movePortfolioPhoto(id, direction) {
@@ -1208,7 +1265,20 @@ function clearAdminState() {
   portfolioCategories = [];
   portfolioLoaded = false;
   portfolioFilter = 'all';
+  portfolioSearch = '';
+  portfolioState = 'all';
+  portfolioFeatured = 'all';
+  if (els.portfolioSearch) els.portfolioSearch.value = '';
+  if (els.portfolioState) els.portfolioState.value = 'all';
+  if (els.portfolioFeatured) els.portfolioFeatured.value = 'all';
   portfolioReplacingPhoto = null;
+  adminNotifications = [];
+  globalSearchOrders = [];
+  globalSearchOrdersLoaded = false;
+  if (notificationsRefreshTimer) window.clearInterval(notificationsRefreshTimer);
+  notificationsRefreshTimer = 0;
+  if (els.notificationsToggle) els.notificationsToggle.hidden = true;
+  if (els.notificationsPanel) els.notificationsPanel.hidden = true;
   resetPortfolioAddDialog();
   closeGalleryActionsMenu();
   closeDrawer();
@@ -1569,13 +1639,13 @@ function renderExpiringList() {
 
 function renderChart() {
   clearElement(els.chart);
-  const { buckets, previousTotal, previousLabel } = photoBuckets(els.chartRange.value);
+  const { buckets, previousTotal, periodLabel, comparisonLabel } = photoBuckets(els.chartRange.value);
   const max = Math.max(...buckets.map((item) => item.count), 1);
   const total = buckets.reduce((sum, item) => sum + item.count, 0);
-  const width = 760;
-  const height = 210;
-  const padX = 38;
-  const padY = 28;
+  const width = 860;
+  const height = 270;
+  const padX = 34;
+  const padY = 34;
   const plotWidth = width - padX * 2;
   const plotHeight = height - padY * 2;
   const points = buckets.map((item, index) => {
@@ -1583,15 +1653,27 @@ function renderChart() {
     const y = padY + plotHeight - ((item.count / max) * plotHeight);
     return { ...item, x, y };
   });
-  const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+  const line = points.reduce((path, point, index) => {
+    if (!index) return `M ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+    if (index === points.length - 1) return `${path} L ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+    const next = points[index + 1];
+    return `${path} Q ${point.x.toFixed(1)} ${point.y.toFixed(1)} ${((point.x + next.x) / 2).toFixed(1)} ${((point.y + next.y) / 2).toFixed(1)}`;
+  }, '');
   const area = `${line} L ${points.at(-1)?.x || padX} ${height - padY} L ${points[0]?.x || padX} ${height - padY} Z`;
-  const previousText = previousTotal > 0 && total > 0
-    ? `${Math.round(((total - previousTotal) / previousTotal) * 100)}% em relação a ${previousLabel}`
-    : 'Sem comparação anterior suficiente';
+  const change = previousTotal > 0 ? Math.round(((total - previousTotal) / previousTotal) * 100) : null;
+  const comparisonText = change == null
+    ? 'Ainda sem histórico suficiente para comparar'
+    : `${change > 0 ? '+' : ''}${change}% face ao ${comparisonLabel}`;
+  const comparisonTone = change == null ? '' : change >= 0 ? ' is-positive' : ' is-negative';
 
   const metric = document.createElement('div');
   metric.className = 'admin-chart-metric';
-  metric.innerHTML = `<span>${els.chartRange.value}</span><strong>${total}</strong><small>${previousText}</small>`;
+  metric.innerHTML = `
+    <span class="admin-chart-metric__icon" aria-hidden="true"><i></i></span>
+    <strong><b>${total.toLocaleString('pt-PT')}</b><em>${total === 1 ? 'fotografia' : 'fotografias'}</em></strong>
+    <p>carregadas ${escapeText(periodLabel)}</p>
+    <span class="admin-chart-comparison${comparisonTone}">${escapeText(comparisonText)}</span>
+  `;
 
   const svgWrap = document.createElement('div');
   svgWrap.className = 'admin-chart-area';
@@ -1610,57 +1692,79 @@ function renderChart() {
       <path class="admin-chart-fill" d="${area}" />
       <path class="admin-chart-line" d="${line}" />
       ${points.map((point) => `
-        <g class="admin-chart-point" tabindex="0">
-          <title>${point.tooltip}\n${point.count} ${point.count === 1 ? 'fotografia' : 'fotografias'}</title>
-          <circle cx="${point.x}" cy="${point.y}" r="4" />
+        <g class="admin-chart-point" tabindex="0" role="button" aria-label="${escapeText(point.tooltip)}: ${point.count} ${point.count === 1 ? 'fotografia' : 'fotografias'}" data-x="${point.x}" data-y="${point.y}" data-label="${escapeText(point.tooltip)}" data-count="${point.count}">
+          <circle cx="${point.x}" cy="${point.y}" r="3.5" />
         </g>
       `).join('')}
       ${points.map((point) => `<text class="admin-chart-label" x="${point.x}" y="${height - 5}" text-anchor="middle">${point.label}</text>`).join('')}
     </svg>
-    ${!total ? '<p class="admin-chart-empty">Sem fotografias carregadas neste período.</p>' : ''}
+    ${!total ? '<p class="admin-chart-empty">Ainda não existem fotografias neste período.</p>' : ''}
+    <div class="admin-chart-tooltip" role="tooltip" hidden><strong></strong><span></span></div>
   `;
+  const tooltip = svgWrap.querySelector('.admin-chart-tooltip');
+  const showTooltip = (point) => {
+    tooltip.querySelector('strong').textContent = point.dataset.label;
+    const count = Number(point.dataset.count || 0);
+    tooltip.querySelector('span').textContent = `${count} ${count === 1 ? 'fotografia' : 'fotografias'}`;
+    tooltip.style.left = `${(Number(point.dataset.x) / width) * 100}%`;
+    tooltip.style.top = `${(Number(point.dataset.y) / height) * 100}%`;
+    tooltip.hidden = false;
+    point.classList.add('is-active');
+  };
+  const hideTooltip = (point) => {
+    tooltip.hidden = true;
+    point.classList.remove('is-active');
+  };
+  svgWrap.querySelectorAll('.admin-chart-point').forEach((point) => {
+    point.addEventListener('pointerenter', () => showTooltip(point));
+    point.addEventListener('pointerleave', () => hideTooltip(point));
+    point.addEventListener('focus', () => showTooltip(point));
+    point.addEventListener('blur', () => hideTooltip(point));
+  });
   els.chart.append(metric, svgWrap);
 }
 
-function photoBuckets(rangeLabel = 'Esta semana') {
+function photoBuckets(range = '3m') {
   const photos = albums.flatMap((album) => album.album_photos || []);
   const today = startOfLocalDay();
-  const makeBuckets = (offset = 0) => {
+  const safeRange = ['7d', '30d', '3m', '1y'].includes(range) ? range : '3m';
+  const makeBuckets = (previous = false) => {
     const buckets = [];
-    if (rangeLabel === 'Este mês') {
-      const anchor = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-      const year = anchor.getFullYear();
-      const month = anchor.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      for (let day = 1; day <= daysInMonth; day += 1) {
-        const date = new Date(year, month, day);
-        buckets.push({ date, label: String(day), tooltip: new Intl.DateTimeFormat('pt-PT', { dateStyle: 'medium' }).format(date), count: 0 });
-      }
-    } else if (rangeLabel === 'Últimos 3 meses') {
-      for (let index = 11; index >= 0; index -= 1) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - ((index + (offset ? 12 : 0)) * 7));
-        const start = startOfLocalDay(date);
-        const end = new Date(start);
-        end.setDate(start.getDate() + 6);
+    if (safeRange === '1y') {
+      const anchor = new Date(today.getFullYear(), today.getMonth() - (previous ? 12 : 0), 1);
+      for (let offset = 11; offset >= 0; offset -= 1) {
+        const start = new Date(anchor.getFullYear(), anchor.getMonth() - offset, 1);
+        const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
         buckets.push({
           start,
           end,
-          label: `${start.getDate()}/${start.getMonth() + 1}`,
-          tooltip: `${formatDate(start)} - ${formatDate(end)}`,
+          label: new Intl.DateTimeFormat('pt-PT', { month: 'short' }).format(start).replace('.', ''),
+          tooltip: new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' }).format(start),
           count: 0,
         });
       }
     } else {
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + (offset * 7));
-      for (let index = 0; index < 7; index += 1) {
-        const date = new Date(monday);
-        date.setDate(monday.getDate() + index);
+      const days = safeRange === '7d' ? 7 : safeRange === '30d' ? 30 : 84;
+      const groupDays = safeRange === '7d' ? 1 : safeRange === '30d' ? 3 : 7;
+      const rangeEnd = new Date(today);
+      if (previous) rangeEnd.setDate(rangeEnd.getDate() - days);
+      const rangeStart = new Date(rangeEnd);
+      rangeStart.setDate(rangeEnd.getDate() - days + 1);
+      for (let index = 0; index < Math.ceil(days / groupDays); index += 1) {
+        const start = new Date(rangeStart);
+        start.setDate(rangeStart.getDate() + (index * groupDays));
+        const end = new Date(start);
+        end.setDate(start.getDate() + groupDays - 1);
+        if (end > rangeEnd) end.setTime(rangeEnd.getTime());
         buckets.push({
-          date,
-          label: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][index],
-          tooltip: new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: '2-digit', month: 'short' }).format(date),
+          start,
+          end,
+          label: safeRange === '7d'
+            ? new Intl.DateTimeFormat('pt-PT', { weekday: 'short' }).format(start).replace('.', '')
+            : `${start.getDate()}/${start.getMonth() + 1}`,
+          tooltip: groupDays === 1
+            ? new Intl.DateTimeFormat('pt-PT', { dateStyle: 'medium' }).format(start)
+            : `${formatDate(start)} – ${formatDate(end)}`,
           count: 0,
         });
       }
@@ -1672,20 +1776,22 @@ function photoBuckets(rangeLabel = 'Esta semana') {
     photos.forEach((photo) => {
       const created = startOfLocalDay(photo.created_at);
       if (!created) return;
-      const bucket = targetBuckets.find((item) => {
-        if (item.start && item.end) return created >= item.start && created <= item.end;
-        return created.getTime() === item.date.getTime();
-      });
+      const bucket = targetBuckets.find((item) => created >= item.start && created <= item.end);
       if (bucket) bucket.count += 1;
     });
     return targetBuckets;
   };
 
-  const buckets = fillBuckets(makeBuckets(0));
-  const previousBuckets = fillBuckets(makeBuckets(-1));
+  const buckets = fillBuckets(makeBuckets(false));
+  const previousBuckets = fillBuckets(makeBuckets(true));
   const previousTotal = previousBuckets.reduce((sum, item) => sum + item.count, 0);
-  const previousLabel = rangeLabel === 'Esta semana' ? 'semana anterior' : rangeLabel === 'Este mês' ? 'mês anterior' : 'período anterior';
-  return { buckets, previousTotal, previousLabel };
+  const labels = {
+    '7d': ['nos últimos 7 dias', 'período anterior'],
+    '30d': ['nos últimos 30 dias', 'período anterior'],
+    '3m': ['nos últimos 3 meses', 'período anterior'],
+    '1y': ['no último ano', 'ano anterior'],
+  }[safeRange];
+  return { buckets, previousTotal, periodLabel: labels[0], comparisonLabel: labels[1] };
 }
 
 function galleryRow(album, compact = false) {
@@ -3012,6 +3118,144 @@ async function deleteAlbum() {
   }
 }
 
+function notificationTime(value) {
+  const date = new Date(value);
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  if (!Number.isFinite(seconds)) return '';
+  if (seconds < 60) return 'Agora';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h`;
+  return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(date);
+}
+
+function renderAdminNotifications() {
+  if (!els.notificationsList) return;
+  clearElement(els.notificationsList);
+  const unread = adminNotifications.filter((item) => !item.is_read).length;
+  els.notificationsCount.textContent = String(unread > 99 ? '99+' : unread);
+  els.notificationsCount.hidden = unread === 0;
+  els.notificationsToggle.setAttribute('aria-label', unread ? `Abrir notificações, ${unread} por ler` : 'Abrir notificações');
+  if (!adminNotifications.length) {
+    els.notificationsList.innerHTML = '<p class="admin-notifications-empty">Não existem novas notificações.</p>';
+    els.notificationsReadAll.hidden = true;
+    return;
+  }
+  els.notificationsReadAll.hidden = unread === 0;
+  adminNotifications.forEach((notification) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `admin-notification${notification.is_read ? ' is-read' : ''}`;
+    button.innerHTML = `<span class="admin-notification__dot" aria-hidden="true"></span><span><strong>${escapeText(notification.title)}</strong><p>${escapeText(notification.message)}</p></span><time datetime="${escapeText(notification.created_at)}">${escapeText(notificationTime(notification.created_at))}</time>`;
+    button.addEventListener('click', async () => {
+      if (!notification.is_read) {
+        const { error } = await supabase.from('admin_notifications').update({ is_read: true }).eq('id', notification.id);
+        if (!error) { notification.is_read = true; renderAdminNotifications(); }
+      }
+      els.notificationsPanel.hidden = true;
+      els.notificationsToggle.setAttribute('aria-expanded', 'false');
+      if (notification.related_kind === 'order') requestView('orders');
+      if (notification.related_kind === 'gallery') requestView('galleries');
+      if (notification.related_kind === 'storage') { await requestView('settings'); await requestSettingsSection('storage'); }
+    });
+    els.notificationsList.appendChild(button);
+  });
+}
+
+async function loadAdminNotifications() {
+  if (!supabase || !els.notificationsToggle) return;
+  try {
+    await supabase.rpc('refresh_gallery_expiry_notifications');
+    const { data, error } = await supabase.from('admin_notifications')
+      .select('id,type,title,message,related_kind,related_id,is_read,created_at')
+      .order('created_at', { ascending: false }).limit(30);
+    if (error) throw error;
+    adminNotifications = data || [];
+    els.notificationsToggle.hidden = false;
+    renderAdminNotifications();
+  } catch (error) {
+    adminNotifications = [];
+    els.notificationsToggle.hidden = true;
+    els.notificationsPanel.hidden = true;
+  }
+}
+
+function normalizedSearchText(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-PT').trim();
+}
+
+function closeGlobalSearch() {
+  if (els.globalSearchDialog?.open) els.globalSearchDialog.close();
+}
+
+async function openGlobalSearch() {
+  if (!els.globalSearchDialog || els.globalSearchDialog.open) return;
+  els.globalSearchDialog.showModal();
+  els.globalSearchInput.value = '';
+  els.globalSearchResults.innerHTML = '<div class="admin-global-search__hint"><strong>Pesquisa global</strong><p>Encontre galerias, encomendas e clientes reais.</p></div>';
+  requestAnimationFrame(() => els.globalSearchInput.focus({ preventScroll: true }));
+  if (!globalSearchOrdersLoaded) {
+    try {
+      const data = await callAdminOrders('list', { filters: {} });
+      globalSearchOrders = data.orders || [];
+      globalSearchOrdersLoaded = true;
+      if (els.globalSearchInput.value.trim()) renderGlobalSearchResults();
+    } catch (error) {
+      globalSearchOrders = [];
+    }
+  }
+}
+
+function globalSearchResultButton({ kind, title, meta, id }) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.searchKind = kind;
+  button.dataset.searchId = id;
+  const type = document.createElement('i');
+  type.textContent = kind === 'gallery' ? 'Galeria' : 'Encomenda';
+  const copy = document.createElement('span');
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const small = document.createElement('small');
+  small.textContent = meta;
+  copy.append(strong, small);
+  button.append(type, copy);
+  button.addEventListener('click', async () => {
+    closeGlobalSearch();
+    if (kind === 'gallery') {
+      await requestView('galleries');
+      const album = albums.find((item) => item.id === id);
+      if (album) openDrawer(album, 1);
+    } else {
+      await requestView('orders');
+      await openOrderDetail(id);
+    }
+  });
+  return button;
+}
+
+function renderGlobalSearchResults() {
+  if (!els.globalSearchResults) return;
+  const query = normalizedSearchText(els.globalSearchInput.value);
+  clearElement(els.globalSearchResults);
+  if (query.length < 2) {
+    els.globalSearchResults.innerHTML = '<div class="admin-global-search__hint"><strong>Escreva pelo menos 2 caracteres</strong><p>A pesquisa não envia dados para serviços externos.</p></div>';
+    return;
+  }
+
+  const galleryMatches = albums.filter((album) => normalizedSearchText([album.title, album.location, album.event_type].join(' ')).includes(query)).slice(0, 6);
+  const orderMatches = globalSearchOrders.filter((order) => normalizedSearchText([order.order_number, order.customer_email, order.album?.title].join(' ')).includes(query)).slice(0, 6);
+  if (!galleryMatches.length && !orderMatches.length) {
+    els.globalSearchResults.innerHTML = '<div class="admin-global-search__hint"><strong>Sem resultados</strong><p>Tente o nome da galeria, referência ou email do cliente.</p></div>';
+    return;
+  }
+  galleryMatches.forEach((album) => els.globalSearchResults.appendChild(globalSearchResultButton({
+    kind: 'gallery', id: album.id, title: album.title, meta: [album.location, album.event_type].filter(Boolean).join(' · ') || 'Galeria',
+  })));
+  orderMatches.forEach((order) => els.globalSearchResults.appendChild(globalSearchResultButton({
+    kind: 'order', id: order.id, title: order.order_number, meta: [order.album?.title, order.customer_email].filter(Boolean).join(' · '),
+  })));
+}
+
 async function loadAlbums() {
   const requestVersion = ++albumLoadVersion;
   if (!albums.length && activeView === 'overview') skeletonDashboard();
@@ -3069,7 +3313,13 @@ async function loadOrders() {
 function renderOrders() {
   clearElement(els.ordersList);
   if (!orders.length) {
-    els.ordersList.innerHTML = '<p class="admin-orders-empty">Não existem encomendas com estes filtros.</p>';
+    const hasFilters = Boolean(els.orderGalleryFilter.value || els.orderStatusFilter.value || els.orderEmailFilter.value || els.orderDateFrom.value || els.orderDateTo.value);
+    if (hasFilters) {
+      els.ordersList.innerHTML = '<div class="admin-orders-empty"><span aria-hidden="true"></span><strong>Sem resultados</strong><p>Altere ou limpe os filtros aplicados.</p></div>';
+    } else {
+      els.ordersList.innerHTML = '<div class="admin-orders-empty"><span aria-hidden="true"></span><strong>Ainda não existem encomendas</strong><p>As compras realizadas nas galerias aparecerão aqui.</p><button type="button">Ver galerias</button></div>';
+      els.ordersList.querySelector('button').addEventListener('click', () => requestView('galleries'));
+    }
     return;
   }
   const table = document.createElement('table');
@@ -3159,7 +3409,7 @@ function skeletonBillingDashboard() {
 function billingMetric(icon, label, value, detail, tone = '', trend = '') {
   const article = document.createElement('article');
   article.className = `admin-billing-metric${tone ? ` is-${tone}` : ''}`;
-  article.innerHTML = `<span class="admin-billing-metric__icon" aria-hidden="true">${escapeText(icon)}</span><div><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong><small class="${escapeText(trend)}">${escapeText(detail)}</small></div>`;
+  article.innerHTML = `<span class="admin-billing-metric__icon" aria-hidden="true"><i class="admin-billing-metric__glyph is-${escapeText(icon)}"></i></span><div><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong><small class="${escapeText(trend)}">${escapeText(detail)}</small></div>`;
   return article;
 }
 
@@ -3170,10 +3420,10 @@ function renderBillingMetrics(summary, currency) {
   const comparisonText = comparison == null ? 'Sem dados comparáveis no mês anterior' : `${comparison > 0 ? '+' : ''}${comparison}% vs mês anterior`;
   const comparisonTone = comparison == null ? '' : comparison >= 0 ? 'is-positive' : 'is-negative';
   appendChildren(els.billingMetrics, [
-    billingMetric('€', 'Faturado este mês', billingMoney(summary.currentMonthCents, currency), comparisonText, '', comparisonTone),
-    billingMetric('✓', 'Pagamentos recebidos', billingMoney(summary.receivedCents, currency), `${Number(summary.receivedPayments || 0)} pagamentos confirmados`, 'success'),
-    billingMetric('#', 'Faturas emitidas', String(summary.invoiceCount || 0), summary.invoicesConfigured ? 'Este período' : 'Emissão fiscal não configurada'),
-    billingMetric('!', 'Pagamentos pendentes', billingMoney(summary.pendingCents, currency), `${Number(summary.pendingCount || 0)} pagamentos pendentes`, 'warning'),
+    billingMetric('billed', 'Faturado este mês', billingMoney(summary.currentMonthCents, currency), comparisonText, '', comparisonTone),
+    billingMetric('received', 'Pagamentos recebidos', billingMoney(summary.receivedCents, currency), `${Number(summary.receivedPayments || 0)} pagamentos confirmados`, 'success'),
+    billingMetric('invoices', 'Faturas emitidas', String(summary.invoiceCount || 0), summary.invoicesConfigured ? 'Este período' : 'Emissão fiscal não configurada'),
+    billingMetric('pending', 'Pagamentos pendentes', billingMoney(summary.pendingCents, currency), `${Number(summary.pendingCount || 0)} pagamentos pendentes`, 'warning'),
   ]);
 }
 
@@ -3522,6 +3772,10 @@ async function showApp(activeSession, { reload = false } = {}) {
     renderAll();
   }
   setView(activeView);
+  await loadAdminNotifications();
+  if (!notificationsRefreshTimer) {
+    notificationsRefreshTimer = window.setInterval(() => loadAdminNotifications(), 60_000);
+  }
 }
 
 function showLogin(notice = '') {
@@ -3961,6 +4215,9 @@ els.portfolioFileInput?.addEventListener('change', async () => { await addPortfo
 els.portfolioGallerySelect?.addEventListener('change', () => loadPortfolioGalleryPhotos(els.portfolioGallerySelect.value));
 els.portfolioAddPublished?.addEventListener('change', updatePortfolioAddButton);
 els.portfolioAddSubmit?.addEventListener('click', () => submitPortfolioAdd().catch((error) => { els.portfolioAddMessage.textContent = friendlyError(error); toast('Não foi possível adicionar as fotografias.', 'error'); updatePortfolioAddButton(); }));
+els.portfolioSearch?.addEventListener('input', debounce(() => { portfolioSearch = els.portfolioSearch.value; renderPortfolio(); }, 180));
+els.portfolioState?.addEventListener('change', () => { portfolioState = els.portfolioState.value; renderPortfolio(); });
+els.portfolioFeatured?.addEventListener('change', () => { portfolioFeatured = els.portfolioFeatured.value; renderPortfolio(); });
 els.portfolioLimit?.addEventListener('change', async () => {
   try { await callAdminPortfolio('setting', { maxRecent: Number(els.portfolioLimit.value) }); toast('Limite de Trabalho recente atualizado.'); }
   catch (error) { toast('Não foi possível guardar o limite.', 'error'); }
@@ -3976,7 +4233,7 @@ els.portfolioEditSave?.addEventListener('click', async () => {
   if (!portfolioEditingPhoto) return;
   els.portfolioEditSave.disabled = true; els.portfolioEditMessage.textContent = '';
   try {
-    await callAdminPortfolio('save', { photo: { id: portfolioEditingPhoto.id, categoryId: els.portfolioEditCategory.value, altText: els.portfolioEditAlt.value.trim(), focalX: els.portfolioFocalX.value, focalY: els.portfolioFocalY.value, isPublished: els.portfolioEditPublished.checked } });
+    await callAdminPortfolio('save', { photo: { id: portfolioEditingPhoto.id, categoryId: els.portfolioEditCategory.value, internalTitle: els.portfolioEditTitle.value.trim(), altText: els.portfolioEditAlt.value.trim(), focalX: els.portfolioFocalX.value, focalY: els.portfolioFocalY.value, isPublished: els.portfolioEditPublished.checked, isFeatured: els.portfolioEditFeatured.checked } });
     els.portfolioEditDialog.close(); toast('Alterações guardadas.'); await loadPortfolio({ force: true });
   } catch (error) { els.portfolioEditMessage.textContent = friendlyError(error); }
   finally { els.portfolioEditSave.disabled = false; }
@@ -4077,6 +4334,44 @@ els.mobileProfileMenu?.addEventListener('click', (event) => {
   event.stopPropagation();
   toggleProfilePopover(els.mobileProfileMenu);
 });
+els.notificationsToggle?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const willOpen = els.notificationsPanel.hidden;
+  els.notificationsPanel.hidden = !willOpen;
+  els.notificationsToggle.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) els.notificationsPanel.querySelector('button:not([hidden])')?.focus({ preventScroll: true });
+});
+els.notificationsReadAll?.addEventListener('click', async () => {
+  const unreadIds = adminNotifications.filter((item) => !item.is_read).map((item) => item.id);
+  if (!unreadIds.length) return;
+  const { error } = await supabase.from('admin_notifications').update({ is_read: true }).in('id', unreadIds);
+  if (error) { toast('Não foi possível atualizar as notificações.', 'error'); return; }
+  adminNotifications.forEach((item) => { item.is_read = true; });
+  renderAdminNotifications();
+});
+els.globalSearchTrigger?.addEventListener('click', openGlobalSearch);
+els.globalSearchClose?.addEventListener('click', closeGlobalSearch);
+els.globalSearchInput?.addEventListener('input', renderGlobalSearchResults);
+els.globalSearchDialog?.addEventListener('click', (event) => {
+  if (event.target === els.globalSearchDialog) closeGlobalSearch();
+});
+els.globalSearchDialog?.addEventListener('keydown', (event) => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+  const results = $$('[data-search-kind]', els.globalSearchResults);
+  if (!results.length) return;
+  event.preventDefault();
+  const active = results.indexOf(document.activeElement);
+  const next = event.key === 'ArrowDown'
+    ? (active + 1 + results.length) % results.length
+    : (active - 1 + results.length) % results.length;
+  results[next].focus();
+});
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !els.app.hidden) {
+    event.preventDefault();
+    openGlobalSearch();
+  }
+});
 els.profileEdit?.addEventListener('click', async () => {
   closeProfilePopover();
   await requestView('settings');
@@ -4088,6 +4383,10 @@ els.profileLogout?.addEventListener('click', () => {
 });
 document.addEventListener('click', (event) => {
   if (!els.profilePopover?.hidden && !els.profilePopover.contains(event.target)) closeProfilePopover();
+  if (!els.notificationsPanel?.hidden && !els.notificationsPanel.contains(event.target) && !event.target.closest('[data-notifications-toggle]')) {
+    els.notificationsPanel.hidden = true;
+    els.notificationsToggle.setAttribute('aria-expanded', 'false');
+  }
 });
 els.toggleSidebar.addEventListener('click', () => {
   if (matchMedia('(max-width: 820px)').matches) openMobileSidebar();
@@ -4276,6 +4575,12 @@ els.confirmModal.addEventListener('cancel', () => resolveConfirm(false));
 els.confirmModal.addEventListener('close', () => resolveConfirm(false));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (els.notificationsPanel && !els.notificationsPanel.hidden) {
+      els.notificationsPanel.hidden = true;
+      els.notificationsToggle.setAttribute('aria-expanded', 'false');
+      els.notificationsToggle.focus({ preventScroll: true });
+      return;
+    }
     if (els.galleryActionsMenu && !els.galleryActionsMenu.hidden) {
       closeGalleryActionsMenu();
       return;

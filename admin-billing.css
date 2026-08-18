@@ -90,18 +90,44 @@ body.admin-v2 .admin-billing-metric {
 body.admin-v2 .admin-billing-metric__icon {
   width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--brand-primary-soft);
   color: var(--brand-primary-hover);
-  font-weight: 800;
-  font-size: 17px;
+  line-height: 0;
+}
+
+body.admin-v2 .admin-billing-metric__glyph {
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex: 0 0 22px;
+  margin: 0;
+  padding: 0;
+  background: currentColor;
+  line-height: 0;
+  transform: none;
+  transform-origin: center;
+  mask: var(--billing-icon) 50% 50% / 22px 22px no-repeat;
+  -webkit-mask: var(--billing-icon) 50% 50% / 22px 22px no-repeat;
+}
+
+body.admin-v2 .admin-billing-metric__glyph.is-billed { --billing-icon: url("icons/icon_faturado.svg"); }
+body.admin-v2 .admin-billing-metric__glyph.is-received { --billing-icon: url("icons/icon_pagamentos_recebidos.svg"); }
+body.admin-v2 .admin-billing-metric__glyph.is-invoices { --billing-icon: url("icons/icon_faturas_emitidas.svg"); }
+body.admin-v2 .admin-billing-metric__glyph.is-pending { --billing-icon: url("icons/icon_pagamentos_pendentes.svg"); }
+
+body.admin-v2 .admin-billing-metric:hover .admin-billing-metric__icon {
+  background-color: color-mix(in srgb, currentColor 12%, #fff 88%);
 }
 
 body.admin-v2 .admin-billing-metric.is-success .admin-billing-metric__icon { background: #e1f0e4; color: #39734b; }
 body.admin-v2 .admin-billing-metric.is-warning .admin-billing-metric__icon { background: #fae6e2; color: #b84e43; }
-body.admin-v2 .admin-billing-metric span { display: block; color: var(--billing-muted); font-size: 12px; }
+body.admin-v2 .admin-billing-metric > div > span { display: block; color: var(--billing-muted); font-size: 12px; }
 body.admin-v2 .admin-billing-metric strong { display: block; margin-top: 5px; font-size: clamp(20px, 1.65vw, 26px); line-height: 1; letter-spacing: -.02em; }
 body.admin-v2 .admin-billing-metric small { display: block; margin-top: 7px; color: #8a7f77; font-size: 11px; }
 body.admin-v2 .admin-billing-metric small.is-positive { color: #3d8054; }
@@ -297,7 +323,14 @@ body.admin-v2 .admin-billing-detail-skeleton { height: 440px; }
   body.admin-v2 .admin-billing-heading h2 { font-size: 21px; }
   body.admin-v2 .admin-billing-metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
   body.admin-v2 .admin-billing-metric { min-height: 116px; padding: 13px; grid-template-columns: 34px minmax(0, 1fr); gap: 9px; }
-  body.admin-v2 .admin-billing-metric__icon { width: 34px; height: 34px; font-size: 14px; }
+  body.admin-v2 .admin-billing-metric__icon { width: 34px; height: 34px; flex-basis: 34px; }
+  body.admin-v2 .admin-billing-metric__glyph {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+    mask-size: 20px 20px;
+    -webkit-mask-size: 20px 20px;
+  }
   body.admin-v2 .admin-billing-metric strong { font-size: 18px; }
   body.admin-v2 .admin-billing-side-column { grid-template-columns: 1fr; }
   body.admin-v2 .admin-billing-actions-card { grid-column: auto; }

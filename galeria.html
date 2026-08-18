@@ -13,9 +13,9 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260811-brand-palette-4" />
+    <link rel="stylesheet" href="styles.css?v=20260818-evolution-1" />
     <script src="config.js" defer></script>
-    <script src="gallery.js?v=20260803-5" defer></script>
+    <script src="gallery.js?v=20260818-evolution-1" defer></script>
   </head>
   <body class="utility-page gallery-public-page">
     <header class="site-header is-scrolled">
@@ -60,26 +60,39 @@
             <p data-gallery-meta></p>
           </div>
           <nav class="client-gallery__actions" aria-label="Ações da galeria">
-            <button type="button" data-favorites-action aria-label="Ver favoritas">
-              <span class="client-gallery__action-icon" aria-hidden="true">♡</span>
+            <button type="button" data-favorites-action aria-label="Ver favoritas" aria-pressed="false">
+              <span class="client-gallery__action-icon is-favorites" aria-hidden="true"></span>
               <span>Favoritas</span>
               <b data-header-favorites-count hidden>0</b>
             </button>
             <button type="button" data-share-gallery aria-label="Partilhar galeria">
-              <span class="client-gallery__action-icon" aria-hidden="true">⌯</span>
+              <span class="client-gallery__action-icon is-share" aria-hidden="true"></span>
               <span>Partilhar</span>
             </button>
             <button type="button" data-gallery-help aria-label="Ajuda">
-              <span class="client-gallery__action-icon" aria-hidden="true">?</span>
+              <span class="client-gallery__action-icon is-help" aria-hidden="true"></span>
               <span>Ajuda</span>
             </button>
             <button type="button" data-open-cart-top class="client-gallery__cart-action" aria-label="Abrir carrinho" hidden>
-              <span class="client-gallery__action-icon" aria-hidden="true">▱</span>
+              <span class="client-gallery__action-icon is-cart" aria-hidden="true"></span>
               <span>Carrinho</span>
               <b data-header-cart-count>0</b>
             </button>
           </nav>
         </header>
+
+        <section class="gallery-welcome" data-gallery-welcome hidden aria-labelledby="gallery-welcome-title">
+          <div class="gallery-welcome__visual" data-gallery-welcome-visual hidden>
+            <img data-gallery-welcome-cover alt="" />
+          </div>
+          <div class="gallery-welcome__content">
+            <p class="section-index">Galeria privada</p>
+            <h2 id="gallery-welcome-title" data-gallery-welcome-title></h2>
+            <p class="gallery-welcome__date" data-gallery-welcome-date hidden></p>
+            <p class="gallery-welcome__message" data-gallery-welcome-message hidden></p>
+            <button type="button" data-gallery-welcome-open>Ver fotografias</button>
+          </div>
+        </section>
 
         <aside class="client-gallery__notice" data-gallery-notice>
           <span class="client-gallery__notice-icon" aria-hidden="true">i</span>
@@ -95,7 +108,7 @@
                   <span aria-hidden="true">▦</span> Todas <b data-all-count>0</b>
                 </button>
                 <button type="button" data-gallery-filter="favorites" aria-pressed="false">
-                  <span aria-hidden="true">♡</span> Favoritas <b data-favorites-count>0</b>
+                  <span class="client-ui-icon is-favorites" aria-hidden="true"></span> Favoritas <b data-favorites-count>0</b>
                 </button>
               </div>
               <label class="client-gallery__sort">
@@ -156,7 +169,7 @@
               <span>Li e aceito as condições de compra e disponibilização digital.</span>
             </label>
             <details class="client-cart__policy"><summary>Consultar condições</summary><p data-cart-policy></p></details>
-            <button type="button" class="client-cart__checkout" data-checkout><span aria-hidden="true">▣</span> Finalizar compra</button>
+            <button type="button" class="client-cart__checkout" data-checkout><span class="client-ui-icon is-cart is-small" aria-hidden="true"></span> Finalizar compra</button>
             <button type="button" class="client-cart__continue" data-cart-continue>Continuar a escolher</button>
             <p class="client-cart__message" data-cart-message aria-live="polite"></p>
             <small class="client-cart__secure">◇ Pagamento seguro com Stripe</small>
@@ -178,22 +191,37 @@
     </main>
 
     <div class="client-cart-bar" data-cart-bar hidden>
-      <div class="client-cart-bar__intro"><span aria-hidden="true">▱</span><p>Clique nas fotografias<br />para adicionar ao carrinho.</p></div>
+      <div class="client-cart-bar__intro"><span class="client-cart-bar__icon"><span class="client-ui-icon is-cart" aria-hidden="true"></span></span><p>Clique nas fotografias<br />para adicionar ao carrinho.</p></div>
       <strong data-cart-count>0 selecionadas</strong>
       <div class="client-cart-bar__thumbs" data-cart-thumbs></div>
       <div class="client-cart-bar__total"><span>Subtotal</span><strong data-cart-total>0,00 €</strong></div>
-      <button type="button" data-open-cart><span aria-hidden="true">▱</span> Ver carrinho</button>
+      <button type="button" data-open-cart><span class="client-ui-icon is-cart is-button" aria-hidden="true"></span> Ver carrinho</button>
     </div>
 
-    <div class="lightbox client-lightbox" data-lightbox hidden aria-modal="true" role="dialog" aria-label="Fotografia em destaque">
-      <button type="button" data-lightbox-close aria-label="Fechar">×</button>
+    <div class="lightbox client-lightbox" data-lightbox hidden aria-modal="true" role="dialog" aria-label="Fotografia em destaque" tabindex="-1">
+      <div class="client-lightbox__topbar">
+        <span data-lightbox-counter aria-live="polite"></span>
+        <button type="button" data-lightbox-close aria-label="Fechar lightbox"></button>
+      </div>
       <button type="button" data-lightbox-prev aria-label="Fotografia anterior"></button>
-      <img data-lightbox-image alt="" />
+      <figure class="client-lightbox__stage">
+        <img data-lightbox-image alt="" />
+      </figure>
       <button type="button" data-lightbox-next aria-label="Fotografia seguinte"></button>
+      <div class="client-lightbox__thumbs" data-lightbox-thumbs role="list" aria-label="Fotografias da galeria"></div>
       <div class="lightbox__footer">
-        <p data-lightbox-caption></p>
-        <div>
-          <button type="button" data-lightbox-favorite>♡ Favorita</button>
+        <div class="client-lightbox__secondary-actions">
+          <button type="button" data-lightbox-share>
+            <span class="client-ui-icon is-share is-small" aria-hidden="true"></span>
+            Partilhar
+          </button>
+          <button type="button" data-lightbox-fullscreen>Ecrã inteiro</button>
+        </div>
+        <div class="client-lightbox__primary-actions">
+          <button type="button" data-lightbox-favorite>
+            <span class="client-ui-icon is-favorites is-small" aria-hidden="true"></span>
+            Favorita
+          </button>
           <button type="button" data-lightbox-select hidden>Adicionar</button>
           <a data-lightbox-download download hidden>Descarregar ↗</a>
         </div>

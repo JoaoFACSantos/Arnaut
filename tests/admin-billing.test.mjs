@@ -48,3 +48,44 @@ test('does not ship the sample billing identities from the visual mockup', async
     assert.equal(source.includes(sample), false, `mock value found: ${sample}`);
   }
 });
+
+test('uses the supplied SVG assets for every billing metric', async () => {
+  const [source, css] = await Promise.all([
+    readFile(new URL('../admin.js', import.meta.url), 'utf8'),
+    readFile(new URL('../admin-billing.css', import.meta.url), 'utf8'),
+  ]);
+  for (const icon of ['icon_faturado.svg', 'icon_pagamentos_recebidos.svg', 'icon_faturas_emitidas.svg', 'icon_pagamentos_pendentes.svg']) {
+    assert.equal(css.includes(icon), true, `missing billing icon: ${icon}`);
+  }
+  for (const oldIcon of ["billingMetric('€'", "billingMetric('✓'", "billingMetric('#'", "billingMetric('!'"]) {
+    assert.equal(source.includes(oldIcon), false, `old decorative symbol found: ${oldIcon}`);
+  }
+});
+
+test('centres every billing SVG in a fixed circular wrapper', async () => {
+  const css = await readFile(new URL('../admin-billing.css', import.meta.url), 'utf8');
+  const wrapper = css.match(/body\.admin-v2 \.admin-billing-metric__icon\s*\{([\s\S]*?)\}/)?.[1] || '';
+  const glyph = css.match(/body\.admin-v2 \.admin-billing-metric__glyph\s*\{([\s\S]*?)\}/)?.[1] || '';
+
+  assert.match(wrapper, /width:\s*44px/);
+  assert.match(wrapper, /height:\s*44px/);
+  assert.match(wrapper, /display:\s*flex/);
+  assert.match(wrapper, /align-items:\s*center/);
+  assert.match(wrapper, /justify-content:\s*center/);
+  assert.match(wrapper, /line-height:\s*0/);
+  assert.match(glyph, /width:\s*22px/);
+  assert.match(glyph, /height:\s*22px/);
+  assert.match(glyph, /mask:\s*var\(--billing-icon\) 50% 50% \/ 22px 22px no-repeat/);
+  assert.match(glyph, /transform:\s*none/);
+  assert.equal(css.includes('.admin-billing-metric span {'), false, 'generic span rule must not override the flex icon wrapper');
+});
+
+test('offers every requested photo-chart period without reloading the page', async () => {
+  const [html, source] = await Promise.all([
+    readFile(new URL('../admin.html', import.meta.url), 'utf8'),
+    readFile(new URL('../admin.js', import.meta.url), 'utf8'),
+  ]);
+  for (const value of ['7d', '30d', '3m', '1y']) assert.match(html, new RegExp(`value="${value}"`));
+  assert.match(source, /chartRange\.addEventListener\('change', renderChart\)/);
+  assert.match(source, /face ao \$\{comparisonLabel\}/);
+});

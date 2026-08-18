@@ -149,10 +149,13 @@ export async function sendOrderConfirmationEmail(
     ? `<p>Apoio: <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></p>`
     : '';
   const html = `
-    <div style="font-family:Arial,sans-serif;color:#171713;line-height:1.6;max-width:620px;margin:auto">
-      <h1 style="font-family:Georgia,serif;font-weight:400">Pagamento confirmado</h1>
-      <p>Recebemos o pagamento da sua encomenda de fotografias digitais.</p>
-      <table style="width:100%;border-collapse:collapse;margin:24px 0">
+    <div style="margin:0;padding:28px 14px;background:#f7f3ee;font-family:Arial,sans-serif;color:#2e2926;line-height:1.6">
+    <div style="max-width:600px;margin:auto;border:1px solid #d8cec5;border-radius:14px;background:#fffdf9;padding:38px;box-sizing:border-box;text-align:center">
+      <strong style="font-family:Georgia,serif;font-size:25px;font-weight:400">Fotografia Arnaut</strong>
+      <p style="margin:24px 0 8px;color:#856652;font-size:11px;letter-spacing:2px;text-transform:uppercase">Pagamento confirmado</p>
+      <h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:36px;font-weight:400;line-height:1.15">Obrigado pela sua compra</h1>
+      <p style="margin:0;color:#74685f">As fotografias compradas já estão disponíveis.</p>
+      <table style="width:100%;border-collapse:collapse;margin:26px 0;border-top:1px solid #d8cec5;border-bottom:1px solid #d8cec5;text-align:left">
         <tr><td style="padding:8px 0">Encomenda</td><td style="padding:8px 0;text-align:right"><strong>${
     escapeHtml(order.order_number)
   }</strong></td></tr>
@@ -166,10 +169,10 @@ export async function sendOrderConfirmationEmail(
       </table>
       <p><a href="${
     escapeHtml(downloadUrl)
-  }" style="display:inline-block;padding:14px 22px;background:#9b6546;color:#fff;text-decoration:none;border-radius:10px">Aceder às fotografias</a></p>
-      <p>Os downloads ficam disponíveis até ${escapeHtml(new Date(order.expires_at).toLocaleDateString('pt-PT'))}.</p>
+  }" style="display:inline-block;padding:14px 22px;background:#856652;color:#fffdf9;text-decoration:none;border-radius:8px;font-weight:bold">Ver as minhas fotografias</a></p>
+      <p style="color:#74685f;font-size:13px">Os downloads ficam disponíveis até ${escapeHtml(new Date(order.expires_at).toLocaleDateString('pt-PT'))}.</p>
       ${supportBlock}
-    </div>`;
+    </div></div>`;
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',

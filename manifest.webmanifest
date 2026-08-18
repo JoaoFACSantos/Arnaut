@@ -1,0 +1,11 @@
+{
+  "name": "Fotografia Arnaut",
+  "short_name": "Arnaut",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F3EE",
+  "theme_color": "#856652",
+  "icons": [
+    { "src": "/assets/logo-arnaut.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}

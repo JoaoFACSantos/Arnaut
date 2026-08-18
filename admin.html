@@ -13,12 +13,12 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260811-brand-palette-4" />
-    <link rel="stylesheet" href="admin-settings.css?v=20260811-brand-palette-4" />
-    <link rel="stylesheet" href="admin-billing.css?v=20260811-brand-palette-4" />
-    <link rel="stylesheet" href="admin-portfolio.css?v=20260812-portfolio-1" />
+    <link rel="stylesheet" href="styles.css?v=20260818-evolution-1" />
+    <link rel="stylesheet" href="admin-settings.css?v=20260818-evolution-1" />
+    <link rel="stylesheet" href="admin-billing.css?v=20260818-evolution-1" />
+    <link rel="stylesheet" href="admin-portfolio.css?v=20260818-evolution-1" />
     <script src="config.js"></script>
-    <script type="module" src="admin.js?v=20260810-billing-2"></script>
+    <script type="module" src="admin.js?v=20260818-evolution-1"></script>
   </head>
   <body class="admin-v2">
     <section class="admin-auth-gate" data-auth-gate aria-live="polite">
@@ -113,11 +113,33 @@
         <header class="admin-topbar">
           <button class="admin-icon-action" type="button" data-toggle-sidebar aria-label="Abrir ou recolher menu">☰</button>
           <h1 data-page-title>Visão geral</h1>
+          <button class="admin-global-search-trigger" type="button" data-global-search-trigger aria-label="Pesquisar no painel">
+            <span aria-hidden="true"></span><em>Pesquisar</em><kbd>Ctrl K</kbd>
+          </button>
+          <button class="admin-notifications-button" type="button" data-notifications-toggle aria-label="Abrir notificações" aria-expanded="false" hidden>
+            <span class="admin-notifications-button__icon" aria-hidden="true"></span>
+            <b data-notifications-count hidden>0</b>
+          </button>
           <button class="admin-mobile-profile" type="button" data-mobile-profile-menu aria-label="Abrir menu do perfil" aria-expanded="false">
             <img data-mobile-avatar-image alt="" hidden />
             <span data-mobile-avatar-fallback>BA</span>
           </button>
         </header>
+
+        <aside class="admin-notifications-panel" data-notifications-panel aria-label="Notificações" hidden>
+          <header><h2>Notificações</h2><button type="button" data-notifications-read-all>Marcar todas como lidas</button></header>
+          <div data-notifications-list></div>
+        </aside>
+
+        <dialog class="admin-global-search" data-global-search-dialog aria-labelledby="admin-global-search-title">
+          <header>
+            <span aria-hidden="true"></span>
+            <label><span id="admin-global-search-title" class="sr-only">Pesquisa global</span><input type="search" data-global-search-input placeholder="Pesquisar galerias, encomendas ou clientes…" autocomplete="off" /></label>
+            <button type="button" data-global-search-close aria-label="Fechar pesquisa"></button>
+          </header>
+          <div class="admin-global-search__results" data-global-search-results aria-live="polite"></div>
+          <footer><span>Use as setas para navegar</span><kbd>Esc</kbd></footer>
+        </dialog>
 
         <main class="admin-content">
           <section class="admin-view is-active" data-view-panel="overview">
@@ -137,16 +159,17 @@
                 </div>
                 <div class="admin-expiring-list" data-expiring-list></div>
               </article>
-              <article class="admin-panel admin-panel--wide">
+              <article class="admin-panel admin-panel--wide admin-photo-chart-panel">
                 <div class="admin-panel__head">
                   <h2>Fotografias carregadas</h2>
                   <select data-chart-range aria-label="Intervalo do gráfico">
-                    <option>Esta semana</option>
-                    <option>Este mês</option>
-                    <option>Últimos 3 meses</option>
+                    <option value="7d">Últimos 7 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="3m" selected>Últimos 3 meses</option>
+                    <option value="1y">Último ano</option>
                   </select>
                 </div>
-                <div class="admin-mini-chart" data-photo-chart></div>
+                <div class="admin-mini-chart" data-photo-chart aria-live="polite"></div>
               </article>
               <article class="admin-panel">
                 <div class="admin-panel__head">
@@ -292,11 +315,19 @@
                 <div><h2>Trabalho recente</h2><p>Gerir as fotografias apresentadas na secção “Trabalho recente” do site.</p></div>
                 <div><a data-portfolio-preview href="index.html#trabalho" target="_blank" rel="noopener">Pré-visualizar site <span aria-hidden="true">↗</span></a><button class="admin-primary" type="button" data-portfolio-add>＋ Adicionar fotografias</button></div>
               </header>
-              <div class="admin-portfolio__toolbar"><div data-portfolio-filters role="group" aria-label="Filtrar Portefólio"></div><label>Máximo no site <select data-portfolio-limit aria-label="Máximo apresentado em Trabalho recente"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option></select></label></div>
-              <p class="admin-portfolio__hint"><span aria-hidden="true">ⓘ</span> Arraste as fotografias para alterar a ordem em que aparecem no site.</p>
+              <div class="admin-portfolio__toolbar">
+                <div data-portfolio-filters role="group" aria-label="Filtrar Portefólio"></div>
+                <div class="admin-portfolio__controls">
+                  <label class="admin-portfolio__search"><span class="sr-only">Pesquisar</span><input type="search" data-portfolio-search placeholder="Pesquisar fotografias…" /></label>
+                  <label><span>Estado</span><select data-portfolio-state><option value="all">Todos</option><option value="published">Publicadas</option><option value="hidden">Ocultas</option></select></label>
+                  <label><span>Destaque</span><select data-portfolio-featured><option value="all">Todos</option><option value="featured">Em destaque</option><option value="regular">Sem destaque</option></select></label>
+                  <label><span>Máximo no site</span><select data-portfolio-limit aria-label="Máximo apresentado em Trabalho recente"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option></select></label>
+                </div>
+              </div>
+              <p class="admin-portfolio__hint"><span class="admin-portfolio__info-icon" aria-hidden="true"></span> Arraste as fotografias para alterar a ordem em que aparecem no site.</p>
               <div class="admin-portfolio__status" data-portfolio-status aria-live="polite"></div>
               <div class="admin-portfolio__grid" data-portfolio-grid></div>
-              <footer class="admin-portfolio__footer"><span>💡 Utilize fotografias de alta qualidade e representativas do seu trabalho.</span><strong data-portfolio-total></strong></footer>
+              <footer class="admin-portfolio__footer"><span>Utilize fotografias de alta qualidade e representativas do seu trabalho.</span><strong data-portfolio-total></strong></footer>
             </div>
           </section>
 
@@ -776,7 +807,7 @@
 
     <dialog class="portfolio-dialog portfolio-edit-dialog" data-portfolio-edit-dialog aria-labelledby="portfolio-edit-title">
       <form method="dialog"><header><div><span>Fotografia</span><h2 id="portfolio-edit-title">Editar fotografia</h2><p>Defina a categoria, acessibilidade e enquadramento.</p></div><button type="button" data-portfolio-edit-close aria-label="Fechar">×</button></header>
-        <div class="portfolio-edit-layout"><button class="portfolio-focal-editor" type="button" data-portfolio-focal aria-label="Definir ponto principal da fotografia"><img data-portfolio-edit-image alt="" /><i data-portfolio-focal-marker></i><small>Clique no ponto principal da fotografia</small></button><div><label><span>Categoria</span><select data-portfolio-edit-category></select></label><label><span>Texto alternativo</span><textarea data-portfolio-edit-alt maxlength="280" rows="5" placeholder="Descreva apenas o conteúdo real da fotografia."></textarea></label><label class="portfolio-publish-choice"><input type="checkbox" data-portfolio-edit-published /> Publicada no site</label><input type="hidden" data-portfolio-focal-x value="50" /><input type="hidden" data-portfolio-focal-y value="50" /></div></div>
+        <div class="portfolio-edit-layout"><button class="portfolio-focal-editor" type="button" data-portfolio-focal aria-label="Definir ponto principal da fotografia"><img data-portfolio-edit-image alt="" /><i data-portfolio-focal-marker></i><small>Clique no ponto principal da fotografia</small></button><div><label><span>Título interno <small>opcional</small></span><input type="text" data-portfolio-edit-title maxlength="120" placeholder="Apenas para organização no admin" /></label><label><span>Categoria</span><select data-portfolio-edit-category></select></label><label><span>Texto alternativo</span><textarea data-portfolio-edit-alt maxlength="280" rows="5" placeholder="Descreva apenas o conteúdo real da fotografia."></textarea></label><label class="portfolio-publish-choice"><input type="checkbox" data-portfolio-edit-published /> Publicada no site</label><label class="portfolio-publish-choice"><input type="checkbox" data-portfolio-edit-featured /> Imagem de destaque</label><input type="hidden" data-portfolio-focal-x value="50" /><input type="hidden" data-portfolio-focal-y value="50" /></div></div>
         <footer><p data-portfolio-edit-message aria-live="polite"></p><button type="button" data-portfolio-edit-cancel>Cancelar</button><button class="admin-primary" type="button" data-portfolio-edit-save>Guardar alterações</button></footer>
       </form>
     </dialog>

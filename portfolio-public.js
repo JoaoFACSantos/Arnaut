@@ -54,9 +54,14 @@ async function loadPortfolio() {
     ]);
     if (categoryError) throw categoryError;
     const limit = Math.min(24, Math.max(1, Number(settings?.max_recent || 8)));
-    const { data, error } = await supabase.from('portfolio_photos')
-      .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,portfolio_categories(slug,label)')
-      .eq('is_published', true).order('sort_order', { ascending: true }).limit(limit);
+    let { data, error } = await supabase.from('portfolio_photos')
+      .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,is_featured,portfolio_categories(slug,label)')
+      .eq('is_published', true).order('is_featured', { ascending: false }).order('sort_order', { ascending: true }).limit(limit);
+    if (error?.code === '42703' || /is_featured/i.test(String(error?.message || ''))) {
+      ({ data, error } = await supabase.from('portfolio_photos')
+        .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,portfolio_categories(slug,label)')
+        .eq('is_published', true).order('sort_order', { ascending: true }).limit(limit));
+    }
     if (error) throw error;
     photos = data || [];
     const stored = photos.filter((photo) => photo.web_path);
