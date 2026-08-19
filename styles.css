@@ -5065,6 +5065,18 @@ body.admin-v2 div.admin-orders-empty button { min-height: 42px; border: 1px soli
 .client-gallery__action-icon.is-cart,
 .client-ui-icon.is-cart { --client-action-icon: url("icons/icon_carrinho.svg"); }
 
+svg.client-ui-icon.is-favorites {
+  overflow: visible;
+  background: none;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  mask: none;
+  -webkit-mask: none;
+}
+
 .client-gallery__actions b {
   display: inline-grid;
   min-width: 20px;
@@ -5291,18 +5303,24 @@ body.admin-v2 div.admin-orders-empty button { min-height: 42px; border: 1px soli
   left: 10px;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity .18s ease, transform .18s ease;
+  transition: opacity .18s ease, transform .18s ease, color .16s ease;
 }
 
 .client-photo__favorite > .client-ui-icon {
   width: 18px;
   height: 18px;
   flex-basis: 18px;
-  transition: transform .15s ease;
+  transition: fill .16s ease, stroke .16s ease, transform .16s ease;
 }
 
-.client-photo__favorite[aria-pressed="true"] > .client-ui-icon {
-  transform: scale(1.04);
+.client-photo__favorite:hover,
+.client-photo__favorite:focus-visible {
+  color: var(--client-accent);
+}
+
+.client-photo__favorite[aria-pressed="true"] > svg.client-ui-icon.is-favorites {
+  fill: currentColor;
+  animation: client-favorite-pop .16s ease-out;
 }
 
 .client-photo:hover .client-photo__favorite,
@@ -5314,8 +5332,31 @@ body.admin-v2 div.admin-orders-empty button { min-height: 42px; border: 1px soli
 
 .client-photo__favorite[aria-pressed="true"] {
   color: var(--client-accent);
-  background: #fff8f2;
-  box-shadow: 0 0 0 2px rgba(146, 91, 60, .62), 0 3px 10px rgba(0,0,0,.14);
+}
+
+.client-lightbox [data-lightbox-favorite].is-selected {
+  border-color: #fff8;
+  background: transparent;
+  color: var(--client-accent);
+}
+
+.client-lightbox [data-lightbox-favorite][aria-pressed="true"] > svg.client-ui-icon.is-favorites {
+  fill: currentColor;
+  animation: client-favorite-pop .16s ease-out;
+}
+
+@keyframes client-favorite-pop {
+  0% { transform: scale(.84); }
+  72% { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-photo__favorite > .client-ui-icon,
+  .client-lightbox [data-lightbox-favorite] > .client-ui-icon {
+    animation: none !important;
+    transition: none;
+  }
 }
 
 .client-photo__select {

@@ -32,7 +32,7 @@ function renderPortfolio() {
   root.classList.toggle('is-filtered', activeFilter !== 'all');
   visible.forEach((photo, index) => {
     const article = document.createElement('article'); article.className = 'project project--portfolio-card is-visible'; article.dataset.category = photo.portfolio_categories?.slug || '';
-    const link = document.createElement('a'); link.className = 'project__image image-hover'; link.href = assetUrl(photo); link.dataset.imageLightbox = ''; link.dataset.lightboxStart = String(index); link.setAttribute('aria-label', photo.alt_text ? `Ampliar: ${photo.alt_text}` : 'Ampliar fotografia');
+    const link = document.createElement('a'); link.className = 'project__image image-hover'; link.href = assetUrl(photo); link.dataset.imageLightbox = ''; link.dataset.lightboxGallery = 'portfolio'; link.dataset.lightboxStart = String(index); link.setAttribute('aria-label', photo.alt_text ? `Ampliar: ${photo.alt_text}` : 'Ampliar fotografia');
     const image = document.createElement('img'); image.src = assetUrl(photo); image.alt = photo.alt_text || ''; image.loading = index === 0 ? 'eager' : 'lazy'; image.decoding = 'async';
     if (photo.thumbnail_url && photo.web_url) {
       image.srcset = `${photo.thumbnail_url} 500w, ${photo.web_url} 2200w`;

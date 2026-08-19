@@ -48,3 +48,19 @@ test('keeps public gallery action handlers and accessible labels intact', async 
   assert.match(source, /\$\('\[data-gallery-help\]'\)\.addEventListener\('click'/);
   assert.match(source, /openCartTop\.addEventListener\('click', openCart\)/);
 });
+
+test('uses one accessible outline-to-filled favorite icon in cards and lightbox', async () => {
+  const [source, css] = await Promise.all([
+    readFile(new URL('../gallery.js', import.meta.url), 'utf8'),
+    readFile(new URL('../styles.css', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(source, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'svg'\)/);
+  assert.match(source, /M20\.84 4\.61a5\.5 5\.5/);
+  assert.match(source, /Adicionar aos favoritos/);
+  assert.match(source, /Remover dos favoritos/);
+  assert.match(source, /lightboxFavorite\.setAttribute\('aria-pressed'/);
+  assert.match(css, /svg\.client-ui-icon\.is-favorites[\s\S]*?fill: transparent/);
+  assert.match(css, /aria-pressed="true"[\s\S]*?svg\.client-ui-icon\.is-favorites[\s\S]*?fill: currentColor/);
+  assert.doesNotMatch(css, /client-photo__favorite\[aria-pressed="true"\][\s\S]{0,120}background:\s*#fff8f2/);
+});

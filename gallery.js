@@ -151,6 +151,18 @@ function clearElement(element) {
 }
 
 function createGalleryIcon(name, modifier = '') {
+  if (name === 'favorites') {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('focusable', 'false');
+    icon.classList.add('client-ui-icon', 'is-favorites');
+    if (modifier) icon.classList.add(...modifier.split(/\s+/).filter(Boolean));
+    icon.setAttribute('aria-hidden', 'true');
+    path.setAttribute('d', 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z');
+    icon.appendChild(path);
+    return icon;
+  }
   const icon = document.createElement('span');
   icon.className = `client-ui-icon is-${name}${modifier ? ` ${modifier}` : ''}`;
   icon.setAttribute('aria-hidden', 'true');
@@ -227,7 +239,7 @@ function createPhotoCard(photo, index) {
   favorite.type = 'button';
   favorite.className = 'client-photo__favorite';
   favorite.appendChild(createGalleryIcon('favorites'));
-  favorite.setAttribute('aria-label', favorites.has(photo.id) ? 'Remover das favoritas' : 'Adicionar às favoritas');
+  favorite.setAttribute('aria-label', favorites.has(photo.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
   favorite.setAttribute('aria-pressed', String(favorites.has(photo.id)));
   favorite.addEventListener('click', () => toggleFavorite(photo.id));
   card.appendChild(favorite);
@@ -604,6 +616,7 @@ function updateLightboxFavorite() {
   lightboxFavorite.replaceChildren(createGalleryIcon('favorites', 'is-small'), document.createTextNode(' Favorita'));
   lightboxFavorite.classList.toggle('is-selected', included);
   lightboxFavorite.setAttribute('aria-pressed', String(included));
+  lightboxFavorite.setAttribute('aria-label', included ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
 }
 
 function closeLightbox() {

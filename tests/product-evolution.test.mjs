@@ -29,6 +29,19 @@ test('public experience includes FAQ, validated contact fallback and branded 404
   assert.match(notFound, /noindex/);
 });
 
+test('recent work opens the selected legacy or stored photograph in the lightbox', async () => {
+  const [home, portfolio, script] = await Promise.all([
+    read('index.html'), read('portfolio-public.js'), read('script.js'),
+  ]);
+
+  assert.match(portfolio, /link\.dataset\.lightboxGallery = 'portfolio'/);
+  assert.match(portfolio, /link\.dataset\.lightboxStart = String\(index\)/);
+  assert.match(script, /photo\.web_url \|\| photo\.legacy_public_url/);
+  assert.match(script, /gallery\?\.length \? gallery/);
+  assert.match(home, /portfolio-public\.js\?v=20260819-lightbox-1/);
+  assert.match(home, /script\.js\?v=20260819-lightbox-1/);
+});
+
 test('portfolio editor supports curation, filtering and autosave feedback', async () => {
   const [html, source, migration] = await Promise.all([
     read('admin.html'), read('admin.js'), read('supabase/migrations/202608180001_portfolio_editor_fields.sql'),

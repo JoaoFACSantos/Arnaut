@@ -185,7 +185,7 @@ const openPortraitLightbox = (trigger = portraitTrigger) => {
   const sourceImage = trigger.querySelector('img');
   const gallery = lightboxGalleries[trigger.dataset.lightboxGallery];
 
-  activeLightboxItems = gallery || (sourceImage
+  activeLightboxItems = gallery?.length ? gallery : (sourceImage
     ? [{ src: sourceImage.currentSrc || sourceImage.src, alt: sourceImage.alt }]
     : []);
   activeLightboxIndex = Math.min(
@@ -234,7 +234,7 @@ bindProjectLightboxes();
 window.addEventListener('portfolio:rendered', (event) => {
   const renderedPhotos = event.detail?.photos || [];
   lightboxGalleries.portfolio = renderedPhotos.map((photo) => ({
-    src: photo.web_url || photo.image_url || photo.url || '',
+    src: photo.web_url || photo.legacy_public_url || photo.image_url || photo.url || '',
     thumbSrc: photo.thumbnail_url || photo.thumb_url || '',
     alt: photo.alt_text || 'Fotografia do portefólio',
   })).filter((item) => item.src);
