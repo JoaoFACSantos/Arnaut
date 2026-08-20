@@ -60,7 +60,13 @@ test('uses one accessible outline-to-filled favorite icon in cards and lightbox'
   assert.match(source, /Adicionar aos favoritos/);
   assert.match(source, /Remover dos favoritos/);
   assert.match(source, /lightboxFavorite\.setAttribute\('aria-pressed'/);
+  assert.match(source, /favorite\.dataset\.favoritePhotoId = String\(photo\.id\)/);
+  assert.match(source, /toggleFavorite\(photo\.id, favorite\)/);
+  assert.match(source, /toggleFavorite\(photos\[activeIndex\]\.id, lightboxFavorite\)/);
+  assert.match(source, /classList\.add\('is-favorite-animating'\)/);
   assert.match(css, /svg\.client-ui-icon\.is-favorites[\s\S]*?fill: transparent/);
   assert.match(css, /aria-pressed="true"[\s\S]*?svg\.client-ui-icon\.is-favorites[\s\S]*?fill: currentColor/);
+  assert.match(css, /client-photo__favorite\.is-favorite-animating[\s\S]*?animation: client-favorite-pop/);
+  assert.match(css, /data-lightbox-favorite\]\.is-favorite-animating[\s\S]*?animation: client-favorite-pop/);
   assert.doesNotMatch(css, /client-photo__favorite\[aria-pressed="true"\][\s\S]{0,120}background:\s*#fff8f2/);
 });

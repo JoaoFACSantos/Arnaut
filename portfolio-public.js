@@ -14,9 +14,13 @@ const assetUrl = (photo) => photo.web_url || photo.legacy_public_url || '';
 
 function renderFilters() {
   filtersRoot.replaceChildren();
-  const entries = [{ slug: 'all', label: 'Todos', count: photos.length }, ...categories.map((category) => ({
-    slug: category.slug, label: category.label, count: photos.filter((photo) => photo.portfolio_categories?.slug === category.slug).length,
-  }))];
+  const allCount = photos.filter((photo) => photo.show_in_all).length;
+  const entries = [{ slug: 'all', label: 'Todos', count: allCount }, ...categories.map((category) => ({
+    slug: category.slug,
+    label: category.label,
+    count: photos.filter((photo) => photo.show_in_category && photo.portfolio_categories?.slug === category.slug).length,
+  })).filter((entry) => entry.count > 0)];
+  if (!entries.some((entry) => entry.slug === activeFilter)) activeFilter = 'all';
   entries.forEach((entry) => {
     const button = document.createElement('button');
     button.type = 'button'; button.className = `filter${activeFilter === entry.slug ? ' is-active' : ''}`; button.dataset.filter = entry.slug;
@@ -28,7 +32,10 @@ function renderFilters() {
 
 function renderPortfolio() {
   renderFilters(); root.replaceChildren();
-  const visible = activeFilter === 'all' ? photos : photos.filter((photo) => photo.portfolio_categories?.slug === activeFilter);
+  const visible = activeFilter === 'all'
+    ? photos.filter((photo) => photo.show_in_all).sort((a, b) => (a.all_sort_order ?? 9999) - (b.all_sort_order ?? 9999))
+    : photos.filter((photo) => photo.show_in_category && photo.portfolio_categories?.slug === activeFilter)
+      .sort((a, b) => (a.category_sort_order ?? 9999) - (b.category_sort_order ?? 9999));
   root.classList.toggle('is-filtered', activeFilter !== 'all');
   visible.forEach((photo, index) => {
     const article = document.createElement('article'); article.className = 'project project--portfolio-card is-visible'; article.dataset.category = photo.portfolio_categories?.slug || '';
@@ -48,19 +55,21 @@ function renderPortfolio() {
 async function loadPortfolio() {
   if (!root || !filtersRoot || !supabase) return;
   try {
-    const [{ data: settings }, { data: categoryData, error: categoryError }] = await Promise.all([
-      supabase.from('portfolio_settings').select('max_recent').eq('id', true).maybeSingle(),
-      supabase.from('portfolio_categories').select('id,slug,label,sort_order').eq('enabled', true).order('sort_order'),
-    ]);
+    const { data: categoryData, error: categoryError } = await supabase
+      .from('portfolio_categories').select('id,slug,label,sort_order').eq('enabled', true).order('sort_order');
     if (categoryError) throw categoryError;
-    const limit = Math.min(24, Math.max(1, Number(settings?.max_recent || 8)));
     let { data, error } = await supabase.from('portfolio_photos')
-      .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,is_featured,portfolio_categories(slug,label)')
-      .eq('is_published', true).order('is_featured', { ascending: false }).order('sort_order', { ascending: true }).limit(limit);
-    if (error?.code === '42703' || /is_featured/i.test(String(error?.message || ''))) {
+      .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,show_in_all,all_sort_order,show_in_category,category_sort_order,portfolio_categories(slug,label)')
+      .eq('is_published', true)
+      .or('show_in_all.eq.true,show_in_category.eq.true');
+    if (error?.code === '42703' || /show_in_all|show_in_category/i.test(String(error?.message || ''))) {
       ({ data, error } = await supabase.from('portfolio_photos')
         .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,portfolio_categories(slug,label)')
-        .eq('is_published', true).order('sort_order', { ascending: true }).limit(limit));
+        .eq('is_published', true).order('sort_order', { ascending: true }).limit(8));
+      data = (data || []).map((photo, index) => ({
+        ...photo, show_in_all: true, all_sort_order: (index + 1) * 10,
+        show_in_category: true, category_sort_order: (index + 1) * 10,
+      }));
     }
     if (error) throw error;
     photos = data || [];

@@ -1,4 +1,6 @@
 export const PORTFOLIO_MAX_FILE_BYTES = 30 * 1024 * 1024;
+export const PORTFOLIO_MAX_CATEGORIES = 5;
+export const PORTFOLIO_MAX_SELECTION = 8;
 export const PORTFOLIO_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export function validatePortfolioFile(file) {
@@ -35,8 +37,15 @@ export function reorderPortfolioItems(items, sourceId, targetId) {
 }
 
 export function publicPortfolioQuery(limit = 8) {
-  const safe = Math.min(24, Math.max(1, Number(limit) || 8));
+  const safe = Math.min(PORTFOLIO_MAX_SELECTION, Math.max(1, Number(limit) || PORTFOLIO_MAX_SELECTION));
   return { published: true, order: 'sort_order', ascending: true, limit: safe };
+}
+
+export function portfolioSelectionCapacity(selectedCount, requestedCount = 1) {
+  const selected = Math.max(0, Number(selectedCount) || 0);
+  const requested = Math.max(0, Number(requestedCount) || 0);
+  const available = Math.max(0, PORTFOLIO_MAX_SELECTION - selected);
+  return { available, allowed: requested <= available };
 }
 
 export function clampFocalPoint(value) {

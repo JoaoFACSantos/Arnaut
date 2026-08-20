@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampFocalPoint, portfolioMimeFromBytes, publicPortfolioQuery, reorderPortfolioItems, validatePortfolioFile } from '../portfolio-utils.js';
+import { clampFocalPoint, portfolioMimeFromBytes, portfolioSelectionCapacity, publicPortfolioQuery, reorderPortfolioItems, validatePortfolioFile } from '../portfolio-utils.js';
 
 test('portfolio validates supported files and the 30 MB limit', () => {
   assert.equal(validatePortfolioFile({ type: 'image/jpeg', size: 1024 }).valid, true);
@@ -24,7 +24,7 @@ test('portfolio reordering is immutable and preserves every item', () => {
 
 test('public portfolio query is published, ordered and limited safely', () => {
   assert.deepEqual(publicPortfolioQuery(8), { published: true, order: 'sort_order', ascending: true, limit: 8 });
-  assert.equal(publicPortfolioQuery(100).limit, 24);
+  assert.equal(publicPortfolioQuery(100).limit, 8);
   assert.equal(publicPortfolioQuery(0).limit, 8);
 });
 
@@ -32,4 +32,9 @@ test('focal point remains inside the image', () => {
   assert.equal(clampFocalPoint(-20), 0);
   assert.equal(clampFocalPoint(52.4), 52.4);
   assert.equal(clampFocalPoint(140), 100);
+});
+
+test('portfolio public selections never exceed eight photographs', () => {
+  assert.deepEqual(portfolioSelectionCapacity(7, 1), { available: 1, allowed: true });
+  assert.deepEqual(portfolioSelectionCapacity(7, 2), { available: 1, allowed: false });
 });

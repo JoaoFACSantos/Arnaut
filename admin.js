@@ -83,8 +83,9 @@ const els = {
   portfolioSearch: $('[data-portfolio-search]'),
   portfolioState: $('[data-portfolio-state]'),
   portfolioFeatured: $('[data-portfolio-featured]'),
+  portfolioCategoryCount: $('[data-portfolio-category-count]'),
   portfolioTotal: $('[data-portfolio-total]'),
-  portfolioLimit: $('[data-portfolio-limit]'),
+  portfolioManageCategories: $('[data-portfolio-manage-categories]'),
   portfolioAdd: $('[data-portfolio-add]'),
   portfolioAddDialog: $('[data-portfolio-add-dialog]'),
   portfolioAddClose: $('[data-portfolio-add-close]'),
@@ -99,6 +100,8 @@ const els = {
   portfolioGalleryPhotos: $('[data-portfolio-gallery-photos]'),
   portfolioAddCategory: $('[data-portfolio-add-category]'),
   portfolioAddPublished: $('[data-portfolio-add-published]'),
+  portfolioAddAll: $('[data-portfolio-add-all]'),
+  portfolioAddCategorySelection: $('[data-portfolio-add-category-selection]'),
   portfolioAddSubmit: $('[data-portfolio-add-submit]'),
   portfolioAddMessage: $('[data-portfolio-add-message]'),
   portfolioEditDialog: $('[data-portfolio-edit-dialog]'),
@@ -110,7 +113,8 @@ const els = {
   portfolioEditAlt: $('[data-portfolio-edit-alt]'),
   portfolioEditTitle: $('[data-portfolio-edit-title]'),
   portfolioEditPublished: $('[data-portfolio-edit-published]'),
-  portfolioEditFeatured: $('[data-portfolio-edit-featured]'),
+  portfolioEditAll: $('[data-portfolio-edit-all]'),
+  portfolioEditCategorySelection: $('[data-portfolio-edit-category-selection]'),
   portfolioFocal: $('[data-portfolio-focal]'),
   portfolioFocalMarker: $('[data-portfolio-focal-marker]'),
   portfolioFocalX: $('[data-portfolio-focal-x]'),
@@ -118,6 +122,12 @@ const els = {
   portfolioEditMessage: $('[data-portfolio-edit-message]'),
   portfolioMenu: $('[data-portfolio-menu]'),
   portfolioReplaceInput: $('[data-portfolio-replace-input]'),
+  portfolioCategoryDialog: $('[data-portfolio-category-dialog]'),
+  portfolioCategoryClose: $('[data-portfolio-category-close]'),
+  portfolioCategoryList: $('[data-portfolio-category-list]'),
+  portfolioCategoryName: $('[data-portfolio-category-name]'),
+  portfolioCategoryMessage: $('[data-portfolio-category-message]'),
+  portfolioCategoryAdd: $('[data-portfolio-category-add]'),
   statGrid: $('[data-stat-grid]'),
   recentList: $('[data-recent-list]'),
   expiringList: $('[data-expiring-list]'),
@@ -148,8 +158,7 @@ const els = {
   previewGallery: $('[data-preview-gallery]'),
   galleryActionsToggle: $('[data-gallery-actions-toggle]'),
   galleryActionsMenu: $('[data-gallery-actions-menu]'),
-  actionShowCode: $('[data-action-show-code]'),
-  actionCopyInstructions: $('[data-action-copy-instructions]'),
+  actionCopyCode: $('[data-action-copy-code]'),
   actionRegenerateCode: $('[data-action-regenerate-code]'),
   actionEndSessions: $('[data-action-end-sessions]'),
   actionToggleState: $('[data-action-toggle-state]'),
@@ -396,6 +405,7 @@ let portfolioFilter = 'all';
 let portfolioSearch = '';
 let portfolioState = 'all';
 let portfolioFeatured = 'all';
+let portfolioLimits = { categories: 5, selection: 8 };
 let portfolioLoaded = false;
 let portfolioLoading = false;
 let portfolioPendingFiles = [];
@@ -594,16 +604,25 @@ function renderPortfolioSkeleton() {
 function renderPortfolioFilters() {
   clearElement(els.portfolioFilters);
   const filters = [{ slug: 'all', label: 'Todas', count: portfolioPhotos.length }, ...portfolioCategories.map((category) => ({
-    slug: category.slug, label: category.label, count: portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === category.slug).length,
+    slug: category.slug,
+    label: category.label,
+    count: portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === category.slug).length,
+    published: portfolioPhotos.filter((photo) => photo.portfolio_categories?.slug === category.slug && photo.is_published).length,
   }))];
   filters.forEach((filter) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = portfolioFilter === filter.slug ? 'is-active' : '';
-    button.innerHTML = `${escapeText(filter.label)} <b>${filter.count}</b>`;
-    button.addEventListener('click', () => { portfolioFilter = filter.slug; renderPortfolio(); });
+    button.innerHTML = `${escapeText(filter.label)} <b>${filter.slug === 'all' ? filter.count : `${filter.published}/${portfolioLimits.selection}`}</b>`;
+    button.addEventListener('click', () => {
+      portfolioFilter = filter.slug;
+      portfolioFeatured = 'all';
+      if (els.portfolioFeatured) els.portfolioFeatured.value = 'all';
+      renderPortfolio();
+    });
     els.portfolioFilters.appendChild(button);
   });
+  if (els.portfolioCategoryCount) els.portfolioCategoryCount.textContent = `${portfolioCategories.length}/${portfolioLimits.categories}`;
 }
 
 function closePortfolioMenu() {
@@ -617,7 +636,8 @@ function openPortfolioEditor(photo) {
   els.portfolioEditTitle.value = photo.internal_title || '';
   els.portfolioEditAlt.value = photo.alt_text || '';
   els.portfolioEditPublished.checked = Boolean(photo.is_published);
-  els.portfolioEditFeatured.checked = Boolean(photo.is_featured);
+  els.portfolioEditAll.checked = Boolean(photo.show_in_all);
+  els.portfolioEditCategorySelection.checked = Boolean(photo.show_in_category);
   els.portfolioFocalX.value = photo.focal_x ?? 50;
   els.portfolioFocalY.value = photo.focal_y ?? 50;
   els.portfolioEditImage.src = portfolioAssetUrl(photo, false);
@@ -625,6 +645,15 @@ function openPortfolioEditor(photo) {
   updatePortfolioFocalMarker();
   els.portfolioEditMessage.textContent = '';
   els.portfolioEditDialog.showModal();
+}
+
+function portfolioSavePayload(photo, changes = {}) {
+  return {
+    id: photo.id, categoryId: photo.category_id, internalTitle: photo.internal_title,
+    altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y,
+    isPublished: photo.is_published, isFeatured: photo.is_featured,
+    showInAll: photo.show_in_all, showInCategory: photo.show_in_category, ...changes,
+  };
 }
 
 function portfolioMenuAction(label, action, danger = false) {
@@ -640,11 +669,15 @@ function openPortfolioMenu(photo, anchor) {
   els.portfolioMenu.append(
     portfolioMenuAction('Editar', () => openPortfolioEditor(photo)),
     portfolioMenuAction(photo.is_published ? 'Ocultar' : 'Publicar', async () => {
-      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, internalTitle: photo.internal_title, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: !photo.is_published, isFeatured: photo.is_featured } });
+      await callAdminPortfolio('save', { photo: portfolioSavePayload(photo, { isPublished: !photo.is_published }) });
       toast(photo.is_published ? 'Fotografia ocultada.' : 'Fotografia publicada.'); await loadPortfolio({ force: true });
     }),
-    portfolioMenuAction(photo.is_featured ? 'Remover destaque' : 'Marcar como destaque', async () => {
-      await callAdminPortfolio('save', { photo: { id: photo.id, categoryId: photo.category_id, internalTitle: photo.internal_title, altText: photo.alt_text, focalX: photo.focal_x, focalY: photo.focal_y, isPublished: photo.is_published, isFeatured: !photo.is_featured } });
+    portfolioMenuAction(photo.show_in_all ? 'Remover de “Todos”' : 'Adicionar a “Todos”', async () => {
+      await callAdminPortfolio('save', { photo: portfolioSavePayload(photo, { isPublished: photo.is_published || !photo.show_in_all, showInAll: !photo.show_in_all }) });
+      await loadPortfolio({ force: true });
+    }),
+    portfolioMenuAction(photo.show_in_category ? 'Remover da categoria pública' : 'Mostrar na categoria pública', async () => {
+      await callAdminPortfolio('save', { photo: portfolioSavePayload(photo, { isPublished: photo.is_published || !photo.show_in_category, showInCategory: !photo.show_in_category }) });
       await loadPortfolio({ force: true });
     }),
     portfolioMenuAction('Substituir fotografia', () => { portfolioReplacingPhoto = photo; els.portfolioReplaceInput.click(); }),
@@ -672,29 +705,35 @@ function renderPortfolio() {
     if (portfolioFilter !== 'all' && photo.portfolio_categories?.slug !== portfolioFilter) return false;
     if (portfolioState === 'published' && !photo.is_published) return false;
     if (portfolioState === 'hidden' && photo.is_published) return false;
-    if (portfolioFeatured === 'featured' && !photo.is_featured) return false;
-    if (portfolioFeatured === 'regular' && photo.is_featured) return false;
+    const selectedHere = portfolioFilter === 'all' ? photo.show_in_all : photo.show_in_category;
+    if (portfolioFeatured === 'selected' && !selectedHere) return false;
+    if (portfolioFeatured === 'unselected' && selectedHere) return false;
     if (query && ![photo.internal_title, photo.alt_text, photo.portfolio_categories?.label].some((value) => String(value || '').toLocaleLowerCase('pt').includes(query))) return false;
     return true;
-  });
+  }).sort((a, b) => portfolioFeatured === 'selected'
+    ? portfolioFilter === 'all'
+      ? (a.all_sort_order ?? 9999) - (b.all_sort_order ?? 9999)
+      : (a.category_sort_order ?? 9999) - (b.category_sort_order ?? 9999)
+    : (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
   if (!portfolioPhotos.length) {
     els.portfolioStatus.classList.add('is-empty');
     els.portfolioStatus.innerHTML = '<div><h3>O seu Portefólio ainda está vazio</h3><p>Adicione fotografias para começar a construir o seu Trabalho recente.</p><button class="admin-primary" type="button">＋ Adicionar fotografias</button></div>';
     els.portfolioStatus.querySelector('button').addEventListener('click', openPortfolioAddDialog);
   }
   visible.forEach((photo) => {
-    const position = portfolioPhotos.findIndex((item) => item.id === photo.id) + 1;
+    const position = visible.findIndex((item) => item.id === photo.id) + 1;
     const card = document.createElement('article');
     card.className = 'portfolio-card'; card.draggable = true; card.dataset.photoId = photo.id;
     card.style.setProperty('--focal-x', `${photo.focal_x ?? 50}%`); card.style.setProperty('--focal-y', `${photo.focal_y ?? 50}%`);
     const imageUrl = portfolioAssetUrl(photo);
-    card.innerHTML = `<span class="portfolio-card__position">${String(position).padStart(2, '0')}</span>${photo.is_featured ? '<span class="portfolio-card__featured">Destaque</span>' : ''}<button class="portfolio-card__menu" type="button" aria-label="Ações da fotografia" aria-haspopup="menu">•••</button><div class="portfolio-card__image"><img src="${escapeText(imageUrl)}" alt="${escapeText(photo.alt_text || '')}" loading="lazy"></div><div class="portfolio-card__meta"><span title="${escapeText(photo.internal_title || '')}">${escapeText(photo.internal_title || photo.portfolio_categories?.label || '')}</span><i class="portfolio-status-dot${photo.is_published ? ' is-published' : ''}" aria-hidden="true"></i><span>${photo.is_published ? 'Publicada' : 'Oculta'}</span><b class="portfolio-card__drag" title="Arrastar para reordenar" aria-label="Arrastar para reordenar"><i></i><i></i><i></i><i></i><i></i><i></i></b></div>`;
+    const badges = `${photo.show_in_all ? '<span class="portfolio-card__featured">Todos</span>' : ''}${photo.show_in_category ? '<span class="portfolio-card__featured is-category">Categoria</span>' : ''}`;
+    card.innerHTML = `<span class="portfolio-card__position">${String(position).padStart(2, '0')}</span>${badges}<button class="portfolio-card__menu" type="button" aria-label="Ações da fotografia" aria-haspopup="menu">•••</button><div class="portfolio-card__image"><img src="${escapeText(imageUrl)}" alt="${escapeText(photo.alt_text || '')}" loading="lazy"></div><div class="portfolio-card__meta"><span title="${escapeText(photo.internal_title || '')}">${escapeText(photo.internal_title || photo.portfolio_categories?.label || '')}</span><i class="portfolio-status-dot${photo.is_published ? ' is-published' : ''}" aria-hidden="true"></i><span>${photo.is_published ? 'Publicada' : 'Oculta'}</span><b class="portfolio-card__drag" title="Arrastar para reordenar" aria-label="Arrastar para reordenar"><i></i><i></i><i></i><i></i><i></i><i></i></b></div>`;
     card.querySelector('.portfolio-card__menu').addEventListener('click', (event) => openPortfolioMenu(photo, event.currentTarget));
     card.addEventListener('dragstart', () => { portfolioDragId = photo.id; card.classList.add('is-dragging'); });
     card.addEventListener('dragend', () => { portfolioDragId = ''; card.classList.remove('is-dragging'); document.querySelectorAll('.is-drag-over').forEach((item) => item.classList.remove('is-drag-over')); });
     card.addEventListener('dragover', (event) => { event.preventDefault(); if (portfolioDragId && portfolioDragId !== photo.id) card.classList.add('is-drag-over'); });
     card.addEventListener('dragleave', () => card.classList.remove('is-drag-over'));
-    card.addEventListener('drop', async (event) => { event.preventDefault(); card.classList.remove('is-drag-over'); if (!portfolioDragId) return; portfolioPhotos = reorderPortfolioItems(portfolioPhotos, portfolioDragId, photo.id); renderPortfolio(); await persistPortfolioOrder(); });
+    card.addEventListener('drop', async (event) => { event.preventDefault(); card.classList.remove('is-drag-over'); if (!portfolioDragId) return; const ordered = reorderPortfolioItems(visible, portfolioDragId, photo.id); await persistPortfolioOrder(ordered); });
     els.portfolioGrid.appendChild(card);
   });
   const published = portfolioPhotos.filter((photo) => photo.is_published).length;
@@ -711,7 +750,7 @@ async function loadPortfolio({ force = false } = {}) {
   try {
     const result = await callAdminPortfolio('list');
     portfolioPhotos = result.photos || []; portfolioCategories = result.categories || []; portfolioLoaded = true;
-    els.portfolioLimit.value = String(result.maxRecent || 8); renderPortfolio();
+    portfolioLimits = result.limits || { categories: 5, selection: 8 }; renderPortfolio();
   } catch (error) {
     clearElement(els.portfolioGrid); els.portfolioStatus.className = 'admin-portfolio__status is-error';
     els.portfolioStatus.innerHTML = '<div><h3>Não foi possível carregar o Portefólio.</h3><button type="button">Tentar novamente</button></div>';
@@ -719,11 +758,15 @@ async function loadPortfolio({ force = false } = {}) {
   } finally { portfolioLoading = false; }
 }
 
-async function persistPortfolioOrder() {
+async function persistPortfolioOrder(orderedPhotos = portfolioPhotos) {
   els.portfolioStatus.className = 'admin-portfolio__status is-saving';
   els.portfolioStatus.textContent = 'A guardar…';
   try {
-    await callAdminPortfolio('reorder', { items: portfolioPhotos.map(({ id }) => ({ id })) });
+    const mode = portfolioFeatured === 'selected' ? (portfolioFilter === 'all' ? 'all' : 'category') : 'library';
+    await callAdminPortfolio('reorder', { mode, items: orderedPhotos.map(({ id }) => ({ id })) });
+    const orderKey = mode === 'all' ? 'all_sort_order' : mode === 'category' ? 'category_sort_order' : 'sort_order';
+    orderedPhotos.forEach((photo, index) => { photo[orderKey] = (index + 1) * 10; });
+    renderPortfolio();
     els.portfolioStatus.className = 'admin-portfolio__status is-saved';
     els.portfolioStatus.textContent = 'Guardado';
     clearTimeout(persistPortfolioOrder.timer);
@@ -741,14 +784,48 @@ async function persistPortfolioOrder() {
 }
 
 async function movePortfolioPhoto(id, direction) {
-  const index = portfolioPhotos.findIndex((photo) => photo.id === id); const target = index + direction;
-  if (index < 0 || target < 0 || target >= portfolioPhotos.length) return;
-  portfolioPhotos = reorderPortfolioItems(portfolioPhotos, id, portfolioPhotos[target].id); renderPortfolio(); await persistPortfolioOrder();
+  const ordered = portfolioPhotos.filter((photo) => {
+    if (portfolioFilter !== 'all' && photo.portfolio_categories?.slug !== portfolioFilter) return false;
+    if (portfolioFeatured !== 'selected') return true;
+    return photo.is_published && (portfolioFilter === 'all' ? photo.show_in_all : photo.show_in_category);
+  });
+  const index = ordered.findIndex((photo) => photo.id === id); const target = index + direction;
+  if (index < 0 || target < 0 || target >= ordered.length) return;
+  await persistPortfolioOrder(reorderPortfolioItems(ordered, id, ordered[target].id));
 }
 
 function fillPortfolioCategorySelect(select, selected = '') {
   clearElement(select);
   portfolioCategories.forEach((category) => { const option = document.createElement('option'); option.value = category.id; option.textContent = category.label; option.selected = category.id === selected; select.appendChild(option); });
+}
+
+function renderPortfolioCategoryDialog() {
+  clearElement(els.portfolioCategoryList);
+  portfolioCategories.forEach((category, index) => {
+    const row = document.createElement('div'); row.className = 'portfolio-category-row';
+    const count = portfolioPhotos.filter((photo) => photo.category_id === category.id).length;
+    const selected = portfolioPhotos.filter((photo) => photo.category_id === category.id && photo.is_published && photo.show_in_category).length;
+    row.innerHTML = `<div><input type="text" value="${escapeText(category.label)}" maxlength="24" aria-label="Nome da categoria"><small>${count} guardadas · ${selected}/${portfolioLimits.selection} no site</small></div><label><input type="checkbox" ${category.enabled ? 'checked' : ''}> Visível</label><button type="button" data-up aria-label="Subir categoria">↑</button><button type="button" data-down aria-label="Descer categoria">↓</button><button type="button" class="is-danger" data-delete>Eliminar</button>`;
+    const name = row.querySelector('input[type="text"]'); const enabled = row.querySelector('input[type="checkbox"]');
+    name.addEventListener('change', async () => { try { await callAdminPortfolio('category-save', { categoryId: category.id, label: name.value, enabled: enabled.checked }); await loadPortfolio({ force: true }); renderPortfolioCategoryDialog(); } catch (error) { els.portfolioCategoryMessage.textContent = friendlyError(error); } });
+    enabled.addEventListener('change', async () => { try { await callAdminPortfolio('category-save', { categoryId: category.id, label: name.value, enabled: enabled.checked }); category.enabled = enabled.checked; renderPortfolio(); } catch (error) { enabled.checked = !enabled.checked; els.portfolioCategoryMessage.textContent = friendlyError(error); } });
+    const move = async (direction) => { const target = index + direction; if (target < 0 || target >= portfolioCategories.length) return; const ordered = [...portfolioCategories]; [ordered[index], ordered[target]] = [ordered[target], ordered[index]]; await callAdminPortfolio('category-reorder', { items: ordered.map(({ id }) => ({ id })) }); portfolioCategories = ordered; renderPortfolioCategoryDialog(); renderPortfolio(); };
+    row.querySelector('[data-up]').disabled = index === 0; row.querySelector('[data-down]').disabled = index === portfolioCategories.length - 1;
+    row.querySelector('[data-up]').addEventListener('click', () => move(-1).catch((error) => { els.portfolioCategoryMessage.textContent = friendlyError(error); }));
+    row.querySelector('[data-down]').addEventListener('click', () => move(1).catch((error) => { els.portfolioCategoryMessage.textContent = friendlyError(error); }));
+    row.querySelector('[data-delete]').addEventListener('click', async () => { try { await callAdminPortfolio('category-delete', { categoryId: category.id }); await loadPortfolio({ force: true }); renderPortfolioCategoryDialog(); } catch (error) { els.portfolioCategoryMessage.textContent = friendlyError(error); } });
+    els.portfolioCategoryList.appendChild(row);
+  });
+  const full = portfolioCategories.length >= portfolioLimits.categories;
+  els.portfolioCategoryAdd.disabled = full;
+  els.portfolioCategoryName.disabled = full;
+  els.portfolioCategoryMessage.textContent = full ? `Atingiu o limite de ${portfolioLimits.categories} categorias.` : `${portfolioCategories.length}/${portfolioLimits.categories} categorias criadas.`;
+}
+
+function openPortfolioCategoryDialog() {
+  els.portfolioCategoryName.value = '';
+  renderPortfolioCategoryDialog();
+  els.portfolioCategoryDialog.showModal();
 }
 
 function imageElementFromBlob(blob) {
@@ -776,7 +853,7 @@ async function optimizePortfolioAsset(blob, maxSize, quality, crop = false) {
   return { blob: output, width, height };
 }
 
-async function uploadPortfolioSource(source, { published, categoryId }) {
+async function uploadPortfolioSource(source, { published, categoryId, showInAll, showInCategory }) {
   const response = await fetch(source.url);
   if (!response.ok) throw new Error('Não foi possível ler a fotografia selecionada.');
   const input = await response.blob();
@@ -784,7 +861,7 @@ async function uploadPortfolioSource(source, { published, categoryId }) {
   const thumb = await optimizePortfolioAsset(input, 500, .82, true);
   const result = await callAdminPortfolio('create-record', { source: {
     categoryId, sourcePhotoId: source.sourcePhotoId, sourceGalleryId: source.sourceGalleryId,
-    altText: source.altText || '', isPublished: published, width: web.width, height: web.height, sizeBytes: input.size,
+    altText: source.altText || '', isPublished: published, showInAll, showInCategory, width: web.width, height: web.height, sizeBytes: input.size,
   } });
   const paths = result.photo;
   const uploaded = [];
@@ -805,6 +882,7 @@ function resetPortfolioAddDialog() {
   portfolioPendingFiles = []; portfolioGallerySelections.clear();
   clearElement(els.portfolioUploadQueue); clearElement(els.portfolioGalleryPhotos);
   els.portfolioGallerySelect.value = ''; els.portfolioAddPublished.checked = false;
+  els.portfolioAddAll.checked = false; els.portfolioAddCategorySelection.checked = false;
   els.portfolioAddMessage.textContent = ''; updatePortfolioAddButton();
 }
 
@@ -875,14 +953,29 @@ async function runConcurrent(items, task, concurrency = 4) {
 
 async function submitPortfolioAdd() {
   const published = els.portfolioAddPublished.checked; const categoryId = els.portfolioAddCategory.value;
+  const showInAll = els.portfolioAddAll.checked; const showInCategory = els.portfolioAddCategorySelection.checked;
   const sources = els.portfolioGalleryPanel.hidden
     ? portfolioPendingFiles.map((item) => ({ item, url: item.previewUrl, altText: '' }))
     : [...portfolioGallerySelections.values()].map((photo) => ({ photo, url: photo.source_url, altText: photo.caption || '', sourcePhotoId: photo.id, sourceGalleryId: photo.album_id }));
   if (!sources.length || !categoryId) return;
+  if (published && showInAll) {
+    const used = portfolioPhotos.filter((photo) => photo.is_published && photo.show_in_all).length;
+    if (sources.length > portfolioLimits.selection - used) {
+      els.portfolioAddMessage.textContent = `A seleção “Todos” só tem ${Math.max(0, portfolioLimits.selection - used)} lugar(es) disponível(eis).`;
+      return;
+    }
+  }
+  if (published && showInCategory) {
+    const used = portfolioPhotos.filter((photo) => photo.is_published && photo.show_in_category && photo.category_id === categoryId).length;
+    if (sources.length > portfolioLimits.selection - used) {
+      els.portfolioAddMessage.textContent = `Esta categoria só tem ${Math.max(0, portfolioLimits.selection - used)} lugar(es) disponível(eis).`;
+      return;
+    }
+  }
   els.portfolioAddSubmit.disabled = true; els.portfolioAddMessage.textContent = `A preparar 0 de ${sources.length}…`;
   let completed = 0; const failed = [];
   await runConcurrent(sources, async (source) => {
-    try { await uploadPortfolioSource(source, { published, categoryId }); if (source.item) source.item.status = 'Concluída'; }
+    try { await uploadPortfolioSource(source, { published, categoryId, showInAll, showInCategory }); if (source.item) source.item.status = 'Concluída'; }
     catch (error) { failed.push(source); if (source.item) source.item.status = 'Falhou · tente novamente'; }
     completed += 1; els.portfolioAddMessage.textContent = `A preparar ${completed} de ${sources.length}…`; renderPortfolioUploadQueue();
   }, 4);
@@ -2326,7 +2419,7 @@ function closeGalleryActionsMenu() {
 function updateGalleryActionsState() {
   const disabled = !currentAlbum;
   if (els.galleryActionsToggle) els.galleryActionsToggle.disabled = disabled;
-  [els.actionShowCode, els.actionCopyInstructions, els.actionRegenerateCode, els.actionEndSessions, els.actionToggleState, els.actionDelete]
+  [els.actionCopyCode, els.actionRegenerateCode, els.actionEndSessions, els.actionToggleState, els.actionDelete]
     .forEach((button) => { if (button) button.disabled = disabled; });
   if (els.actionToggleState) {
     els.actionToggleState.textContent = statusOf(currentAlbum || {}) === 'active' ? 'Desativar' : 'Ativar';
@@ -4214,13 +4307,20 @@ els.portfolioSelectFiles?.addEventListener('click', () => els.portfolioFileInput
 els.portfolioFileInput?.addEventListener('change', async () => { await addPortfolioFiles(els.portfolioFileInput.files); els.portfolioFileInput.value = ''; });
 els.portfolioGallerySelect?.addEventListener('change', () => loadPortfolioGalleryPhotos(els.portfolioGallerySelect.value));
 els.portfolioAddPublished?.addEventListener('change', updatePortfolioAddButton);
+els.portfolioAddAll?.addEventListener('change', updatePortfolioAddButton);
+els.portfolioAddCategorySelection?.addEventListener('change', updatePortfolioAddButton);
 els.portfolioAddSubmit?.addEventListener('click', () => submitPortfolioAdd().catch((error) => { els.portfolioAddMessage.textContent = friendlyError(error); toast('Não foi possível adicionar as fotografias.', 'error'); updatePortfolioAddButton(); }));
 els.portfolioSearch?.addEventListener('input', debounce(() => { portfolioSearch = els.portfolioSearch.value; renderPortfolio(); }, 180));
 els.portfolioState?.addEventListener('change', () => { portfolioState = els.portfolioState.value; renderPortfolio(); });
 els.portfolioFeatured?.addEventListener('change', () => { portfolioFeatured = els.portfolioFeatured.value; renderPortfolio(); });
-els.portfolioLimit?.addEventListener('change', async () => {
-  try { await callAdminPortfolio('setting', { maxRecent: Number(els.portfolioLimit.value) }); toast('Limite de Trabalho recente atualizado.'); }
-  catch (error) { toast('Não foi possível guardar o limite.', 'error'); }
+els.portfolioManageCategories?.addEventListener('click', openPortfolioCategoryDialog);
+els.portfolioCategoryClose?.addEventListener('click', () => els.portfolioCategoryDialog.close());
+els.portfolioCategoryAdd?.addEventListener('click', async () => {
+  const label = els.portfolioCategoryName.value.trim(); if (!label) return;
+  els.portfolioCategoryAdd.disabled = true;
+  try { await callAdminPortfolio('category-create', { label }); await loadPortfolio({ force: true }); els.portfolioCategoryName.value = ''; renderPortfolioCategoryDialog(); }
+  catch (error) { els.portfolioCategoryMessage.textContent = friendlyError(error); }
+  finally { els.portfolioCategoryAdd.disabled = portfolioCategories.length >= portfolioLimits.categories; }
 });
 els.portfolioEditClose?.addEventListener('click', () => els.portfolioEditDialog.close());
 els.portfolioEditCancel?.addEventListener('click', () => els.portfolioEditDialog.close());
@@ -4233,7 +4333,7 @@ els.portfolioEditSave?.addEventListener('click', async () => {
   if (!portfolioEditingPhoto) return;
   els.portfolioEditSave.disabled = true; els.portfolioEditMessage.textContent = '';
   try {
-    await callAdminPortfolio('save', { photo: { id: portfolioEditingPhoto.id, categoryId: els.portfolioEditCategory.value, internalTitle: els.portfolioEditTitle.value.trim(), altText: els.portfolioEditAlt.value.trim(), focalX: els.portfolioFocalX.value, focalY: els.portfolioFocalY.value, isPublished: els.portfolioEditPublished.checked, isFeatured: els.portfolioEditFeatured.checked } });
+    await callAdminPortfolio('save', { photo: portfolioSavePayload(portfolioEditingPhoto, { categoryId: els.portfolioEditCategory.value, internalTitle: els.portfolioEditTitle.value.trim(), altText: els.portfolioEditAlt.value.trim(), focalX: els.portfolioFocalX.value, focalY: els.portfolioFocalY.value, isPublished: els.portfolioEditPublished.checked, showInAll: els.portfolioEditAll.checked, showInCategory: els.portfolioEditCategorySelection.checked }) });
     els.portfolioEditDialog.close(); toast('Alterações guardadas.'); await loadPortfolio({ force: true });
   } catch (error) { els.portfolioEditMessage.textContent = friendlyError(error); }
   finally { els.portfolioEditSave.disabled = false; }
@@ -4445,16 +4545,25 @@ els.galleryActionsToggle?.addEventListener('click', (event) => {
 els.galleryActionsMenu?.addEventListener('click', (event) => {
   if (event.target.closest('button')) closeGalleryActionsMenu();
 });
-els.actionShowCode.addEventListener('click', () => {
-  setStep(3);
-  revealCode();
+els.galleryActionsMenu?.addEventListener('keydown', (event) => {
+  const items = [...els.galleryActionsMenu.querySelectorAll('button:not([disabled])')];
+  const currentIndex = items.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const direction = event.key === 'ArrowDown' ? 1 : -1;
+    items[(currentIndex + direction + items.length) % items.length]?.focus();
+  }
+  if (event.key === 'Home' || event.key === 'End') {
+    event.preventDefault();
+    items[event.key === 'Home' ? 0 : items.length - 1]?.focus();
+  }
 });
-els.actionCopyInstructions.addEventListener('click', async () => {
+els.actionCopyCode.addEventListener('click', async () => {
   if (!currentAlbum) return;
   if (!lastShownCode) await revealCode();
   if (!lastShownCode) return;
-  await navigator.clipboard.writeText(guestInstructions(currentAlbum, lastShownCode));
-  toast('Instruções copiadas.');
+  await navigator.clipboard.writeText(lastShownCode);
+  toast('Código copiado.');
 });
 els.actionRegenerateCode.addEventListener('click', regenerateCode);
 els.actionEndSessions.addEventListener('click', endSessions);
@@ -4583,6 +4692,7 @@ document.addEventListener('keydown', (event) => {
     }
     if (els.galleryActionsMenu && !els.galleryActionsMenu.hidden) {
       closeGalleryActionsMenu();
+      els.galleryActionsToggle?.focus({ preventScroll: true });
       return;
     }
     closeMobileSidebar();

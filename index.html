@@ -24,13 +24,24 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260818-evolution-1" />
+    <link rel="stylesheet" href="styles.css?v=20260820-loader-1" />
     <script src="config.js"></script>
     <script src="site-meta.js" defer></script>
-    <script type="module" src="portfolio-public.js?v=20260819-lightbox-1"></script>
+    <script type="module" src="portfolio-public.js?v=20260820-curation-1"></script>
   </head>
   <body data-page="home">
     <div class="loader" aria-hidden="true">
+      <svg class="loader__brand-filter" aria-hidden="true" focusable="false">
+        <filter id="loader-brand-colours" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0" />
+          <feComponentTransfer>
+            <feFuncR type="table" tableValues="0.9294 0.9294 0.9294 0.6039 0.6039 0.6039 0.6039" />
+            <feFuncG type="table" tableValues="0.9137 0.9137 0.9137 0.5373 0.5373 0.5373 0.5373" />
+            <feFuncB type="table" tableValues="0.8902 0.8902 0.8902 0.4863 0.4863 0.4863 0.4863" />
+            <feFuncA type="identity" />
+          </feComponentTransfer>
+        </filter>
+      </svg>
       <img class="loader__logo" src="assets/logo-arnaut.png" alt="" />
       <div class="loader__line"><span></span></div>
       <p class="loader__count">00</p>
@@ -244,11 +255,11 @@
           <p>Respostas breves às dúvidas mais comuns. Para informações específicas, fala comigo.</p>
         </header>
         <div class="faq__list" data-faq-list>
-          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-1"><span>Como recebo as fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-1" hidden><p>As fotografias são disponibilizadas através de uma galeria privada, acessível com o código enviado pela fotógrafa.</p></div></article>
-          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-2"><span>As galerias têm prazo de validade?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-2" hidden><p>Quando existe um prazo, a data de expiração é apresentada na galeria ou comunicada diretamente.</p></div></article>
-          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-3"><span>Posso descarregar em alta resolução?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-3" hidden><p>Os downloads dependem das opções definidas para cada galeria. Quando estão disponíveis, a própria galeria apresenta essa indicação.</p></div></article>
-          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-4"><span>Como funciona a compra de fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-4" hidden><p>Nas galerias com venda ativa, seleciona as fotografias, revê o carrinho e conclui o pagamento seguro. Os ficheiros ficam disponíveis após a confirmação.</p></div></article>
-          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-5"><span>Como posso pedir informações ou reservar?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-5" hidden><p>Envia o formulário abaixo com os dados essenciais. A disponibilidade e os próximos passos são confirmados diretamente.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-1"><span>Como recebo as fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-1" aria-hidden="true"><p>As fotografias são disponibilizadas através de uma galeria privada, acessível com o código enviado pela fotógrafa.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-2"><span>As galerias têm prazo de validade?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-2" aria-hidden="true"><p>Quando existe um prazo, a data de expiração é apresentada na galeria ou comunicada diretamente.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-3"><span>Posso descarregar em alta resolução?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-3" aria-hidden="true"><p>Os downloads dependem das opções definidas para cada galeria. Quando estão disponíveis, a própria galeria apresenta essa indicação.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-4"><span>Como funciona a compra de fotografias?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-4" aria-hidden="true"><p>Nas galerias com venda ativa, seleciona as fotografias, revê o carrinho e conclui o pagamento seguro. Os ficheiros ficam disponíveis após a confirmação.</p></div></article>
+          <article><h3><button type="button" aria-expanded="false" aria-controls="faq-answer-5"><span>Como posso pedir informações ou reservar?</span><i aria-hidden="true"></i></button></h3><div id="faq-answer-5" aria-hidden="true"><p>Envia o formulário abaixo com os dados essenciais. A disponibilidade e os próximos passos são confirmados diretamente.</p></div></article>
         </div>
       </section>
 
@@ -325,6 +336,6 @@
       </div>
     </dialog>
 
-    <script src="script.js?v=20260819-lightbox-1"></script>
+    <script src="script.js?v=20260820-ux-1"></script>
   </body>
 </html>

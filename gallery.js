@@ -204,12 +204,38 @@ function togglePhoto(photoId) {
   toast(selected.has(photoId) ? 'Fotografia adicionada ao carrinho.' : 'Fotografia removida do carrinho.');
 }
 
-function toggleFavorite(photoId) {
+function setFavoriteControlState(control, included) {
+  if (!control) return;
+  control.setAttribute('aria-pressed', String(included));
+  control.setAttribute('aria-label', included ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
+}
+
+function animateFavoriteControl(control) {
+  if (!control) return;
+  control.classList.remove('is-favorite-animating');
+  void control.offsetWidth;
+  control.classList.add('is-favorite-animating');
+  control.addEventListener('animationend', () => control.classList.remove('is-favorite-animating'), { once: true });
+  window.setTimeout(() => control.classList.remove('is-favorite-animating'), 260);
+}
+
+function updatePhotoFavoriteControls(photoId) {
+  $$('[data-favorite-photo-id]').forEach((control) => {
+    if (control.dataset.favoritePhotoId === String(photoId)) {
+      setFavoriteControlState(control, favorites.has(photoId));
+    }
+  });
+}
+
+function toggleFavorite(photoId, sourceControl = null) {
   if (favorites.has(photoId)) favorites.delete(photoId); else favorites.add(photoId);
+  const included = favorites.has(photoId);
   saveFavorites();
   updateFavoriteUi();
-  renderPhotoGrid();
-  toast(favorites.has(photoId) ? 'Fotografia guardada nas favoritas.' : 'Fotografia removida das favoritas.');
+  if (activeFilter === 'favorites') renderPhotoGrid();
+  else updatePhotoFavoriteControls(photoId);
+  if (included) animateFavoriteControl(sourceControl);
+  toast(included ? 'Fotografia guardada nas favoritas.' : 'Fotografia removida das favoritas.');
 }
 
 function createPhotoCard(photo, index) {
@@ -238,10 +264,11 @@ function createPhotoCard(photo, index) {
   const favorite = document.createElement('button');
   favorite.type = 'button';
   favorite.className = 'client-photo__favorite';
+  favorite.dataset.favoritePhotoId = String(photo.id);
   favorite.appendChild(createGalleryIcon('favorites'));
   favorite.setAttribute('aria-label', favorites.has(photo.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
   favorite.setAttribute('aria-pressed', String(favorites.has(photo.id)));
-  favorite.addEventListener('click', () => toggleFavorite(photo.id));
+  favorite.addEventListener('click', () => toggleFavorite(photo.id, favorite));
   card.appendChild(favorite);
 
   if (album?.sales?.enabled) {
@@ -787,7 +814,7 @@ galleryWelcomeOpen?.addEventListener('click', () => revealGalleryContent({ remem
 $('[data-lightbox-close]').addEventListener('click', closeLightbox);
 $('[data-lightbox-prev]').addEventListener('click', () => moveLightbox(-1));
 $('[data-lightbox-next]').addEventListener('click', () => moveLightbox(1));
-lightboxFavorite.addEventListener('click', () => toggleFavorite(photos[activeIndex].id));
+lightboxFavorite.addEventListener('click', () => toggleFavorite(photos[activeIndex].id, lightboxFavorite));
 lightboxSelect.addEventListener('click', () => togglePhoto(photos[activeIndex].id));
 lightboxShare?.addEventListener('click', shareLightboxPhoto);
 lightboxFullscreen?.addEventListener('click', toggleLightboxFullscreen);

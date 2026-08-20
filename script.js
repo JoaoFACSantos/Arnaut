@@ -268,17 +268,21 @@ portraitLightbox?.addEventListener('close', () => {
   activeLightboxTrigger?.focus({ preventScroll: true });
 });
 
-document.querySelectorAll('[data-faq-list] button[aria-controls]').forEach((button) => {
+const faqButtons = [...document.querySelectorAll('[data-faq-list] button[aria-controls]')];
+
+const setFaqItemState = (button, open) => {
+  const answer = document.getElementById(button.getAttribute('aria-controls'));
+  const item = button.closest('article');
+  button.setAttribute('aria-expanded', String(open));
+  answer?.setAttribute('aria-hidden', String(!open));
+  item?.classList.toggle('is-open', open);
+};
+
+faqButtons.forEach((button) => {
+  setFaqItemState(button, false);
   button.addEventListener('click', () => {
-    const answer = document.getElementById(button.getAttribute('aria-controls'));
     const willOpen = button.getAttribute('aria-expanded') !== 'true';
-    document.querySelectorAll('[data-faq-list] button[aria-controls]').forEach((item) => {
-      item.setAttribute('aria-expanded', 'false');
-      const itemAnswer = document.getElementById(item.getAttribute('aria-controls'));
-      if (itemAnswer) itemAnswer.hidden = true;
-    });
-    button.setAttribute('aria-expanded', String(willOpen));
-    if (answer) answer.hidden = !willOpen;
+    faqButtons.forEach((item) => setFaqItemState(item, item === button && willOpen));
   });
 });
 
