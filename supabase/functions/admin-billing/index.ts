@@ -86,10 +86,14 @@ async function dashboard(supabase: ServiceClient, user: AdminUser, body: Record<
   queryStart.setUTCHours(0, 0, 0, 0);
   const [ordersResult, recentResult, pendingResult, profileResult, preferencesResult] = await Promise.all([
     supabase.from('orders')
-      .select('id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, refunded_cents, status, created_at, paid_at, albums(id, title), order_items(id)')
+      .select(
+        'id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, refunded_cents, status, created_at, paid_at, albums(id, title), order_items(id)',
+      )
       .gte('created_at', queryStart.toISOString()).order('created_at', { ascending: false }).limit(5000),
     supabase.from('orders')
-      .select('id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, refunded_cents, status, created_at, paid_at, albums(id, title), order_items(id)')
+      .select(
+        'id, order_number, customer_email, currency, subtotal_cents, discount_cents, total_cents, refunded_cents, status, created_at, paid_at, albums(id, title), order_items(id)',
+      )
       .order('created_at', { ascending: false }).limit(5),
     supabase.from('orders')
       .select('total_cents').eq('status', 'pending').limit(5000),
@@ -118,6 +122,7 @@ async function dashboard(supabase: ServiceClient, user: AdminUser, body: Record<
   });
 }
 
+// deno-lint-ignore no-explicit-any -- o tipo do query builder do Supabase muda a cada filtro encadeado.
 function applyBillingFilters(query: any, filters: Record<string, unknown>) {
   const status = sanitizeText(filters.status, 30);
   const search = sanitizeText(filters.search, 160).replace(/[%_,()]/g, '');
@@ -130,7 +135,12 @@ function applyBillingFilters(query: any, filters: Record<string, unknown>) {
   return query;
 }
 
-async function listBillingRecords(supabase: ServiceClient, filters: Record<string, unknown>, pageValue: unknown, pageSizeValue: unknown) {
+async function listBillingRecords(
+  supabase: ServiceClient,
+  filters: Record<string, unknown>,
+  pageValue: unknown,
+  pageSizeValue: unknown,
+) {
   const page = Math.max(1, Number(pageValue || 1));
   const pageSize = Math.min(50, Math.max(5, Number(pageSizeValue || 10)));
   const from = (page - 1) * pageSize;
@@ -166,16 +176,23 @@ async function billingDetail(supabase: ServiceClient, orderId: string) {
   ).eq('id', orderId).maybeSingle();
   if (error || !data) return json({ error: 'Registo não encontrado.' }, 404);
   const order = data as unknown as OrderRow;
+  // deno-lint-ignore no-explicit-any -- linhas aninhadas devolvidas pelo PostgREST.
   const items = (order.order_items || []).map((item: any) => {
     const photo = Array.isArray(item.album_photos) ? item.album_photos[0] : item.album_photos;
     return { filename: photo?.filename || 'Fotografia', unitPriceCents: Number(item.unit_price_cents || 0) };
   });
-  return json({ record: {
-    ...safeOrder(order), expiresAt: order.expires_at || null,
-    paymentMethod: order.stripe_payment_intent_id ? 'Stripe Checkout' : null,
-    paymentIntentId: order.stripe_payment_intent_id || null, items,
-    canRefund: Boolean(stripe && order.stripe_payment_intent_id && ['paid', 'partially_refunded'].includes(order.status)),
-  } });
+  return json({
+    record: {
+      ...safeOrder(order),
+      expiresAt: order.expires_at || null,
+      paymentMethod: order.stripe_payment_intent_id ? 'Stripe Checkout' : null,
+      paymentIntentId: order.stripe_payment_intent_id || null,
+      items,
+      canRefund: Boolean(
+        stripe && order.stripe_payment_intent_id && ['paid', 'partially_refunded'].includes(order.status),
+      ),
+    },
+  });
 }
 
 function optionalText(value: unknown, maxLength: number) {
@@ -185,7 +202,9 @@ function optionalText(value: unknown, maxLength: number) {
 
 async function saveBillingProfile(supabase: ServiceClient, user: AdminUser, profile: Record<string, unknown>) {
   const billingEmail = optionalText(profile.billingEmail, 180);
-  if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail)) return json({ error: 'Introduza um email de faturação válido.' }, 400);
+  if (billingEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail)) {
+    return json({ error: 'Introduza um email de faturação válido.' }, 400);
+  }
   const payload = {
     user_id: user.id,
     business_name: optionalText(profile.businessName, 120),
@@ -197,7 +216,8 @@ async function saveBillingProfile(supabase: ServiceClient, user: AdminUser, prof
     city: optionalText(profile.city, 100),
     country: optionalText(profile.country, 80),
   };
-  const { data, error } = await supabase.from('billing_profiles').upsert(payload, { onConflict: 'user_id' }).select('*').single();
+  const { data, error } = await supabase.from('billing_profiles').upsert(payload, { onConflict: 'user_id' }).select('*')
+    .single();
   if (error) {
     if (error.code === '42P01') return json({ error: 'A migration do perfil fiscal ainda não foi aplicada.' }, 409);
     throw error;
@@ -210,7 +230,9 @@ async function requestRefund(supabase: ServiceClient, orderId: string) {
   const { data: order, error } = await supabase.from('orders')
     .select('id, total_cents, refunded_cents, status, stripe_payment_intent_id').eq('id', orderId).maybeSingle();
   if (error || !order) return json({ error: 'Pagamento não encontrado.' }, 404);
-  if (!['paid', 'partially_refunded'].includes(order.status) || !order.stripe_payment_intent_id) return json({ error: 'Este pagamento não pode ser reembolsado.' }, 409);
+  if (!['paid', 'partially_refunded'].includes(order.status) || !order.stripe_payment_intent_id) {
+    return json({ error: 'Este pagamento não pode ser reembolsado.' }, 409);
+  }
   const remainingCents = Math.max(0, Number(order.total_cents) - Number(order.refunded_cents || 0));
   if (!remainingCents) return json({ error: 'Este pagamento já foi totalmente reembolsado.' }, 409);
   const refund = await stripe.refunds.create(
