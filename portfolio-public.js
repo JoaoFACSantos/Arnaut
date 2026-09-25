@@ -14,10 +14,13 @@ let categories = [];
 let activeFilter = 'all';
 
 const authHeaders = () => ({ apikey: apiKey, Authorization: `Bearer ${apiKey}` });
+// Sem resposta do Supabase em 8 s, mostra as fotografias do site em vez de ficar em "A carregar…".
+const requestSignal = () => (typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(8000) : undefined);
 
 async function restSelect(table, params) {
   const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${new URLSearchParams(params)}`, {
     headers: { ...authHeaders(), Accept: 'application/json' },
+    signal: requestSignal(),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
@@ -53,6 +56,7 @@ async function signPortfolioPaths(paths) {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ expiresIn: SIGNED_URL_SECONDS, paths: missing }),
+      signal: requestSignal(),
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || !Array.isArray(data)) throw new Error(data?.message || 'Não foi possível preparar as imagens do portefólio.');
@@ -141,8 +145,35 @@ async function loadPortfolioRows() {
   }
 }
 
+// Seleção estática do <noscript> (as mesmas 8 fotografias em assets/portfolio), usada quando o
+// Supabase não está configurado (ex.: servidor local sem config.js), não responde ou não tem fotografias.
+function staticPortfolio() {
+  const fallback = root.parentElement?.querySelector('noscript');
+  const markup = document.createElement('template');
+  markup.innerHTML = fallback?.textContent || '';
+  return [...markup.content.querySelectorAll('.project__image')].map((link, index) => {
+    const image = link.querySelector('img');
+    return {
+      id: `static-${index}`,
+      legacy_public_url: link.getAttribute('href'),
+      legacy_thumbnail_url: image?.getAttribute('src') || '',
+      alt_text: image?.getAttribute('alt') || '',
+      width: Number(image?.getAttribute('width')) || 0,
+      height: Number(image?.getAttribute('height')) || 0,
+      show_in_all: true,
+      all_sort_order: index,
+    };
+  });
+}
+
+function renderStaticPortfolio() {
+  photos = staticPortfolio(); categories = []; activeFilter = 'all';
+  renderPortfolio();
+}
+
 async function loadPortfolio() {
-  if (!root || !filtersRoot || !supabaseUrl || !apiKey) return;
+  if (!root || !filtersRoot) return;
+  if (!supabaseUrl || !apiKey) { renderStaticPortfolio(); return; }
   try {
     const [categoryData, rows] = await Promise.all([
       restSelect('portfolio_categories', { select: 'id,slug,label,sort_order', enabled: 'eq.true', order: 'sort_order.asc' }),
@@ -160,12 +191,11 @@ async function loadPortfolio() {
       }));
     }
     photos = photos.map((photo) => (photo.web_url || !photo.legacy_thumbnail_url ? photo : { ...photo, thumbnail_url: photo.legacy_thumbnail_url }));
+    if (!photos.some((photo) => photo.show_in_all)) { renderStaticPortfolio(); return; }
     categories = categoryData; renderPortfolio();
   } catch (error) {
-    console.error('Não foi possível carregar Trabalho recente.', error);
-    root.ariaBusy = 'false'; root.innerHTML = '<p class="portfolio-public-error">Não foi possível carregar esta seleção.</p>';
-    filtersRoot.innerHTML = '<button class="filter" type="button" data-retry-portfolio>Tentar novamente</button>';
-    filtersRoot.querySelector('button').addEventListener('click', loadPortfolio);
+    console.error('Não foi possível carregar Trabalho recente; a mostrar a seleção do site.', error);
+    renderStaticPortfolio();
   }
 }
 
