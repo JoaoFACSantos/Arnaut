@@ -213,8 +213,7 @@ button { color: inherit; font: inherit; }
 .site-header.is-scrolled {
   height: 64px;
   border-color: var(--line);
-  background: rgba(241, 237, 228, .88);
-  backdrop-filter: blur(14px);
+  background: rgba(241, 237, 228, .97);
 }
 
 .brand { display: inline-flex; width: clamp(154px, 15vw, 198px); height: 58px; align-items: center; line-height: 1; }
@@ -425,7 +424,7 @@ body.portrait-lightbox-open .cursor { opacity: 0; }
 .testimonial__author span:last-child { opacity: .6; }
 
 .contact { position: relative; min-height: 100svh; padding-top: 130px; padding-bottom: 90px; overflow: hidden; color: var(--paper); background: #24231f; }
-.contact__backdrop { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(23,23,19,.97) 0%, rgba(23,23,19,.9) 48%, rgba(23,23,19,.42) 100%), url("assets/portfolio/nazare-03.webp") 65% 52% / cover no-repeat; filter: saturate(.45); will-change: transform; }
+.contact__backdrop { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(23,23,19,.97) 0%, rgba(23,23,19,.9) 48%, rgba(23,23,19,.42) 100%), url("assets/contact-backdrop.webp") 65% 52% / cover no-repeat; }
 .contact__inner { position: relative; z-index: 1; }
 .contact h2 { margin: 13vh 0 50px; font-family: var(--serif); font-size: clamp(66px, 9vw, 150px); font-weight: 300; letter-spacing: 0; line-height: .74; }
 .contact h2 em { color: var(--brand-primary); font-weight: 300; }
@@ -562,7 +561,7 @@ body.portrait-lightbox-open .cursor { opacity: 0; }
   .testimonial__author { justify-content: flex-start; flex-direction: column; }
 
   .contact { min-height: 850px; padding-top: 90px; }
-  .contact__backdrop { background: linear-gradient(rgba(23,23,19,.76), rgba(23,23,19,.93)), url("assets/portfolio/nazare-03.webp") 58% center / cover no-repeat; }
+  .contact__backdrop { background: linear-gradient(rgba(23,23,19,.76), rgba(23,23,19,.93)), url("assets/contact-backdrop.webp") 58% center / cover no-repeat; }
   .contact h2 { margin-top: 150px; font-size: 67px; }
   .contact__note { margin: 60px 0; }
   .contact__mail span { font-size: 24px; }

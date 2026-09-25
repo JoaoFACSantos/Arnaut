@@ -461,29 +461,16 @@ if (whatsappNumber) {
   });
 }
 
-const contactSection = document.querySelector('.contact');
-const contactBackdrop = document.querySelector('.contact__backdrop');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-let contactTop = contactSection?.offsetTop || 0;
 let parallaxFrame = 0;
-
-// A posição da secção de contacto só muda quando o conteúdo acima muda de tamanho;
-// medimo-la nesses momentos em vez de a ler em cada evento de scroll.
-const measureContact = () => { contactTop = contactSection?.offsetTop || 0; };
-if ('ResizeObserver' in window && contactSection) {
-  new ResizeObserver(measureContact).observe(contactSection.parentElement || document.body);
-}
-window.addEventListener('resize', measureContact, { passive: true });
-window.addEventListener('load', measureContact);
 
 const updateParallax = () => {
   parallaxFrame = 0;
   const scroll = window.scrollY;
   if (heroImage && scroll < window.innerHeight * 1.2 && !reducedMotion.matches) {
+    // Sem a transição de 1,5 s da entrada: reiniciá-la a cada frame deixava a imagem a arrastar-se atrás do scroll.
+    heroImage.style.transition = 'none';
     heroImage.style.transform = `scale(1) translateY(${scroll * 0.045}px)`;
-  }
-  if (contactBackdrop && scroll + window.innerHeight > contactTop) {
-    contactBackdrop.style.transform = `scale(1.04) translateY(${(scroll - contactTop) * 0.025}px)`;
   }
 };
 
