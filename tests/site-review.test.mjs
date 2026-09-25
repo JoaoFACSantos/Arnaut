@@ -102,6 +102,15 @@ test('stuck Stripe events can be processed again', async () => {
   assert.match(migration, /status = 'processing'[\s\S]*claimed_at < now\(\) - interval '10 minutes'/);
 });
 
+test('maintenance and trigger functions are not callable by visitors', async () => {
+  const migration = await read('supabase/migrations/202609250005_function_privileges.sql');
+  for (const fn of ['cleanup_abandoned_gallery_drafts', 'cleanup_expired_gallery_sessions', 'notify_order_change', 'notify_contact_request']) {
+    assert.match(migration, new RegExp(`revoke all on function public\\.${fn}\\(\\) from public, anon, authenticated`), fn);
+  }
+  assert.doesNotMatch(migration, /is_gallery_admin/);
+  assert.match(migration, /touch_updated_at\(\) set search_path = public/);
+});
+
 test('legal pages include the Portuguese consumer information', () => {
   const terms = LEGAL_PAGES.terms.sections.map((section) => section.html).join('\n');
   const privacy = LEGAL_PAGES.privacy.sections.map((section) => section.html).join('\n');
