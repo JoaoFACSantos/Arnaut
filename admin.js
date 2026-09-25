@@ -2466,10 +2466,18 @@ function updateDrawerSaveState() {
 
 function updateDownloadOptions() {
   const downloadsAllowed = fields.downloadsEnabled.checked;
+  // Com venda ativa, o download gratuito entrega sempre a versão com marca de água.
+  const originalsAllowed = downloadsAllowed && !fields.salesEnabled.checked;
   if (els.salesFreeDownload) els.salesFreeDownload.checked = downloadsAllowed;
-  fields.watermarkOriginalDownloads.disabled = !downloadsAllowed;
-  els.originalDownloadsSetting?.classList.toggle('is-disabled', !downloadsAllowed);
-  els.originalDownloadsSetting?.setAttribute('aria-disabled', String(!downloadsAllowed));
+  if (!originalsAllowed) fields.watermarkOriginalDownloads.checked = false;
+  fields.watermarkOriginalDownloads.disabled = !originalsAllowed;
+  els.originalDownloadsSetting?.classList.toggle('is-disabled', !originalsAllowed);
+  els.originalDownloadsSetting?.setAttribute('aria-disabled', String(!originalsAllowed));
+  if (els.originalDownloadsSetting) {
+    els.originalDownloadsSetting.title = fields.salesEnabled.checked
+      ? 'Com venda ativa, os originais só são entregues após o pagamento.'
+      : '';
+  }
 }
 
 function updateSalesOptions() {
@@ -2477,6 +2485,7 @@ function updateSalesOptions() {
   els.salesSettings.hidden = !enabled;
   fields.watermarkEnabled.disabled = enabled;
   if (enabled) fields.watermarkEnabled.checked = true;
+  updateDownloadOptions();
   fields.photoPrice.required = enabled;
   fields.downloadExpiryDays.required = enabled;
   fields.salesSupportEmail.required = enabled;

@@ -1,3 +1,6 @@
+// Recurso em tempo de execução para quando `npm run build` não correu com SITE_URL:
+// completa canonical, og:url, og:image absoluta e dados estruturados da página inicial.
+// Quando o build correu, as tags já existem no HTML e este script não as duplica.
 (() => {
   const config = window.ARNAUT_CONFIG || {};
   const configuredBase = String(config.SITE_URL || '').trim().replace(/\/$/, '');
@@ -9,9 +12,9 @@
   if (!canonical) {
     canonical = document.createElement('link');
     canonical.rel = 'canonical';
+    canonical.href = canonicalUrl;
     document.head.appendChild(canonical);
   }
-  canonical.href = canonicalUrl;
 
   const setMeta = (property, content) => {
     const selector = property.startsWith('og:') ? `meta[property="${property}"]` : `meta[name="${property}"]`;
@@ -23,20 +26,28 @@
     }
     meta.content = content;
   };
-  setMeta('og:url', canonicalUrl);
+  if (!document.querySelector('meta[property="og:url"]')) setMeta('og:url', canonical.href);
   const image = document.querySelector('meta[property="og:image"]')?.content;
-  if (image && !/^https?:\/\//i.test(image)) setMeta('og:image', `${configuredBase}/${image.replace(/^\//, '')}`);
+  if (image && !/^https?:\/\//i.test(image)) {
+    const absolute = `${configuredBase}/${image.replace(/^\//, '')}`;
+    setMeta('og:image', absolute);
+    setMeta('twitter:image', absolute);
+  }
 
-  if (document.body.dataset.page === 'home') {
+  if (document.body.dataset.page === 'home' && !document.querySelector('script[type="application/ld+json"]')) {
     const schema = document.createElement('script');
     schema.type = 'application/ld+json';
     schema.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'ProfessionalService',
       name: 'Fotografia Arnaut',
-      url: configuredBase,
+      url: `${configuredBase}/`,
+      image: `${configuredBase}/assets/og-image.jpg`,
+      email: 'fotografiaarnaut@gmail.com',
       founder: { '@type': 'Person', name: 'Beatriz Arnaut', jobTitle: 'Fotógrafa' },
-      areaServed: { '@type': 'AdministrativeArea', name: 'Pombal, Leiria' },
+      address: { '@type': 'PostalAddress', addressLocality: 'Pombal', addressRegion: 'Leiria', addressCountry: 'PT' },
+      areaServed: ['Pombal', 'Leiria', 'Portugal'],
+      sameAs: ['https://www.instagram.com/fotografiarnaut/'],
     });
     document.head.appendChild(schema);
   }

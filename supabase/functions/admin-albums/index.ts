@@ -139,7 +139,8 @@ Deno.serve(async (request) => {
         watermark_position: 'bottom-center',
         watermark_opacity: 0.68,
         watermark_scale: 0.22,
-        watermark_original_downloads: Boolean(album.watermarkOriginalDownloads),
+        // Com venda ativa, o original só é entregue depois do pagamento.
+        watermark_original_downloads: !salesEnabled && Boolean(album.watermarkOriginalDownloads),
         sales_enabled: salesEnabled,
         photo_price_cents: salesEnabled ? photoPriceCents : null,
         currency,
@@ -278,7 +279,7 @@ Deno.serve(async (request) => {
         .select('id, watermark_enabled, watermark_version')
         .eq('id', photo.albumId)
         .maybeSingle();
-      if (albumError || !album) return json({ error: 'Galeria nÃ£o encontrada.' }, 404);
+      if (albumError || !album) return json({ error: 'Galeria não encontrada.' }, 404);
       const { data, error } = await supabase
         .from('album_photos')
         .insert({
@@ -318,7 +319,7 @@ Deno.serve(async (request) => {
         .select('id, watermark_enabled, watermark_version')
         .eq('id', albumId)
         .maybeSingle();
-      if (albumError || !album) return json({ error: 'Galeria nÃ£o encontrada.' }, 404);
+      if (albumError || !album) return json({ error: 'Galeria não encontrada.' }, 404);
       const { data: photos, error: photoError } = await supabase
         .from('album_photos')
         .select('id, web_path, watermarked_path, thumbnail_path, watermark_mode, processing_status, watermark_version')

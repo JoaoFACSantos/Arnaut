@@ -1,4 +1,5 @@
-document.body.classList.add('is-loading');
+const introKey = 'arnaut_intro_seen';
+const skipIntro = document.documentElement.classList.contains('skip-intro');
 
 const currentYear = document.querySelector('[data-current-year]');
 if (currentYear) currentYear.textContent = String(new Date().getFullYear());
@@ -6,37 +7,59 @@ if (currentYear) currentYear.textContent = String(new Date().getFullYear());
 const loader = document.querySelector('.loader');
 const loaderCount = document.querySelector('.loader__count');
 const loaderLine = document.querySelector('.loader__line span');
+const heroImage = document.querySelector('.hero__image-wrap img');
 let progress = 0;
+let loadingTimer = 0;
+let loadingFinished = false;
+
+const markReady = () => {
+  document.body.classList.remove('is-loading');
+  document.body.classList.add('is-ready');
+};
 
 const finishLoading = () => {
+  if (loadingFinished) return;
+  loadingFinished = true;
+  window.clearInterval(loadingTimer);
   progress = 100;
   loaderCount.textContent = '100';
   loaderLine.style.width = '100%';
+  try { sessionStorage.setItem(introKey, '1'); } catch { /* Sem storage, a intro volta a aparecer. */ }
   window.setTimeout(() => {
     loader.classList.add('is-done');
-    document.body.classList.remove('is-loading');
-    document.body.classList.add('is-ready');
+    markReady();
   }, 250);
 };
 
-const loadingTimer = window.setInterval(() => {
-  progress += Math.max(1, Math.round((92 - progress) * 0.08));
-  progress = Math.min(progress, 92);
-  loaderCount.textContent = String(progress).padStart(2, '0');
-  loaderLine.style.width = `${progress}%`;
-}, 45);
+if (skipIntro) {
+  // Visitas seguintes na mesma sessão (ou movimento reduzido): sem intro, mas com a entrada do título.
+  loader.classList.add('is-done');
+  requestAnimationFrame(() => requestAnimationFrame(markReady));
+} else {
+  document.body.classList.add('is-loading');
+  const introStartedAt = performance.now();
+  const wait = (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); });
+  const heroLoaded = !heroImage || heroImage.complete
+    ? Promise.resolve()
+    : new Promise((resolve) => {
+      heroImage.addEventListener('load', resolve, { once: true });
+      heroImage.addEventListener('error', resolve, { once: true });
+    });
+  const fontsLoaded = document.fonts?.ready || Promise.resolve();
 
-window.addEventListener('load', () => {
-  window.clearInterval(loadingTimer);
-  finishLoading();
-});
+  loadingTimer = window.setInterval(() => {
+    progress += Math.max(1, Math.round((92 - progress) * 0.1));
+    progress = Math.min(progress, 92);
+    loaderCount.textContent = String(progress).padStart(2, '0');
+    loaderLine.style.width = `${progress}%`;
+  }, 45);
 
-window.setTimeout(() => {
-  if (!document.body.classList.contains('is-ready')) {
-    window.clearInterval(loadingTimer);
-    finishLoading();
-  }
-}, 2200);
+  // Termina quando a imagem principal e os tipos de letra estão prontos (mínimo 0,9 s, máximo 1,8 s),
+  // em vez de esperar por todos os recursos da página.
+  Promise.race([Promise.all([heroLoaded, fontsLoaded]), wait(1800)])
+    .then(() => wait(Math.max(0, 900 - (performance.now() - introStartedAt))))
+    .then(finishLoading);
+}
 
 const header = document.querySelector('[data-header]');
 const updateHeader = () => header.classList.toggle('is-scrolled', window.scrollY > 50);
@@ -101,15 +124,20 @@ document.querySelectorAll('.service button').forEach((button) => {
 });
 
 const cursor = document.querySelector('.cursor');
-if (window.matchMedia('(pointer: fine)').matches) {
-  window.addEventListener('pointermove', (event) => {
-    cursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px) translate(-50%, -50%)`;
-  });
-
-  document.querySelectorAll('.image-hover').forEach((element) => {
+const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+const bindCursorTargets = () => {
+  if (!hasFinePointer || !cursor) return;
+  document.querySelectorAll('.image-hover:not([data-cursor-bound])').forEach((element) => {
+    element.dataset.cursorBound = 'true';
     element.addEventListener('pointerenter', () => cursor.classList.add('is-view'));
     element.addEventListener('pointerleave', () => cursor.classList.remove('is-view'));
   });
+};
+if (hasFinePointer && cursor) {
+  window.addEventListener('pointermove', (event) => {
+    cursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px) translate(-50%, -50%)`;
+  }, { passive: true });
+  bindCursorTargets();
 }
 
 const portraitTrigger = document.querySelector('[data-portrait-open]');
@@ -121,7 +149,19 @@ const lightboxPrevious = portraitLightbox?.querySelector('[data-lightbox-prev]')
 const lightboxNext = portraitLightbox?.querySelector('[data-lightbox-next]');
 const lightboxThumbs = portraitLightbox?.querySelector('[data-lightbox-thumbs]');
 let projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
-const lightboxGalleries = {};
+const lightboxGalleries = {
+  // Série de Sintra aberta pela imagem principal (data-lightbox-gallery="sintra").
+  sintra: [
+    ['sintra-01', 'Fachada histórica enquadrada por árvores em Sintra'],
+    ['sintra-02', 'Arquitetura histórica e árvores em Sintra'],
+    ['sintra-03', 'Detalhe de arcos neomanuelinos em Sintra'],
+    ['sintra-04', 'Varanda neomanuelina em pedra rendilhada entre folhas de outono, em Sintra'],
+  ].map(([name, alt]) => ({
+    src: `assets/portfolio/${name}.webp`,
+    thumbSrc: `assets/portfolio/w800/${name}.webp`,
+    alt,
+  })),
+};
 let activeLightboxTrigger = portraitTrigger;
 let activeLightboxItems = [];
 let activeLightboxIndex = 0;
@@ -240,10 +280,7 @@ window.addEventListener('portfolio:rendered', (event) => {
   })).filter((item) => item.src);
   projectImageTriggers = document.querySelectorAll('[data-image-lightbox]');
   projectImageTriggers.forEach((trigger) => { if (!trigger.dataset.lightboxGallery) trigger.dataset.lightboxGallery = 'portfolio'; });
-  document.querySelectorAll('.image-hover').forEach((element) => {
-    element.addEventListener('pointerenter', () => cursor.classList.add('is-view'));
-    element.addEventListener('pointerleave', () => cursor.classList.remove('is-view'));
-  });
+  bindCursorTargets();
   bindProjectLightboxes();
 });
 lightboxPrevious?.addEventListener('click', () => moveLightbox(-1));
@@ -316,7 +353,74 @@ publicContactForm?.addEventListener('input', (event) => {
   if (contactStatus) contactStatus.textContent = '';
 });
 
-publicContactForm?.addEventListener('submit', (event) => {
+const contactConfig = window.ARNAUT_CONFIG || {};
+const contactFunctionsBase = (() => {
+  const url = String(contactConfig.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  return url ? `${url}/functions/v1` : '';
+})();
+
+const setContactStatus = (text, type) => {
+  if (!contactStatus) return;
+  contactStatus.textContent = text;
+  contactStatus.dataset.type = type;
+};
+
+// Recurso: abre o programa de email com o pedido preenchido.
+const openContactEmailDraft = (values) => {
+  const lines = [
+    `Nome: ${values.name}`,
+    `Email: ${values.email}`,
+    values.phone ? `Telefone: ${values.phone}` : null,
+    `Tipo de sessão: ${values.sessionType}`,
+    values.preferredDate ? `Data pretendida: ${values.preferredDate}` : null,
+    values.location ? `Local: ${values.location}` : null,
+    '',
+    values.message,
+  ].filter((line) => line !== null);
+  const subject = encodeURIComponent(`Pedido de informação — ${values.sessionType}`);
+  const body = encodeURIComponent(lines.join('\n'));
+  window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+};
+
+const sendContactRequest = async (values) => {
+  if (!contactFunctionsBase || !contactConfig.SUPABASE_PUBLISHABLE_KEY) {
+    throw Object.assign(new Error('Envio direto indisponível.'), { fallback: true });
+  }
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${contactFunctionsBase}/contact-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: contactConfig.SUPABASE_PUBLISHABLE_KEY },
+      body: JSON.stringify({
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        sessionType: values.sessionType,
+        preferredDate: values.preferredDate,
+        location: values.location,
+        message: values.message,
+        website: values.website,
+      }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      // 400 e 429 têm mensagens úteis para o visitante; os restantes erros usam o email como recurso.
+      throw Object.assign(new Error(data.error || 'Não foi possível enviar o pedido.'), {
+        fallback: response.status !== 400 && response.status !== 429,
+      });
+    }
+    return data;
+  } catch (error) {
+    if (error?.fallback === undefined) error.fallback = true;
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+publicContactForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
   const data = new FormData(publicContactForm);
   const values = Object.fromEntries(data.entries());
@@ -325,44 +429,68 @@ publicContactForm?.addEventListener('submit', (event) => {
   const errors = validatePublicContact(values);
   Object.entries(errors).forEach(([name, text]) => contactError(name, text));
   if (Object.keys(errors).length) {
-    contactStatus.textContent = 'Revise os campos assinalados.';
-    contactStatus.dataset.type = 'error';
+    setContactStatus('Revise os campos assinalados.', 'error');
     publicContactForm.querySelector('[aria-invalid="true"]')?.focus();
     return;
   }
 
-  const lines = [
-    `Nome: ${values.name}`,
-    `Email: ${values.email}`,
-    values.phone ? `Telefone: ${values.phone}` : '',
-    `Tipo de sessão: ${values.sessionType}`,
-    values.preferredDate ? `Data pretendida: ${values.preferredDate}` : '',
-    values.location ? `Local: ${values.location}` : '',
-    '',
-    values.message,
-  ].filter((line) => line !== '');
-  contactStatus.textContent = 'A abrir o seu programa de email para confirmar o envio.';
-  contactStatus.dataset.type = 'success';
-  const subject = encodeURIComponent(`Pedido de informação — ${values.sessionType}`);
-  const body = encodeURIComponent(lines.join('\n'));
-  window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+  const submitButton = publicContactForm.querySelector('[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+  setContactStatus('A enviar o pedido…', 'neutral');
+  try {
+    await sendContactRequest(values);
+    publicContactForm.reset();
+    setContactStatus('Pedido enviado. Obrigada! Responderei assim que possível.', 'success');
+  } catch (error) {
+    if (error.fallback) {
+      setContactStatus('Não foi possível enviar diretamente. A abrir o seu programa de email para confirmar o envio.', 'success');
+      openContactEmailDraft(values);
+    } else {
+      setContactStatus(error.message, 'error');
+    }
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
 });
 
-const heroImage = document.querySelector('.hero__image-wrap img');
+const whatsappNumber = String(contactConfig.WHATSAPP_NUMBER || '').replace(/\D/g, '');
+if (whatsappNumber) {
+  document.querySelectorAll('[data-whatsapp-link]').forEach((link) => {
+    link.href = `https://wa.me/${whatsappNumber}`;
+    link.hidden = false;
+  });
+}
+
+const contactSection = document.querySelector('.contact');
 const contactBackdrop = document.querySelector('.contact__backdrop');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let contactTop = contactSection?.offsetTop || 0;
+let parallaxFrame = 0;
+
+// A posição da secção de contacto só muda quando o conteúdo acima muda de tamanho;
+// medimo-la nesses momentos em vez de a ler em cada evento de scroll.
+const measureContact = () => { contactTop = contactSection?.offsetTop || 0; };
+if ('ResizeObserver' in window && contactSection) {
+  new ResizeObserver(measureContact).observe(contactSection.parentElement || document.body);
+}
+window.addEventListener('resize', measureContact, { passive: true });
+window.addEventListener('load', measureContact);
+
+const updateParallax = () => {
+  parallaxFrame = 0;
+  const scroll = window.scrollY;
+  if (heroImage && scroll < window.innerHeight * 1.2 && !reducedMotion.matches) {
+    heroImage.style.transform = `scale(1) translateY(${scroll * 0.045}px)`;
+  }
+  if (contactBackdrop && scroll + window.innerHeight > contactTop) {
+    contactBackdrop.style.transform = `scale(1.04) translateY(${(scroll - contactTop) * 0.025}px)`;
+  }
+};
 
 window.addEventListener(
   'scroll',
   () => {
-    const scroll = window.scrollY;
-    if (scroll < window.innerHeight * 1.2 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      heroImage.style.transform = `scale(1) translateY(${scroll * 0.045}px)`;
-    }
-
-    const contactTop = document.querySelector('.contact').offsetTop;
-    if (scroll + window.innerHeight > contactTop) {
-      contactBackdrop.style.transform = `scale(1.04) translateY(${(scroll - contactTop) * 0.025}px)`;
-    }
+    if (!parallaxFrame) parallaxFrame = window.requestAnimationFrame(updateParallax);
   },
   { passive: true },
 );

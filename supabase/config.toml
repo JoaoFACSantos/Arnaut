@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.admin-portfolio]
 verify_jwt = false
+
+[functions.contact-request]
+verify_jwt = false

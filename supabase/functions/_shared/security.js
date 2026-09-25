@@ -130,6 +130,12 @@ export function hashSessionToken(token, pepper) {
   return hmacSha256Hex(String(token || '').trim(), pepper);
 }
 
+export function isAdminEmail(email, adminRows) {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return false;
+  return (adminRows || []).some((row) => String(row?.email || '').trim().toLowerCase() === normalized);
+}
+
 export function constantTimeEqual(a, b) {
   const left = String(a || '');
   const right = String(b || '');

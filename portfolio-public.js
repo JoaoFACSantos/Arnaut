@@ -1,16 +1,76 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
+// "Trabalho recente": lê as fotografias publicadas diretamente da API REST do Supabase
+// (sem carregar a biblioteca supabase-js completa na página inicial).
 const config = window.ARNAUT_CONFIG || {};
 const root = document.querySelector('[data-public-portfolio]');
 const filtersRoot = document.querySelector('[data-public-portfolio-filters]');
-const supabase = config.SUPABASE_URL && config.SUPABASE_PUBLISHABLE_KEY
-  ? createClient(String(config.SUPABASE_URL).replace(/\/$/, ''), config.SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
-  : null;
+const supabaseUrl = String(config.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+const apiKey = config.SUPABASE_PUBLISHABLE_KEY || '';
+const SIGNED_URL_SECONDS = 60 * 60;
+const SIGNED_URL_REUSE_MARGIN_MS = 10 * 60 * 1000;
+const SIGNED_CACHE_KEY = 'arnaut_portfolio_signed_v1';
+const LEGACY_ASSET = /^assets\/portfolio\/([a-z0-9-]+)\.webp$/;
 let photos = [];
 let categories = [];
 let activeFilter = 'all';
 
+const authHeaders = () => ({ apikey: apiKey, Authorization: `Bearer ${apiKey}` });
+
+async function restSelect(table, params) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${new URLSearchParams(params)}`, {
+    headers: { ...authHeaders(), Accept: 'application/json' },
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(data?.message || `Pedido ao portefólio falhou (${response.status}).`);
+    error.code = data?.code || '';
+    throw error;
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+// As ligações assinadas são reaproveitadas enquanto forem válidas, para que o navegador
+// consiga usar as imagens que já tem em cache nas visitas seguintes.
+function readSignedCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SIGNED_CACHE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSignedCache(cache) {
+  try { localStorage.setItem(SIGNED_CACHE_KEY, JSON.stringify(cache)); } catch { /* Sem storage: assina de novo na próxima visita. */ }
+}
+
+async function signPortfolioPaths(paths) {
+  const now = Date.now();
+  const cache = readSignedCache();
+  Object.keys(cache).forEach((path) => { if (!Array.isArray(cache[path]) || cache[path][1] - now < SIGNED_URL_REUSE_MARGIN_MS) delete cache[path]; });
+  const missing = paths.filter((path) => !cache[path]);
+  if (missing.length) {
+    const response = await fetch(`${supabaseUrl}/storage/v1/object/sign/public-portfolio`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: SIGNED_URL_SECONDS, paths: missing }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !Array.isArray(data)) throw new Error(data?.message || 'Não foi possível preparar as imagens do portefólio.');
+    const expiresAt = now + SIGNED_URL_SECONDS * 1000;
+    data.forEach((item) => {
+      if (item?.path && item.signedURL && !item.error) cache[item.path] = [encodeURI(`${supabaseUrl}/storage/v1${item.signedURL}`), expiresAt];
+    });
+    writeSignedCache(cache);
+  }
+  return new Map(paths.filter((path) => cache[path]).map((path) => [path, cache[path][0]]));
+}
+
 const assetUrl = (photo) => photo.web_url || photo.legacy_public_url || '';
+
+function legacyVariant(url) {
+  const match = LEGACY_ASSET.exec(String(url || ''));
+  return match ? `assets/portfolio/w800/${match[1]}.webp` : '';
+}
 
 function renderFilters() {
   filtersRoot.replaceChildren();
@@ -24,6 +84,7 @@ function renderFilters() {
   entries.forEach((entry) => {
     const button = document.createElement('button');
     button.type = 'button'; button.className = `filter${activeFilter === entry.slug ? ' is-active' : ''}`; button.dataset.filter = entry.slug;
+    button.setAttribute('aria-pressed', String(activeFilter === entry.slug));
     button.append(document.createTextNode(`${entry.label} `)); const count = document.createElement('sup'); count.textContent = String(entry.count).padStart(2, '0'); button.append(count);
     button.addEventListener('click', () => { activeFilter = entry.slug; renderPortfolio(); });
     filtersRoot.appendChild(button);
@@ -41,9 +102,14 @@ function renderPortfolio() {
     const article = document.createElement('article'); article.className = 'project project--portfolio-card is-visible'; article.dataset.category = photo.portfolio_categories?.slug || '';
     const link = document.createElement('a'); link.className = 'project__image image-hover'; link.href = assetUrl(photo); link.dataset.imageLightbox = ''; link.dataset.lightboxGallery = 'portfolio'; link.dataset.lightboxStart = String(index); link.setAttribute('aria-label', photo.alt_text ? `Ampliar: ${photo.alt_text}` : 'Ampliar fotografia');
     const image = document.createElement('img'); image.src = assetUrl(photo); image.alt = photo.alt_text || ''; image.loading = index === 0 ? 'eager' : 'lazy'; image.decoding = 'async';
+    const sizes = '(max-width: 640px) 92vw, (max-width: 1100px) 44vw, 28vw';
     if (photo.thumbnail_url && photo.web_url) {
       image.srcset = `${photo.thumbnail_url} 500w, ${photo.web_url} 2200w`;
-      image.sizes = '(max-width: 640px) 92vw, (max-width: 1100px) 44vw, 28vw';
+      image.sizes = sizes;
+    } else if (photo.legacy_thumbnail_url && photo.width) {
+      image.src = photo.legacy_thumbnail_url;
+      image.srcset = `${photo.legacy_thumbnail_url} 800w, ${photo.legacy_public_url} ${photo.width}w`;
+      image.sizes = sizes;
     }
     if (index === 0) image.fetchPriority = 'high';
     if (photo.width && photo.height) { image.width = photo.width; image.height = photo.height; }
@@ -52,40 +118,49 @@ function renderPortfolio() {
   root.ariaBusy = 'false'; window.dispatchEvent(new CustomEvent('portfolio:rendered', { detail: { photos: visible } }));
 }
 
-async function loadPortfolio() {
-  if (!root || !filtersRoot || !supabase) return;
+async function loadPortfolioRows() {
   try {
-    const { data: categoryData, error: categoryError } = await supabase
-      .from('portfolio_categories').select('id,slug,label,sort_order').eq('enabled', true).order('sort_order');
-    if (categoryError) throw categoryError;
-    let { data, error } = await supabase.from('portfolio_photos')
-      .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,show_in_all,all_sort_order,show_in_category,category_sort_order,portfolio_categories(slug,label)')
-      .eq('is_published', true)
-      .or('show_in_all.eq.true,show_in_category.eq.true');
-    if (error?.code === '42703' || /show_in_all|show_in_category/i.test(String(error?.message || ''))) {
-      ({ data, error } = await supabase.from('portfolio_photos')
-        .select('id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,portfolio_categories(slug,label)')
-        .eq('is_published', true).order('sort_order', { ascending: true }).limit(8));
-      data = (data || []).map((photo, index) => ({
-        ...photo, show_in_all: true, all_sort_order: (index + 1) * 10,
-        show_in_category: true, category_sort_order: (index + 1) * 10,
-      }));
-    }
-    if (error) throw error;
-    photos = data || [];
+    return await restSelect('portfolio_photos', {
+      select: 'id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,show_in_all,all_sort_order,show_in_category,category_sort_order,portfolio_categories(slug,label)',
+      is_published: 'eq.true',
+      or: '(show_in_all.eq.true,show_in_category.eq.true)',
+    });
+  } catch (error) {
+    // Base de dados anterior à curadoria por secções: usa a ordem antiga.
+    if (error.code !== '42703' && !/show_in_all|show_in_category/i.test(String(error.message || ''))) throw error;
+    const rows = await restSelect('portfolio_photos', {
+      select: 'id,web_path,thumbnail_path,legacy_public_url,alt_text,focal_x,focal_y,width,height,sort_order,portfolio_categories(slug,label)',
+      is_published: 'eq.true',
+      order: 'sort_order.asc',
+      limit: '8',
+    });
+    return rows.map((photo, index) => ({
+      ...photo, show_in_all: true, all_sort_order: (index + 1) * 10,
+      show_in_category: true, category_sort_order: (index + 1) * 10,
+    }));
+  }
+}
+
+async function loadPortfolio() {
+  if (!root || !filtersRoot || !supabaseUrl || !apiKey) return;
+  try {
+    const [categoryData, rows] = await Promise.all([
+      restSelect('portfolio_categories', { select: 'id,slug,label,sort_order', enabled: 'eq.true', order: 'sort_order.asc' }),
+      loadPortfolioRows(),
+    ]);
+    photos = rows.map((photo) => ({ ...photo, legacy_thumbnail_url: legacyVariant(photo.legacy_public_url) }));
     const stored = photos.filter((photo) => photo.web_path);
     if (stored.length) {
       const paths = [...new Set(stored.flatMap((photo) => [photo.thumbnail_path, photo.web_path]).filter(Boolean))];
-      const { data: signed, error: signedError } = await supabase.storage.from('public-portfolio').createSignedUrls(paths, 60 * 60);
-      if (signedError) throw signedError;
-      const signedByPath = new Map((signed || []).map((item) => [item.path, item.signedUrl]));
+      const signedByPath = await signPortfolioPaths(paths);
       photos = photos.map((photo) => ({
         ...photo,
         thumbnail_url: signedByPath.get(photo.thumbnail_path) || signedByPath.get(photo.web_path) || '',
         web_url: signedByPath.get(photo.web_path) || '',
       }));
     }
-    categories = categoryData || []; renderPortfolio();
+    photos = photos.map((photo) => (photo.web_url || !photo.legacy_thumbnail_url ? photo : { ...photo, thumbnail_url: photo.legacy_thumbnail_url }));
+    categories = categoryData; renderPortfolio();
   } catch (error) {
     console.error('Não foi possível carregar Trabalho recente.', error);
     root.ariaBusy = 'false'; root.innerHTML = '<p class="portfolio-public-error">Não foi possível carregar esta seleção.</p>';

@@ -44,8 +44,8 @@ test('recent work opens the selected legacy or stored photograph in the lightbox
   assert.match(portfolio, /link\.dataset\.lightboxStart = String\(index\)/);
   assert.match(script, /photo\.web_url \|\| photo\.legacy_public_url/);
   assert.match(script, /gallery\?\.length \? gallery/);
-  assert.match(home, /portfolio-public\.js\?v=20260820-curation-1/);
-  assert.match(home, /script\.js\?v=20260820-ux-1/);
+  assert.match(home, /portfolio-public\.js\?v=[\w-]+/);
+  assert.match(home, /script\.js\?v=[\w-]+/);
 });
 
 test('gallery editor actions are compact, ordered and keyboard accessible', async () => {

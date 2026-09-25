@@ -9,6 +9,13 @@ import {
   SIGNED_URL_SECONDS,
 } from '../_shared/security.js';
 
+const SIGN_BATCH_SIZE = 200;
+
+// Numa galeria com venda ativa, o original nunca é entregue sem pagamento.
+function originalDownloadsAllowed(album: { watermark_original_downloads: boolean; sales_enabled: boolean }) {
+  return Boolean(album.watermark_original_downloads) && !album.sales_enabled;
+}
+
 type GalleryPhotoRow = {
   id: string;
   storage_path: string;
@@ -103,12 +110,24 @@ Deno.serve(async (request) => {
     return json({ error: 'Não foi possível carregar a galeria.' }, 500);
   }
 
-  const sign = async (path: string, download = false) => {
-    const { data, error: signError } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(path, SIGNED_URL_SECONDS, download ? { download: true } : undefined);
-    if (signError) return null;
-    return data.signedUrl;
+  // Assina em lote (um pedido por cada 200 caminhos) em vez de três pedidos por fotografia.
+  const signPaths = async (paths: Array<string | null | undefined>, download = false) => {
+    const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))];
+    const signed = new Map<string, string>();
+    for (let index = 0; index < unique.length; index += SIGN_BATCH_SIZE) {
+      const batch = unique.slice(index, index + SIGN_BATCH_SIZE);
+      const { data, error: signError } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(batch, SIGNED_URL_SECONDS, download ? { download: true } : undefined);
+      if (signError) {
+        console.error('get-gallery signing error', signError.message);
+        continue;
+      }
+      (data || []).forEach((item) => {
+        if (item.path && item.signedUrl && !item.error) signed.set(item.path, item.signedUrl);
+      });
+    }
+    return signed;
   };
 
   const visiblePhotos = (photos || [])
@@ -121,26 +140,12 @@ Deno.serve(async (request) => {
       const thumbnailPath = photo.thumbnail_path || viewPath;
       const ready = usesWatermark ? photo.processing_status === 'ready' && photo.watermarked_path : Boolean(viewPath);
       const downloadPath = album.downloads_enabled
-        ? (album.watermark_original_downloads ? fallbackOriginal : viewPath)
+        ? (originalDownloadsAllowed(album) ? fallbackOriginal : viewPath)
         : null;
       return { ...photo, viewPath, thumbnailPath, downloadPath, ready };
     })
     .filter((photo) => Boolean(photo.ready));
   const pendingPhotoCount = (photos || []).length - visiblePhotos.length;
-
-  const signedPhotos = await Promise.all(visiblePhotos.map(async (photo) => {
-    const thumbPath = photo.thumbnailPath || photo.viewPath;
-    return {
-      id: photo.id,
-      filename: photo.filename,
-      caption: photo.caption,
-      width: photo.width,
-      height: photo.height,
-      thumbUrl: thumbPath ? await sign(thumbPath) : null,
-      url: photo.viewPath ? await sign(photo.viewPath) : null,
-      downloadUrl: photo.downloadPath ? await sign(photo.downloadPath, true) : null,
-    };
-  }));
 
   const coverPhoto = visiblePhotos.find((photo) =>
     [photo.original_path, photo.storage_path, photo.web_path, photo.watermarked_path, photo.thumbnail_path].includes(
@@ -148,7 +153,30 @@ Deno.serve(async (request) => {
     )
   ) || visiblePhotos[0];
   const coverPath = coverPhoto ? coverPhoto.thumbnailPath || coverPhoto.viewPath : null;
-  const coverUrl = coverPath ? await sign(coverPath) : null;
+
+  const [viewUrls, downloadUrls] = await Promise.all([
+    signPaths([coverPath, ...visiblePhotos.flatMap((photo) => [photo.thumbnailPath, photo.viewPath])]),
+    signPaths(
+      visiblePhotos.map((photo) =>
+        photo.downloadPath
+      ),
+      true,
+    ),
+  ]);
+  const signedPhotos = visiblePhotos.map((photo) => {
+    const thumbPath = photo.thumbnailPath || photo.viewPath;
+    return {
+      id: photo.id,
+      filename: photo.filename,
+      caption: photo.caption,
+      width: photo.width,
+      height: photo.height,
+      thumbUrl: thumbPath ? viewUrls.get(thumbPath) || null : null,
+      url: photo.viewPath ? viewUrls.get(photo.viewPath) || null : null,
+      downloadUrl: photo.downloadPath ? downloadUrls.get(photo.downloadPath) || null : null,
+    };
+  });
+  const coverUrl = coverPath ? viewUrls.get(coverPath) || null : null;
 
   return json({
     album: {
@@ -172,9 +200,7 @@ Deno.serve(async (request) => {
         : { enabled: false },
       coverUrl,
     },
-    photos: signedPhotos.filter((photo) =>
-      Boolean(photo.url)
-    ),
+    photos: signedPhotos.filter((photo) => Boolean(photo.url)),
     pendingPhotoCount,
     signedUrlSeconds: SIGNED_URL_SECONDS,
   });

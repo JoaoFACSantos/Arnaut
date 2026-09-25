@@ -1,11 +1,11 @@
-import { LEGAL_LAST_UPDATED, LEGAL_PAGES } from './legal-content.js';
+import { COMPLAINTS_BOOK_URL, LEGAL_LAST_UPDATED, LEGAL_PAGES } from './legal-content.js';
 
 function createSiteHeader() {
   return `
     <a class="skip-link" href="#conteudo-principal">Saltar para o conteúdo</a>
     <header class="site-header legal-site-header is-scrolled" data-header>
       <a class="brand" href="/index.html#inicio" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="/assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <img class="brand__logo-img" src="/assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
       </a>
       <nav class="desktop-nav" aria-label="Navegação principal">
         <a href="/index.html#trabalho">Trabalho</a>
@@ -61,14 +61,14 @@ function createSiteFooter(activePage) {
   return `
     <footer class="footer">
       <a class="brand brand--footer" href="/index.html#inicio" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="/assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <img class="brand__logo-img" src="/assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
       </a>
       <p class="footer__intro">Fotografia por Beatriz Arnaut<br />Pombal, Leiria<br /><em>Fotografias que ficam.</em></p>
       <div class="footer__links">
         <a href="https://www.instagram.com/fotografiarnaut/" target="_blank" rel="noopener noreferrer">Instagram <span aria-hidden="true">↗</span></a>
-        <a href="/index.html#inicio">Pinterest <span aria-hidden="true">↗</span></a>
         <a href="/galeria.html">Galerias privadas <span aria-hidden="true">↗</span></a>
         <a href="mailto:fotografiaarnaut@gmail.com">Email <span aria-hidden="true">↗</span></a>
+        <a href="${COMPLAINTS_BOOK_URL}" target="_blank" rel="noopener noreferrer">Livro de Reclamações <span aria-hidden="true">↗</span></a>
       </div>
       <div class="footer__bottom">
         <span>© <span data-current-year></span> FOTOGRAFIA ARNAUT</span>

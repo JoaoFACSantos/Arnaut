@@ -57,6 +57,7 @@ const cartSubtotal = $('[data-cart-subtotal]');
 const cartSubtotalLabel = $('[data-cart-subtotal-label]');
 const cartDialogTotal = $('[data-cart-dialog-total]');
 const cartTerms = $('[data-cart-terms]');
+const cartWaiver = $('[data-cart-waiver]');
 const cartPolicy = $('[data-cart-policy]');
 const cartMessage = $('[data-cart-message]');
 const checkoutButton = $('[data-checkout]');
@@ -80,6 +81,11 @@ let favorites = new Set();
 let receiptPollTimer = 0;
 let lightboxOpener = null;
 let lightboxTouchStartX = 0;
+let urlRefreshTimer = 0;
+let urlsExpireAt = 0;
+let urlRefreshPromise = null;
+let lastUrlRefreshAt = 0;
+const URL_REFRESH_MARGIN_MS = 90 * 1000;
 const mobileCartMedia = window.matchMedia('(max-width: 980px)');
 
 const deviceKey = 'arnaut_gallery_device';
@@ -142,7 +148,11 @@ async function callFunction(name, body) {
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Não foi possível concluir o pedido.');
+  if (!response.ok) {
+    const error = new Error(data.error || 'Não foi possível concluir o pedido.');
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
@@ -258,6 +268,8 @@ function createPhotoCard(photo, index) {
   image.src = photo.thumbUrl || photo.url;
   image.alt = photo.caption || photo.filename || `Fotografia ${index + 1}`;
   image.loading = 'lazy';
+  image.decoding = 'async';
+  image.addEventListener('error', () => retryExpiredImage(image, photo.id, 'thumb'));
   open.appendChild(image);
   card.appendChild(open);
 
@@ -463,11 +475,91 @@ function renderGallery(data) {
   requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
 }
 
+// As ligações assinadas das fotografias expiram (signedUrlSeconds). Renovamo-las
+// antes do fim, ao regressar ao separador e quando uma imagem falha a carregar.
+function scheduleUrlRefresh(signedUrlSeconds) {
+  clearTimeout(urlRefreshTimer);
+  const lifetimeMs = Math.max(60, Number(signedUrlSeconds) || 600) * 1000;
+  urlsExpireAt = Date.now() + lifetimeMs;
+  urlRefreshTimer = window.setTimeout(() => refreshPhotoUrls(), Math.max(30 * 1000, lifetimeMs - URL_REFRESH_MARGIN_MS));
+}
+
+function photoSource(photo, variant) {
+  if (!photo) return '';
+  return variant === 'thumb' ? photo.thumbUrl || photo.url || '' : photo.url || '';
+}
+
+function applyFreshUrls(data) {
+  const fresh = new Map((data?.photos || []).map((photo) => [photo.id, photo]));
+  photos.forEach((photo) => {
+    const next = fresh.get(photo.id);
+    if (!next) return;
+    photo.url = next.url;
+    photo.thumbUrl = next.thumbUrl;
+    photo.downloadUrl = next.downloadUrl;
+  });
+  if (album && data?.album?.coverUrl) album.coverUrl = data.album.coverUrl;
+  // Só troca imagens ainda não carregadas (ou falhadas) para não repetir downloads.
+  $$('[data-photo-id]').forEach((card) => {
+    const image = card.querySelector('.client-photo__open img');
+    const photo = fresh.get(card.dataset.photoId);
+    if (!image || !photo || (image.complete && image.naturalWidth)) return;
+    const nextSrc = photoSource(photo, 'thumb');
+    if (nextSrc && image.src !== nextSrc) image.src = nextSrc;
+  });
+  if (!lightbox.hidden) {
+    const current = photos[activeIndex];
+    if (current?.downloadUrl) lightboxDownload.href = current.downloadUrl;
+  }
+}
+
+function refreshPhotoUrls() {
+  if (urlRefreshPromise) return urlRefreshPromise;
+  if (!galleryPublicId || !galleryToken || galleryView.hidden) return Promise.resolve(false);
+  urlRefreshPromise = callFunction('get-gallery', { publicId: galleryPublicId, token: galleryToken })
+    .then((data) => {
+      applyFreshUrls(data);
+      scheduleUrlRefresh(data.signedUrlSeconds);
+      return true;
+    })
+    .catch((error) => {
+      if (error?.status === 401 || error?.status === 403) {
+        clearTimeout(urlRefreshTimer);
+        try { sessionStorage.removeItem(sessionKey(galleryPublicId)); } catch { /* Sem storage disponível. */ }
+        toast('A sessão desta galeria terminou. Introduza novamente o código para continuar.');
+      } else {
+        urlRefreshTimer = window.setTimeout(() => refreshPhotoUrls(), 60 * 1000);
+      }
+      return false;
+    })
+    .finally(() => {
+      lastUrlRefreshAt = Date.now();
+      urlRefreshPromise = null;
+    });
+  return urlRefreshPromise;
+}
+
+function retryExpiredImage(image, photoId, variant) {
+  if (!image.getAttribute('src')) return;
+  const retries = Number(image.dataset.urlRetries || 0);
+  if (retries >= 2) return;
+  image.dataset.urlRetries = String(retries + 1);
+  const recentlyRefreshed = Date.now() - lastUrlRefreshAt < 20 * 1000;
+  const refresh = recentlyRefreshed ? Promise.resolve(true) : refreshPhotoUrls();
+  refresh.then((ok) => {
+    if (!ok) return;
+    const nextSrc = photoSource(photos.find((photo) => photo.id === photoId), variant);
+    if (nextSrc && image.src !== nextSrc) image.src = nextSrc;
+  });
+}
+
 async function loadGallery(publicId, token) {
   galleryPublicId = publicId;
   galleryToken = token;
   const data = await callFunction('get-gallery', { publicId, token });
   renderGallery(data);
+  lastUrlRefreshAt = Date.now();
+  scheduleUrlRefresh(data.signedUrlSeconds);
 }
 
 function updateFavoriteUi() {
@@ -532,7 +624,7 @@ function renderCart() {
   cartSubtotal.textContent = money(total, album.sales.currency);
   cartDialogTotal.textContent = money(total, album.sales.currency);
   cartPolicy.textContent = album.sales.refundPolicyText || 'Os ficheiros digitais são disponibilizados após a confirmação do pagamento.';
-  checkoutButton.disabled = !items.length || !cartTerms.checked;
+  checkoutButton.disabled = !items.length || !cartTerms.checked || !cartWaiver.checked;
 }
 
 function syncCartScrollLock() {
@@ -602,6 +694,7 @@ function renderLightboxThumbs() {
 function updateLightboxPhoto() {
   const photo = photos[activeIndex];
   if (!photo) return;
+  delete lightboxImage.dataset.urlRetries;
   lightboxImage.src = photo.url;
   lightboxImage.alt = photo.caption || 'Fotografia da galeria';
   setText(lightboxCounter, `${activeIndex + 1} / ${photos.length}`);
@@ -707,13 +800,22 @@ async function startCheckout() {
     cartMessage.textContent = 'Confirme que leu e aceita as condições antes de continuar.';
     return;
   }
+  if (!cartWaiver.checked) {
+    cartMessage.textContent = 'Confirme o pedido de acesso imediato às fotografias antes de continuar.';
+    return;
+  }
   const photoIds = [...selected];
   if (!photoIds.length) return;
   checkoutButton.disabled = true;
   checkoutButton.replaceChildren(createGalleryIcon('cart', 'is-small'), document.createTextNode('A preparar pagamento…'));
   cartMessage.textContent = '';
   try {
-    const result = await callFunction('create-checkout-session', { publicId: galleryPublicId, token: galleryToken, photoIds });
+    const result = await callFunction('create-checkout-session', {
+      publicId: galleryPublicId,
+      token: galleryToken,
+      photoIds,
+      withdrawalWaiver: cartWaiver.checked,
+    });
     window.location.assign(result.url);
   } catch (error) {
     cartMessage.textContent = error.message || 'Não foi possível iniciar o pagamento.';
@@ -811,6 +913,16 @@ $('[data-close-help]').addEventListener('click', () => helpDialog.close());
 helpDialog.addEventListener('click', (event) => { if (event.target === helpDialog) helpDialog.close(); });
 $('[data-dismiss-notice]').addEventListener('click', () => { notice.hidden = true; });
 galleryWelcomeOpen?.addEventListener('click', () => revealGalleryContent({ remember: true }));
+lightboxImage.addEventListener('error', () => {
+  if (lightbox.hidden) return;
+  const photo = photos[activeIndex];
+  if (photo) retryExpiredImage(lightboxImage, photo.id, 'full');
+});
+lightboxImage.addEventListener('load', () => { delete lightboxImage.dataset.urlRetries; });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !urlsExpireAt) return;
+  if (Date.now() > urlsExpireAt - URL_REFRESH_MARGIN_MS) refreshPhotoUrls();
+});
 $('[data-lightbox-close]').addEventListener('click', closeLightbox);
 $('[data-lightbox-prev]').addEventListener('click', () => moveLightbox(-1));
 $('[data-lightbox-next]').addEventListener('click', () => moveLightbox(1));
@@ -838,6 +950,7 @@ $('[data-clear-cart]').addEventListener('click', () => {
   toast('Carrinho limpo.');
 });
 cartTerms.addEventListener('change', renderCart);
+cartWaiver.addEventListener('change', renderCart);
 checkoutButton.addEventListener('click', startCheckout);
 mobileCartMedia.addEventListener?.('change', syncCartScrollLock);
 $('[data-order-back]').addEventListener('click', () => {

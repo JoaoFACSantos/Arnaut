@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "node --check admin.js && node --check admin-settings.js && node --check admin-utils.js && node --check gallery.js && node --check script.js && node --check portfolio-public.js && node --check portfolio-utils.js && node --check legal-page.js && node --check legal-content.js && node --check site-meta.js && node --check scripts/generate-site-files.mjs && node --check scripts/process-watermarks.mjs && node --check supabase/functions/_shared/billing.js",
-    "typecheck": "node node_modules/typescript/lib/tsc.js --noEmit --allowJs --checkJs false --module esnext --target es2022 admin.js admin-settings.js admin-utils.js gallery.js script.js portfolio-public.js portfolio-utils.js legal-page.js legal-content.js",
+    "lint": "node --check admin.js && node --check admin-settings.js && node --check admin-utils.js && node --check gallery.js && node --check script.js && node --check intro-state.js && node --check site-page.js && node --check portfolio-public.js && node --check portfolio-utils.js && node --check legal-page.js && node --check legal-content.js && node --check site-meta.js && node --check scripts/generate-site-files.mjs && node --check scripts/process-watermarks.mjs && node --check supabase/functions/_shared/billing.js && node --check supabase/functions/_shared/contact.js && node --check supabase/functions/_shared/security.js",
+    "typecheck": "node node_modules/typescript/lib/tsc.js --noEmit --allowJs --checkJs false --module esnext --target es2022 admin.js admin-settings.js admin-utils.js gallery.js script.js intro-state.js site-page.js portfolio-public.js portfolio-utils.js legal-page.js legal-content.js",
     "build": "node scripts/generate-site-files.mjs",
     "test": "node --test tests/*.test.mjs",
     "process:watermarks": "node scripts/process-watermarks.mjs"

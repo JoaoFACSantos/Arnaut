@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getEnv, getSecretKey } from './security.js';
+import { getEnv, getSecretKey, isAdminEmail } from './security.js';
 
 export function createServiceClient() {
   const url = getEnv('SUPABASE_URL');
@@ -32,13 +32,13 @@ export async function requireAdmin(request: Request, supabase = createServiceCli
     return { ok: false as const, response: new Response('Unauthorized', { status: 401 }) };
   }
 
-  const { data: admin, error: adminError } = await supabase
+  // Comparação exata (sem ilike): '%', '_' e '*' num email não podem funcionar como curingas.
+  const { data: admins, error: adminError } = await supabase
     .from('gallery_admins')
-    .select('email')
-    .ilike('email', email)
-    .maybeSingle();
+    .select('email');
+  const isAdmin = isAdminEmail(email, admins || []);
 
-  if (adminError || !admin) {
+  if (adminError || !isAdmin) {
     return { ok: false as const, response: new Response('Forbidden', { status: 403 }) };
   }
 
