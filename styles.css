@@ -188,6 +188,7 @@ button { color: inherit; font: inherit; }
   transform: translate(-50%, -50%);
   transition: width .25s, height .25s, background .25s;
   mix-blend-mode: normal;
+  will-change: transform;
 }
 
 .cursor span { color: white; font-family: var(--mono); font-size: 0; opacity: 0; transition: .25s; }
@@ -424,7 +425,7 @@ body.portrait-lightbox-open .cursor { opacity: 0; }
 .testimonial__author span:last-child { opacity: .6; }
 
 .contact { position: relative; min-height: 100svh; padding-top: 130px; padding-bottom: 90px; overflow: hidden; color: var(--paper); background: #24231f; }
-.contact__backdrop { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(23,23,19,.97) 0%, rgba(23,23,19,.9) 48%, rgba(23,23,19,.42) 100%), url("assets/portfolio/nazare-03.webp") 65% 52% / cover no-repeat; filter: saturate(.45); }
+.contact__backdrop { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(23,23,19,.97) 0%, rgba(23,23,19,.9) 48%, rgba(23,23,19,.42) 100%), url("assets/portfolio/nazare-03.webp") 65% 52% / cover no-repeat; filter: saturate(.45); will-change: transform; }
 .contact__inner { position: relative; z-index: 1; }
 .contact h2 { margin: 13vh 0 50px; font-family: var(--serif); font-size: clamp(66px, 9vw, 150px); font-weight: 300; letter-spacing: 0; line-height: .74; }
 .contact h2 em { color: var(--brand-primary); font-weight: 300; }
@@ -657,7 +658,7 @@ body.portrait-lightbox-open .cursor { opacity: 0; }
 .contact__details a,
 .contact__details span { width: fit-content; color: #e7dfd8; font-size: .78rem; text-decoration: none; }
 .contact__details a:hover { color: #fffdf9; }
-.contact-form { grid-area: form; align-self: center; border: 1px solid rgba(255,253,249,.2); border-radius: 16px; background: rgba(27,24,21,.58); padding: clamp(24px, 4vw, 48px); backdrop-filter: blur(10px); }
+.contact-form { grid-area: form; align-self: center; border: 1px solid rgba(255,253,249,.2); border-radius: 16px; background: rgba(27,24,21,.8); padding: clamp(24px, 4vw, 48px); }
 .contact-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
 .contact-form label { display: grid; gap: 8px; min-width: 0; }
 .contact-form label > span { color: #e9e0d8; font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; }
