@@ -6,21 +6,18 @@
     <meta name="description" content="Galerias privadas da Fotografia Arnaut." />
     <meta name="theme-color" content="#f7f3ee" />
     <title>Galerias privadas — Fotografia Arnaut</title>
-    <link rel="icon" type="image/png" href="assets/logo-arnaut.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css?v=20260820-ux-1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=20260925-1" />
+    <link rel="stylesheet" href="gallery.css?v=20260925-1" />
     <script src="config.js" defer></script>
-    <script src="gallery.js?v=20260820-ux-1" defer></script>
+    <script src="gallery.js?v=20260925-1" defer></script>
   </head>
   <body class="utility-page gallery-public-page">
     <header class="site-header is-scrolled">
       <a class="brand" href="index.html" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <img class="brand__logo-img" src="assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
       </a>
       <nav class="desktop-nav" aria-label="Navegação principal">
         <a href="index.html#trabalho">Trabalho</a>
@@ -50,7 +47,7 @@
       <section class="client-gallery" data-gallery-view hidden>
         <header class="client-gallery__header">
           <a class="client-gallery__brand" href="index.html" aria-label="Fotografia Arnaut — início">
-            <img src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+            <img src="assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
           </a>
           <div class="client-gallery__identity">
             <div class="client-gallery__title-row">
@@ -166,7 +163,11 @@
             </div>
             <label class="client-cart__terms">
               <input type="checkbox" data-cart-terms />
-              <span>Li e aceito as condições de compra e disponibilização digital.</span>
+              <span>Li e aceito as <a href="/termos/" target="_blank" rel="noopener">condições de compra</a> e disponibilização digital.</span>
+            </label>
+            <label class="client-cart__terms">
+              <input type="checkbox" data-cart-waiver />
+              <span>Peço o acesso imediato às fotografias após o pagamento e reconheço que, por isso, perco o direito de livre resolução (art. 17.º do DL n.º 24/2014).</span>
             </label>
             <details class="client-cart__policy"><summary>Consultar condições</summary><p data-cart-policy></p></details>
             <button type="button" class="client-cart__checkout" data-checkout><span class="client-ui-icon is-cart is-small" aria-hidden="true"></span> Finalizar compra</button>
@@ -189,6 +190,15 @@
         <button type="button" class="order-back" data-order-back>Voltar à galeria</button>
       </section>
     </main>
+
+    <footer class="gallery-legal-footer">
+      <span>© Fotografia Arnaut</span>
+      <nav aria-label="Informação legal">
+        <a href="/privacidade/">Privacidade</a>
+        <a href="/termos/">Termos</a>
+        <a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener noreferrer">Livro de Reclamações</a>
+      </nav>
+    </footer>
 
     <div class="client-cart-bar" data-cart-bar hidden>
       <div class="client-cart-bar__intro"><span class="client-cart-bar__icon"><span class="client-ui-icon is-cart" aria-hidden="true"></span></span><p>Clique nas fotografias<br />para adicionar ao carrinho.</p></div>

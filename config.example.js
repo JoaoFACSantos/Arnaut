@@ -3,4 +3,6 @@ window.ARNAUT_CONFIG = {
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_...',
   SITE_URL: 'http://localhost:5500',
   ADMIN_EMAIL: 'admin@example.com',
+  // Opcional: número com indicativo, só dígitos (ex.: '351912345678'). Mostra um botão WhatsApp.
+  WHATSAPP_NUMBER: '',
 };

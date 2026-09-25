@@ -42,7 +42,6 @@ export function buildBillingSummary(orders, nowValue = new Date(), months = 6) {
 
   for (const order of orders || []) {
     const totalCents = Math.max(0, Number(order?.total_cents || 0));
-    const createdAt = new Date(order?.created_at || 0);
     if (String(order?.status || '') === 'pending') {
       pendingCents += totalCents;
       pendingCount += 1;
@@ -81,4 +80,3 @@ export function buildBillingSummary(orders, nowValue = new Date(), months = 6) {
     series,
   };
 }
-

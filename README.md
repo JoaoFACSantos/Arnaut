@@ -5,10 +5,14 @@ Site editorial para Beatriz Arnaut, fotógrafa de Pombal, Leiria, com sistema de
 ## Estrutura
 
 - `index.html` — página principal.
+- `casamentos/`, `retratos-familias/`, `marcas/` — páginas de cada serviço (SEO local).
 - `galeria.html` — acesso privado dos clientes.
 - `admin.html` — área administrativa da marca.
+- `styles.css` — site público e base partilhada; `gallery.css` — galeria privada; `admin.css` — administração.
+- `script.js` — página principal (intro, portefólio, formulário de contacto); `intro-state.js` decide se a intro aparece.
 - `gallery.js` — fluxo de convidados, sessão temporária e lightbox.
 - `admin.js` — login, criação de álbuns, uploads e gestão.
+- `assets/fonts/` — tipos de letra alojados no próprio site (sem Google Fonts).
 - `supabase/migrations/` — tabelas, índices, RLS e policies de Storage.
 - `supabase/functions/` — Edge Functions server-side.
 - `tests/` — testes locais das funções críticas de validação/hash.
@@ -46,6 +50,7 @@ window.ARNAUT_CONFIG = {
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_...',
   SITE_URL: 'https://o-seu-dominio.pt',
   ADMIN_EMAIL: 'email-da-beatriz@example.com',
+  WHATSAPP_NUMBER: '', // opcional, ex.: '351912345678' — mostra um botão WhatsApp no contacto
 };
 ```
 
@@ -107,6 +112,11 @@ npx supabase functions deploy admin-albums
 
 As galerias continuam privadas e sem comércio por defeito. Ao ativar **Venda de fotografias** numa galeria, o visitante vê apenas as versões processadas com marca de água, pode selecionar fotografias e é encaminhado para o Checkout alojado da Stripe. O preço e os ficheiros selecionados são sempre recalculados e validados no servidor.
 
+Numa galeria com venda ativa:
+
+- o download gratuito (se estiver ligado) entrega sempre a versão com marca de água — os originais só são entregues depois do pagamento (regra aplicada na base de dados, na Edge Function `get-gallery` e no painel);
+- antes de pagar, o cliente tem de aceitar as condições e pedir expressamente o acesso imediato às fotografias, reconhecendo a perda do direito de livre resolução (artigo 17.º do DL n.º 24/2014). A aceitação fica registada na encomenda (`withdrawal_waiver_accepted_at`) e nos metadados da Stripe.
+
 Fluxo de confiança:
 
 1. `create-checkout-session` valida a sessão temporária da galeria, os UUIDs, a pertença das fotografias e o preço guardado na base de dados.
@@ -130,7 +140,25 @@ SALES_SUPPORT_EMAIL=apoio@fotografiaarnaut.pt
 SITE_URL=https://o-seu-dominio.pt
 ```
 
-`RESEND_API_KEY` e `ORDER_FROM_EMAIL` são necessários para o email transacional. O pagamento e os downloads continuam seguros se o email estiver temporariamente indisponível; o administrador pode reenviá-lo depois.
+`RESEND_API_KEY` e `ORDER_FROM_EMAIL` são necessários para o email transacional.
+
+## Formulário de contacto
+
+O formulário da página principal envia o pedido para a Edge Function `contact-request`, que valida os dados, limita abusos (5 pedidos por hora por ligação), guarda o pedido na tabela `contact_requests`, cria uma notificação na administração e envia um email pelo Resend com "Responder" direto ao cliente.
+
+Secrets usados (além de `RESEND_API_KEY` e `SESSION_TOKEN_PEPPER`):
+
+```env
+CONTACT_TO_EMAIL=fotografiaarnaut@gmail.com      # quem recebe os pedidos (por omissão: SALES_SUPPORT_EMAIL)
+CONTACT_FROM_EMAIL=Fotografia Arnaut <site@dominio-verificado.pt>  # opcional (por omissão: ORDER_FROM_EMAIL)
+```
+
+```powershell
+npx supabase db push
+npx supabase functions deploy contact-request
+```
+
+Se a função não estiver publicada ou falhar, o site abre o programa de email do visitante com o pedido preenchido, como antes. O pagamento e os downloads continuam seguros se o email estiver temporariamente indisponível; o administrador pode reenviá-lo depois.
 
 Aplicação e deploy:
 
@@ -211,6 +239,14 @@ WATERMARK_WORKER_LIMIT=12
 
 `SUPABASE_SERVICE_ROLE_KEY` nunca deve ir para o frontend nem para o Git; use apenas no ambiente privado onde o worker corre.
 
+O workflow `.github/workflows/process-watermarks.yml` corre de 30 em 30 minutos. Para processar logo a seguir aos uploads, crie um token do GitHub (fine-grained, só este repositório, permissão **Actions: Read and write**) e guarde-o como secret das Edge Functions:
+
+```env
+GITHUB_ACTIONS_TOKEN=github_pat_...
+```
+
+A função `admin-albums` passa então a iniciar o workflow depois de cada upload.
+
 No painel de cada galeria pode configurar:
 
 - marca ativa/inativa;
@@ -235,7 +271,12 @@ Opção recomendada: Cloudflare Pages.
 6. Output directory: `/`.
 7. Publique.
 8. Em `Custom domains`, adicione o seu domínio.
-9. Crie o ficheiro `config.js` no projeto antes do deploy, ou configure um passo de build que o gere a partir das variáveis do Cloudflare.
+9. Em **Settings → Variables**, defina `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SITE_URL` (o domínio final em HTTPS), `ADMIN_EMAIL` e, se quiser, `WHATSAPP_NUMBER`.
+10. Use `npm run build` como **Build command** (output directory `/`).
+
+O `npm run build` cria o `config.js` a partir dessas variáveis e, com um `SITE_URL` HTTPS, escreve nas páginas públicas o canonical, as URLs absolutas de partilha (WhatsApp/Facebook), os dados estruturados (Schema.org) e gera `sitemap.xml` e `robots.txt`. Sem build, o site funciona na mesma: `site-meta.js` completa o essencial no navegador.
+
+Depois da publicação, submeta `https://o-seu-dominio.pt/sitemap.xml` no Google Search Console e crie/atualize o perfil no Google Business.
 
 Se preferir upload manual, também pode publicar a pasta estática, mas GitHub + Cloudflare Pages é mais fácil para futuras alterações.
 
@@ -247,6 +288,7 @@ Frontend, em `config.js`:
 - `SUPABASE_PUBLISHABLE_KEY`
 - `SITE_URL`
 - `ADMIN_EMAIL`
+- `WHATSAPP_NUMBER` (opcional)
 
 Supabase Edge Functions:
 
@@ -259,6 +301,8 @@ Supabase Edge Functions:
 - `RESEND_API_KEY`
 - `ORDER_FROM_EMAIL`
 - `SALES_SUPPORT_EMAIL`
+- `CONTACT_TO_EMAIL` / `CONTACT_FROM_EMAIL` (opcionais, formulário de contacto)
+- `GITHUB_ACTIONS_TOKEN` (opcional, processamento imediato das marcas de água)
 - `SITE_URL`
 - `SUPABASE_URL` automático
 - `SUPABASE_SECRET_KEYS` ou `SUPABASE_SERVICE_ROLE_KEY` automático/secret
@@ -293,6 +337,7 @@ Os testes cobrem normalização de slugs, geração/formatação/máscara de có
 - Não existe botão “descarregar todas” para evitar criar um fluxo inseguro ou pesado; há download individual quando autorizado.
 - A primeira versão de comércio não gera ZIP; cada original comprado é entregue individualmente com URL assinada curta.
 - A política de cancelamento/reembolso é texto definido pela administradora e deve ser revista juridicamente antes de ativar vendas reais.
+- Em `legal-content.js`, preencha `LEGAL_ENTITY.taxId` (NIF) e `LEGAL_ENTITY.address` (morada profissional) e confirme a entidade de resolução alternativa de litígios (`ADR_ENTITY`) antes de ativar vendas.
 
 ## Referências oficiais úteis
 

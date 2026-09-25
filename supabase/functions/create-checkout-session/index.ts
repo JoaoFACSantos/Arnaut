@@ -16,6 +16,9 @@ import { getSiteUrl, hashOrderAccessToken, validateGallerySession } from '../_sh
 
 const CHECKOUT_RATE_WINDOW_MINUTES = 10;
 const CHECKOUT_RATE_LIMIT = 5;
+// Texto apresentado no carrinho (galeria.html). Guardado na encomenda como prova do consentimento.
+const WITHDRAWAL_WAIVER_TEXT =
+  'Peço o acesso imediato às fotografias após o pagamento e reconheço que, por isso, perco o direito de livre resolução (art. 17.º do DL n.º 24/2014).';
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -33,6 +36,9 @@ Deno.serve(async (request) => {
 
   if (!photoIds.length || photoIds.length !== suppliedIds.length) {
     return json({ error: 'Seleção de fotografias inválida.' }, 400);
+  }
+  if (body.withdrawalWaiver !== true) {
+    return json({ error: 'Confirme o pedido de acesso imediato às fotografias para continuar.' }, 400);
   }
 
   const galleryAccess = await validateGallerySession(supabase, publicId, galleryToken);
@@ -98,6 +104,13 @@ Deno.serve(async (request) => {
   }
   const order = createdRows[0];
   const checkoutUnitPriceCents = centsForStripe(Number(order.total_cents) / photoIds.length);
+  const waiverAcceptedAt = new Date().toISOString();
+  const { error: waiverError } = await supabase
+    .from('orders')
+    .update({ withdrawal_waiver_accepted_at: waiverAcceptedAt, withdrawal_waiver_text: WITHDRAWAL_WAIVER_TEXT })
+    .eq('id', order.order_id);
+  // A prova fica também nos metadados da Stripe, por isso uma falha aqui não bloqueia a compra.
+  if (waiverError) console.error('withdrawal waiver record error', waiverError.message);
 
   const siteUrl = getSiteUrl();
   const successUrl = `${siteUrl}/galeria.html?order=${encodeURIComponent(order.order_public_id)}&receipt_token=${
@@ -130,6 +143,7 @@ Deno.serve(async (request) => {
         order_id: order.order_id,
         order_public_id: order.order_public_id,
         gallery_id: album.id,
+        withdrawal_waiver_accepted_at: waiverAcceptedAt,
       },
       payment_intent_data: {
         metadata: {

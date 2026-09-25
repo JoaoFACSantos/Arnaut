@@ -6,7 +6,7 @@ test('uses the supplied SVG assets in the public gallery action bar', async () =
   const [html, source, css] = await Promise.all([
     readFile(new URL('../galeria.html', import.meta.url), 'utf8'),
     readFile(new URL('../gallery.js', import.meta.url), 'utf8'),
-    readFile(new URL('../styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../gallery.css', import.meta.url), 'utf8'),
   ]);
 
   for (const icon of ['icon_favoritos.svg', 'icon_partilhar.svg', 'icon_ajuda.svg', 'icon_carrinho.svg']) {
@@ -52,7 +52,7 @@ test('keeps public gallery action handlers and accessible labels intact', async 
 test('uses one accessible outline-to-filled favorite icon in cards and lightbox', async () => {
   const [source, css] = await Promise.all([
     readFile(new URL('../gallery.js', import.meta.url), 'utf8'),
-    readFile(new URL('../styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../gallery.css', import.meta.url), 'utf8'),
   ]);
 
   assert.match(source, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'svg'\)/);

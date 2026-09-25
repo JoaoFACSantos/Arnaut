@@ -3,31 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fotografia Arnaut — Fotógrafa em Pombal, Leiria · Casamentos, retratos e famílias</title>
     <meta
       name="description"
       content="Fotografia Arnaut — fotografia documental, casamentos, retratos, famílias e histórias de marca por Beatriz Arnaut, em Pombal, Leiria e por todo o país."
     />
     <meta name="theme-color" content="#f7f3ee" />
+    <!-- seo:start (canonical, URLs absolutas e dados estruturados: gerados por `npm run build` com SITE_URL) -->
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_PT" />
+    <meta property="og:site_name" content="Fotografia Arnaut" />
     <meta property="og:title" content="Fotografia Arnaut — Beatriz Arnaut" />
-    <meta property="og:description" content="Fotografia documental por Beatriz Arnaut, em Pombal, Leiria." />
-    <meta property="og:image" content="assets/portfolio/sintra-02.webp" />
+    <meta property="og:description" content="Fotografia documental por Beatriz Arnaut, em Pombal, Leiria: casamentos, retratos, famílias e marcas." />
+    <meta property="og:image" content="assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Arquitetura histórica entre árvores em Sintra, fotografada por Beatriz Arnaut" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Fotografia Arnaut — Beatriz Arnaut</title>
-    <link rel="icon" type="image/png" href="assets/logo-arnaut.png" />
-    <link rel="apple-touch-icon" href="assets/logo-arnaut.png" />
+    <!-- seo:end -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css?v=20260820-loader-1" />
+    <link rel="preload" href="assets/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css?v=20260925-1" />
+    <noscript><style>.loader { display: none; } .reveal, .reveal-text, .hero-line > span { opacity: 1; transform: none; }</style></noscript>
+    <script src="intro-state.js?v=20260925-1"></script>
     <script src="config.js"></script>
-    <script src="site-meta.js" defer></script>
-    <script type="module" src="portfolio-public.js?v=20260820-curation-1"></script>
+    <script src="site-meta.js?v=20260925-1" defer></script>
+    <script type="module" src="portfolio-public.js?v=20260925-2"></script>
   </head>
   <body data-page="home">
     <div class="loader" aria-hidden="true">
@@ -42,7 +47,7 @@
           </feComponentTransfer>
         </filter>
       </svg>
-      <img class="loader__logo" src="assets/logo-arnaut.png" alt="" />
+      <img class="loader__logo" src="assets/logo-arnaut.webp" alt="" />
       <div class="loader__line"><span></span></div>
       <p class="loader__count">00</p>
     </div>
@@ -51,7 +56,7 @@
 
     <header class="site-header" data-header>
       <a class="brand" href="#inicio" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <img class="brand__logo-img" src="assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
       </a>
 
       <nav class="desktop-nav" aria-label="Navegação principal">
@@ -106,6 +111,8 @@
           <div class="hero__image-wrap">
             <img
               src="assets/portfolio/sintra-02.webp"
+              srcset="assets/portfolio/w800/sintra-02.webp 800w, assets/portfolio/sintra-02-1080.webp 1080w, assets/portfolio/sintra-02.webp 1365w"
+              sizes="(max-width: 760px) 115vw, (max-width: 1050px) 45vw, 46vw"
               alt="Arquitetura histórica enquadrada por árvores em Sintra"
               fetchpriority="high"
             />
@@ -160,6 +167,18 @@
 
         <div class="filters reveal" data-public-portfolio-filters role="group" aria-label="Filtrar portefólio"><button class="filter is-active" type="button" disabled>A carregar…</button></div>
         <div class="projects projects--portfolio" data-public-portfolio aria-live="polite" aria-busy="true"></div>
+        <noscript>
+          <div class="projects projects--portfolio">
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/casal-01.webp"><img src="assets/portfolio/w800/casal-01.webp" alt="Casal a sorrir junto a uma parede de pedra" width="2000" height="1334" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/sintra-02.webp"><img src="assets/portfolio/w800/sintra-02.webp" alt="Arquitetura histórica e árvores em Sintra" width="1365" height="1820" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/nazare-01.webp"><img src="assets/portfolio/w800/nazare-01.webp" alt="Retrato de mulher na praia ao fim da tarde" width="1501" height="2000" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/sintra-01.webp"><img src="assets/portfolio/w800/sintra-01.webp" alt="Fachada histórica enquadrada por árvores em Sintra" width="1820" height="1365" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/casal-03.webp"><img src="assets/portfolio/w800/casal-03.webp" alt="Casal abraçado num jardim" width="1333" height="2000" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/sintra-03.webp"><img src="assets/portfolio/w800/sintra-03.webp" alt="Detalhe de arcos neomanuelinos em Sintra" width="1365" height="1820" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/nazare-03.webp"><img src="assets/portfolio/w800/nazare-03.webp" alt="Vista da praia da Nazaré com papagaios no céu" width="1500" height="2000" loading="lazy" /></a></article>
+            <article class="project project--portfolio-card is-visible"><a class="project__image" href="assets/portfolio/nazare-04.webp"><img src="assets/portfolio/w800/nazare-04.webp" alt="Casal sentado na praia sob papagaios coloridos" width="1500" height="2000" loading="lazy" /></a></article>
+          </div>
+        </noscript>
       </section>
 
       <section class="services" id="servicos" aria-labelledby="services-title">
@@ -184,7 +203,7 @@
                 Narrativas completas e honestas, da manhã lenta à pista cheia. Presença
                 discreta, direção apenas quando é precisa e todas as pequenas coisas no meio.
               </p>
-              <a href="#contacto">Pedir informações ↗</a>
+              <div class="service__links"><a href="casamentos/">Saber mais ↗</a><a href="#contacto">Pedir informações ↗</a></div>
             </div>
           </article>
 
@@ -199,7 +218,7 @@
                 Para guardar uma fase, celebrar quem são agora ou ter finalmente uma
                 fotografia onde todos cabem — sem poses rígidas nem sorrisos pedidos.
               </p>
-              <a href="#contacto">Pedir informações ↗</a>
+              <div class="service__links"><a href="retratos-familias/">Saber mais ↗</a><a href="#contacto">Pedir informações ↗</a></div>
             </div>
           </article>
 
@@ -214,19 +233,41 @@
                 Imagens com matéria e intenção para marcas humanas, artistas e projetos
                 independentes. Do conceito à produção, com uma linguagem visual coerente.
               </p>
-              <a href="#contacto">Pedir informações ↗</a>
+              <div class="service__links"><a href="marcas/">Saber mais ↗</a><a href="#contacto">Pedir informações ↗</a></div>
             </div>
           </article>
         </div>
       </section>
 
+      <section class="process section-pad" id="como-funciona" aria-labelledby="process-title">
+        <header class="process__heading reveal">
+          <p class="section-index">04 / Como funciona</p>
+          <h2 id="process-title">Do primeiro contacto<br /><em>à galeria privada.</em></h2>
+        </header>
+        <ol class="process__steps">
+          <li class="reveal"><span>01</span><h3>Conversa</h3><p>Contas-me o que imaginas: a data, o local, as pessoas e o tipo de sessão.</p></li>
+          <li class="reveal"><span>02</span><h3>Confirmação</h3><p>Confirmo a disponibilidade e combinamos os detalhes e os próximos passos.</p></li>
+          <li class="reveal"><span>03</span><h3>Sessão</h3><p>Uma presença calma e atenta, com direção apenas quando é precisa.</p></li>
+          <li class="reveal"><span>04</span><h3>Galeria privada</h3><p>As fotografias chegam numa galeria protegida por código, onde as podes ver, guardar favoritas e descarregar.</p></li>
+        </ol>
+      </section>
+
       <section class="about section-pad" id="sobre" aria-labelledby="about-title">
         <div class="about__image reveal image-hover" data-portrait-open role="button" tabindex="0" aria-label="Ampliar retrato de Beatriz Arnaut">
-          <img src="assets/beatriz-arnaut.jpg?v=20260803-2" alt="Retrato de Beatriz Arnaut" loading="lazy" />
+          <img
+            src="assets/beatriz-arnaut-760.webp"
+            srcset="assets/beatriz-arnaut-760.webp 760w, assets/beatriz-arnaut.webp 1258w"
+            sizes="(max-width: 760px) 92vw, 40vw"
+            width="1258"
+            height="1242"
+            alt="Retrato de Beatriz Arnaut"
+            loading="lazy"
+            decoding="async"
+          />
           <p><span>Fotógrafa, observadora,</span><span>colecionadora de luz.</span></p>
         </div>
         <div class="about__copy">
-          <p class="section-index reveal">04 / Atrás da câmara</p>
+          <p class="section-index reveal">05 / Atrás da câmara</p>
           <h2 id="about-title" class="reveal">Olá, sou<br /><em>a Beatriz.</em></h2>
           <div class="about__body reveal">
             <p class="lead">
@@ -250,7 +291,7 @@
 
       <section class="faq section-pad" id="faq" aria-labelledby="faq-title">
         <header class="faq__heading reveal">
-          <p class="section-index">05 / Informação útil</p>
+          <p class="section-index">06 / Informação útil</p>
           <h2 id="faq-title">Perguntas<br /><em>frequentes.</em></h2>
           <p>Respostas breves às dúvidas mais comuns. Para informações específicas, fala comigo.</p>
         </header>
@@ -266,7 +307,7 @@
       <section class="contact section-pad" id="contacto" aria-labelledby="contact-title">
         <div class="contact__backdrop" aria-hidden="true"></div>
         <div class="contact__inner">
-          <p class="section-index reveal">06 / Vamos falar</p>
+          <p class="section-index reveal">07 / Vamos falar</p>
           <h2 id="contact-title" class="reveal">
             Há uma história<br />à espera de ser<br /><em>guardada?</em>
           </h2>
@@ -277,6 +318,7 @@
             <span>Pombal, Leiria</span>
             <a href="mailto:fotografiaarnaut@gmail.com">fotografiaarnaut@gmail.com</a>
             <a href="https://www.instagram.com/fotografiarnaut/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+            <a data-whatsapp-link target="_blank" rel="noopener noreferrer" hidden>WhatsApp ↗</a>
           </div>
           <form class="contact-form reveal" data-contact-form novalidate>
             <div class="contact-form__grid">
@@ -297,7 +339,7 @@
 
     <footer class="footer">
       <a class="brand brand--footer" href="#inicio" aria-label="Fotografia Arnaut — início">
-        <img class="brand__logo-img" src="assets/logo-arnaut.png" alt="Fotografia Arnaut" />
+        <img class="brand__logo-img" src="assets/logo-arnaut.webp" alt="Fotografia Arnaut" />
       </a>
       <p class="footer__intro">
         Fotografia por Beatriz Arnaut<br />
@@ -306,9 +348,9 @@
       </p>
       <div class="footer__links">
         <a href="https://www.instagram.com/fotografiarnaut/" target="_blank" rel="noopener noreferrer">Instagram <span aria-hidden="true">↗</span></a>
-        <a href="#inicio">Pinterest <span aria-hidden="true">↗</span></a>
         <a href="galeria.html">Galerias privadas <span aria-hidden="true">↗</span></a>
         <a href="mailto:fotografiaarnaut@gmail.com">Email <span aria-hidden="true">↗</span></a>
+        <a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener noreferrer">Livro de Reclamações <span aria-hidden="true">↗</span></a>
       </div>
       <div class="footer__bottom">
         <span>© <span data-current-year></span> FOTOGRAFIA ARNAUT</span>
@@ -327,7 +369,7 @@
       <div class="portrait-lightbox__frame">
         <button type="button" class="portrait-lightbox__close" data-portrait-close aria-label="Fechar fotografia">×</button>
         <figure>
-          <img data-lightbox-image src="assets/beatriz-arnaut.jpg?v=20260803-2" alt="Retrato ampliado de Beatriz Arnaut" />
+          <img data-lightbox-image src="assets/beatriz-arnaut.webp" alt="Retrato ampliado de Beatriz Arnaut" />
           <div class="portrait-lightbox__meta"><span data-lightbox-counter aria-live="polite"></span></div>
         </figure>
         <button type="button" class="portrait-lightbox__nav portrait-lightbox__nav--prev" data-lightbox-prev aria-label="Fotografia anterior"></button>
@@ -336,6 +378,6 @@
       </div>
     </dialog>
 
-    <script src="script.js?v=20260820-ux-1"></script>
+    <script src="script.js?v=20260925-1"></script>
   </body>
 </html>

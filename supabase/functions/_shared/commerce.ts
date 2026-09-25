@@ -170,7 +170,9 @@ export async function sendOrderConfirmationEmail(
       <p><a href="${
     escapeHtml(downloadUrl)
   }" style="display:inline-block;padding:14px 22px;background:#856652;color:#fffdf9;text-decoration:none;border-radius:8px;font-weight:bold">Ver as minhas fotografias</a></p>
-      <p style="color:#74685f;font-size:13px">Os downloads ficam disponíveis até ${escapeHtml(new Date(order.expires_at).toLocaleDateString('pt-PT'))}.</p>
+      <p style="color:#74685f;font-size:13px">Os downloads ficam disponíveis até ${
+    escapeHtml(new Date(order.expires_at).toLocaleDateString('pt-PT'))
+  }.</p>
       ${supportBlock}
     </div></div>`;
 
